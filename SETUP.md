@@ -59,9 +59,33 @@ pnpm build
 
 ### Spec Sources (in order of priority)
 
-1. **Live API** — Fetches from `https://api.tratto.email/docs/json`
-2. **Local file** — Uses existing `public/openapi.json` if available
-3. **Template** — Falls back to `public/openapi-template.json` if API is unreachable
+1. **Custom URL** (if `TRATTO_OPENAPI_URL` env var is set)
+2. **Staging API** — Fetches from `https://api-staging.tratto.email/docs/json`
+3. **Production API** — Fetches from `https://api.tratto.email/docs/json` (once available)
+4. **Local file** — Uses existing `public/openapi.json` if available
+5. **Template** — Falls back to `public/openapi-template.json` if API is unreachable
+
+### Using Staging API
+
+By default, the sync script tries the staging API first:
+
+```bash
+# Automatically uses api-staging.tratto.email
+pnpm run sync-openapi
+```
+
+### Using Custom Endpoint or Authentication
+
+```bash
+# With custom endpoint
+TRATTO_OPENAPI_URL=https://custom-api.example.com/openapi.json pnpm run sync-openapi
+
+# With API token (if authentication is required)
+TRATTO_API_TOKEN=your_token_here pnpm run sync-openapi
+
+# Both together
+TRATTO_OPENAPI_URL=... TRATTO_API_TOKEN=... pnpm run sync-openapi
+```
 
 ### Keeping Spec in Sync
 
@@ -69,11 +93,18 @@ For production deployments, integrate the sync script into your CI/CD pipeline:
 
 ```yaml
 # Example: GitHub Actions
-- name: Sync OpenAPI spec
+- name: Sync OpenAPI spec from staging
   run: pnpm run sync-openapi
   
 - name: Build docs
   run: pnpm build
+```
+
+For production, you may want to use the production API:
+
+```yaml
+- name: Sync OpenAPI spec from production
+  run: TRATTO_OPENAPI_URL=https://api.tratto.email/docs/json pnpm run sync-openapi
 ```
 
 ## Adding Documentation
