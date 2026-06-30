@@ -1,0 +1,109 @@
+---
+title: Deliverability Best Practices
+description: Maximize inbox placement with actionable guidance
+---
+
+# Deliverability Best Practices
+
+Follow these practices to maximize inbox placement and avoid spam folders.
+
+## 1. Domain Authentication (SPF + DKIM + DMARC)
+
+**Checklist:**
+- ✅ Add SPF record: `v=spf1 include:spf.tratto.email ~all`
+- ✅ Add DKIM record with public key from Tratto
+- ✅ Add DMARC policy: `v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com`
+
+See [Domains](/docs/en/domains) for setup.
+
+## 2. From Address Consistency
+
+Use the same "From" email across sends. Changing senders confuses filters.
+
+✅ `hello@yourdomain.com` (always)  
+❌ `hello@yourdomain.com`, then `noreply@yourdomain.com`
+
+## 3. Honor Bounce & Complaint Events
+
+**Automatically unsubscribe contacts who:**
+- Hard-bounce (invalid address)
+- Complain (mark as spam)
+
+Tratto auto-updates status to `bounced` or `complained`. Use webhooks to sync to your database.
+
+```javascript
+app.post('/webhooks/tratto', (req, res) => {
+  const event = req.body;
+  if (event.type === 'bounced' || event.type === 'complained') {
+    // Update your database: mark contact as unsubscribed
+    db.contacts.update(event.contactId, { status: 'unsubscribed' });
+  }
+  res.json({ ok: true });
+});
+```
+
+## 4. List Hygiene
+
+**Remove inactive/bounced addresses regularly:**
+
+```bash
+curl "https://api.tratto.email/v1/contacts?status=bounced" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+Sending to invalid addresses = spam complaints = sender reputation damage.
+
+## 5. Sending Frequency Recommendations
+
+- **Transactional:** Send immediately (password reset, order confirmation)
+- **Marketing:** 1-2x per week (too frequent = unsubscribes)
+- **Newsletters:** Weekly or monthly (consistency matters)
+
+High frequency without engagement = spam folder.
+
+## 6. Content Best Practices
+
+**Avoid spam triggers:**
+- ❌ ALL CAPS subjects
+- ❌ Excessive exclamation marks: "Buy NOW!!!"
+- ❌ High image-to-text ratio (100% images = spam)
+- ❌ Hidden text (white text on white background)
+
+**Do:**
+- ✅ Clear, honest subject lines
+- ✅ Balance images with text
+- ✅ One-click unsubscribe link
+- ✅ Real postal address (CAN-SPAM requirement)
+
+## 7. Monitor Bounce & Complaint Rates
+
+**Check analytics weekly:**
+
+```bash
+curl "https://api.tratto.email/v1/analytics/summary?period=7d" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+- **Bounce rate:** < 2% acceptable
+- **Complaint rate:** < 0.1% acceptable
+
+High rates damage sender reputation. Take action immediately.
+
+## 8. IP Warming
+
+If using a dedicated IP, warm it up gradually. See [IP Warming](/docs/en/ip-warming).
+
+## Deliverability Checklist
+
+- [ ] Domain authenticated (SPF + DKIM + DMARC)
+- [ ] Consistent "From" address
+- [ ] Bounce/complaint events honored
+- [ ] List cleaned of bounced addresses
+- [ ] Sending frequency appropriate
+- [ ] Content avoids spam triggers
+- [ ] Bounce & complaint rates monitored
+- [ ] IP warmed (if dedicated)
+
+---
+
+See [IP Warming](/docs/en/ip-warming) for warming new IPs.

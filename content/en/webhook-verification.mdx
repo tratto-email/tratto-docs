@@ -1,0 +1,182 @@
+---
+title: Webhook Signature Verification
+description: Securely verify x-tratto-signature headers
+---
+
+# Webhook Signature Verification
+
+Every webhook from Tratto is signed with HMAC-SHA256. **Always verify signatures** to ensure webhooks come from Tratto, not attackers.
+
+## Signature Header
+
+Every webhook includes:
+
+```http
+x-tratto-signature: a1b2c3d4e5f6...
+```
+
+The value is a hex-encoded HMAC-SHA256 hash.
+
+## Verification Algorithm
+
+1. Get your webhook secret (from registration)
+2. Get the raw request body (not parsed JSON)
+3. Compute HMAC-SHA256(body, secret)
+4. Compare with `x-tratto-signature` header
+
+## Node.js
+
+```javascript
+const crypto = require('crypto');
+
+function verifyWebhook(rawBody, signature, secret) {
+  const computed = crypto
+    .createHmac('sha256', secret)
+    .update(rawBody)
+    .digest('hex');
+  
+  return crypto.timingSafeEqual(computed, signature);
+}
+
+app.post('/webhooks/tratto', (req, res) => {
+  const signature = req.headers['x-tratto-signature'];
+  const secret = process.env.TRATTO_WEBHOOK_SECRET;
+  
+  try {
+    const valid = verifyWebhook(req.rawBody, signature, secret);
+    if (!valid) {
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+  } catch (error) {
+    return res.status(401).json({ error: 'Signature verification failed' });
+  }
+  
+  // Process event
+  const event = JSON.parse(req.rawBody);
+  console.log(`Event: ${event.type}`);
+  
+  res.json({ ok: true });
+});
+```
+
+**Important:** Use `timingSafeEqual` to prevent timing attacks.
+
+## Python
+
+```python
+import hmac
+import hashlib
+
+def verify_webhook(raw_body, signature, secret):
+    computed = hmac.new(
+        secret.encode(),
+        raw_body,
+        hashlib.sha256
+    ).hexdigest()
+    
+    return hmac.compare_digest(computed, signature)
+
+@app.route('/webhooks/tratto', methods=['POST'])
+def tratto_webhook():
+    signature = request.headers.get('x-tratto-signature')
+    secret = os.getenv('TRATTO_WEBHOOK_SECRET')
+    raw_body = request.get_data()
+    
+    if not verify_webhook(raw_body, signature, secret):
+        return {'error': 'Invalid signature'}, 401
+    
+    event = json.loads(raw_body)
+    print(f"Event: {event['type']}")
+    
+    return {'ok': True}, 200
+```
+
+## PHP
+
+```php
+function verify_webhook($raw_body, $signature, $secret) {
+    $computed = hash_hmac('sha256', $raw_body, $secret);
+    return hash_equals($computed, $signature);
+}
+
+$signature = $_SERVER['HTTP_X_TRATTO_SIGNATURE'] ?? '';
+$secret = getenv('TRATTO_WEBHOOK_SECRET');
+$raw_body = file_get_contents('php://input');
+
+if (!verify_webhook($raw_body, $signature, $secret)) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Invalid signature']);
+    exit;
+}
+
+$event = json_decode($raw_body, true);
+echo json_encode(['ok' => true]);
+```
+
+## Common Mistakes
+
+### ❌ Wrong: Signing Parsed JSON
+
+```javascript
+// WRONG - signature won't match
+const body = JSON.parse(req.body);
+const sig = hmac('sha256', JSON.stringify(body), secret);
+```
+
+Parsing and re-serializing changes whitespace, breaking the signature.
+
+### ✅ Right: Signing Raw Body
+
+```javascript
+// RIGHT - use raw request body
+const sig = hmac('sha256', req.rawBody, secret);
+```
+
+### ❌ Wrong: Simple String Comparison
+
+```javascript
+// WRONG - vulnerable to timing attacks
+if (computed === signature) { ... }
+```
+
+### ✅ Right: Timing-Safe Comparison
+
+```javascript
+// RIGHT - constant-time comparison
+crypto.timingSafeEqual(computed, signature);
+```
+
+## Replay Attack Prevention
+
+Check the `occurredAt` timestamp to prevent replay attacks:
+
+```javascript
+const eventTime = new Date(event.occurredAt).getTime();
+const now = Date.now();
+
+// Reject events older than 5 minutes
+if (now - eventTime > 5 * 60 * 1000) {
+  return res.status(400).json({ error: 'Event too old' });
+}
+```
+
+## Secret Rotation
+
+When you rotate your webhook secret:
+1. Tratto generates a new secret
+2. Both old and new secrets work for **24 hours**
+3. Update your app to use the new secret
+4. After 24 hours, old secret expires
+
+This allows graceful migration without downtime.
+
+```bash
+curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/rotate-secret \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+Response includes new secret.
+
+---
+
+See [Webhooks](/docs/en/webhooks) for full setup guide.

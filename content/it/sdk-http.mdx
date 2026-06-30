@@ -1,0 +1,125 @@
+---
+title: HTTP / cURL Reference
+description: Riferimento HTTP agnostico del linguaggio per le chiamate API dirette
+---
+
+# HTTP / cURL Reference
+
+Usa HTTP direttamente se non hai un SDK ufficiale o preferisci lavorare con richieste HTTP grezze.
+
+## URL di Base
+
+Tutti gli endpoint API sono sotto:
+
+```
+https://api.tratto.email/v1/
+```
+
+## Autenticazione
+
+Includi la tua API key come bearer token:
+
+```http
+Authorization: Bearer tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+## Content-Type
+
+Tutte le richieste e risposte usano JSON:
+
+```http
+Content-Type: application/json
+```
+
+## Formato Richiesta
+
+```bash
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"from":"hello@tuodominio.it","to":"user@example.com","subject":"Ciao","text":"Mondo"}'
+```
+
+## Formato Risposta
+
+**Successo (2xx):**
+```json
+{
+  "data": { ... }
+}
+```
+
+**Errore (4xx):**
+```json
+{
+  "error": {
+    "code": "DOMAIN_NOT_VERIFIED",
+    "message": "The sending domain is not verified.",
+    "docs": "https://docs.tratto.email/it/domains"
+  }
+}
+```
+
+## Paginazione
+
+Gli endpoint di elenco supportano paginazione basata su cursor:
+
+```bash
+curl "https://api.tratto.email/v1/contacts?limit=50&after=cursor_value" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Operazioni Comuni
+
+### Invia Email
+
+```bash
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "hello@tuodominio.it",
+    "to": "user@example.com",
+    "subject": "Benvenuto!",
+    "text": "Grazie per la registrazione"
+  }'
+```
+
+### Ottieni Status Email
+
+```bash
+curl https://api.tratto.email/v1/emails/email_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+### Elenca Contatti
+
+```bash
+curl "https://api.tratto.email/v1/contacts?status=subscribed&limit=50" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+### Crea Dominio
+
+```bash
+curl -X POST https://api.tratto.email/v1/domains \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"domain":"hello.tuodominio.it"}'
+```
+
+## Codici di Stato
+
+| Codice | Significato |
+|--------|------------|
+| 200 | Successo |
+| 201 | Creato |
+| 400 | Richiesta Non Valida |
+| 401 | Non Autorizzato |
+| 404 | Non Trovato |
+| 429 | Troppi Tentativi (rate limit) |
+| 500 | Errore Server |
+
+---
+
+**Link:** [API Reference](/docs/it/api-reference)

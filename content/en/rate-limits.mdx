@@ -1,0 +1,87 @@
+---
+title: Rate Limits & Quotas
+description: Understand API rate limits and plan your integration
+---
+
+# Rate Limits & Quotas
+
+## Global Rate Limit
+
+**500 requests per minute** per tenant. This applies to all API endpoints combined.
+
+## Rate Limit Headers
+
+Every response includes rate limit info:
+
+```http
+X-RateLimit-Limit: 500
+X-RateLimit-Remaining: 245
+X-RateLimit-Reset: 1625084400
+```
+
+## Check Rate Limit Status
+
+Before hitting the limit, check the headers:
+
+```bash
+curl -i https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+Returns headers with remaining requests and reset time.
+
+## Rate Limit Exceeded (429)
+
+When you exceed the limit:
+
+```json
+{
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "Too many requests. Try again after 60 seconds.",
+    "retryAfter": 60
+  }
+}
+```
+
+## Retry Strategy
+
+Use **exponential backoff with jitter**:
+
+```javascript
+async function sendWithRetry(request, maxRetries = 3) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fetch(request);
+    } catch (error) {
+      if (error.status === 429) {
+        const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+        await new Promise(r => setTimeout(r, delay));
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+```
+
+## Email Volume Quotas
+
+Limits per plan (rolling 30-day window):
+
+| Plan | Monthly Emails | Daily Limit |
+|------|---|---|
+| Free | 1,000 | 33 |
+| Starter | 10,000 | 333 |
+| Growth | 100,000 | 3,333 |
+| Pro | Unlimited | Unlimited |
+
+Exceed your quota → `PLAN_LIMIT_EXCEEDED` error.
+
+## Burst Behavior
+
+Short bursts (seconds) can exceed `X-RateLimit-Remaining` due to asynchronous processing. The 500 req/min limit is a hard cap; short peaks are allowed if average stays under the limit.
+
+---
+
+Next: [Error Codes](/docs/en/error-codes)
