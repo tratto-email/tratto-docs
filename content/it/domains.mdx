@@ -1,0 +1,251 @@
+---
+title: Domini — Aggiungi, Configurazione DNS e Verifica
+description: Configura i domini di invio con proper autenticazione DNS
+---
+
+# Domini: Aggiungi, Verifica e Invia
+
+Un **dominio** è la tua identità di invio verificata. Prima di inviare email, devi aggiungere un dominio e verificare la proprietà tramite record DNS.
+
+## Perché i Domini Contano
+
+- **Autenticazione Mittente** — Prova che controlli il dominio
+- **Deliverability** — SPF, DKIM, DMARC prevengono spoofing e migliorano il posizionamento in inbox
+- **Fiducia** — I destinatari vedono il tuo dominio branded, non un servizio di terze parti
+
+## Aggiungi un Dominio
+
+Registra il tuo dominio con Tratto.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/domains \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"domain":"hello.tuodominio.it"}'
+```
+
+**Node.js**
+```javascript
+const response = await fetch('https://api.tratto.email/v1/domains', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer tratto_live_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ domain: 'hello.tuodominio.it' }),
+});
+const { data } = await response.json();
+console.log('Domain ID:', data.id);
+```
+
+**Python**
+```python
+import requests
+
+response = requests.post(
+  'https://api.tratto.email/v1/domains',
+  headers={
+    'Authorization': 'Bearer tratto_live_...',
+    'Content-Type': 'application/json',
+  },
+  json={'domain': 'hello.tuodominio.it'},
+)
+data = response.json()['data']
+print(f"Domain ID: {data['id']}")
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "id": "dom_abc123",
+    "domain": "hello.tuodominio.it",
+    "status": "pending_verification",
+    "records": {
+      "spf": "v=spf1 include:spf.tratto.email ~all",
+      "dkim": "v=DKIM1; p=MIIBIjANBg...",
+      "dmarc": "v=DMARC1; p=none; rua=mailto:dmarc@tuodominio.it"
+    },
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+Lo status del dominio è `pending_verification` — in attesa di record DNS.
+
+## Configurazione Record DNS
+
+Aggiungi tre record al tuo registrar di dominio (GoDaddy, Namecheap, Route 53, ecc.):
+
+### 1. Record SPF
+
+**Nome:** `hello.tuodominio.it`  
+**Tipo:** TXT  
+**Valore:** `v=spf1 include:spf.tratto.email ~all`
+
+Questo autorizza Tratto a inviare per tuo conto.
+
+### 2. Record DKIM
+
+**Nome:** `default._domainkey.hello.tuodominio.it`  
+**Tipo:** TXT  
+**Valore:** (dalla risposta API `records.dkim`)
+
+Questo usa la crittografia a chiave pubblica per firmare le email dal tuo dominio.
+
+<Callout>
+Il valore DKIM inizia con `v=DKIM1; p=...` e può essere molto lungo. Copia l'intero valore dalla risposta API.
+</Callout>
+
+### 3. Record DMARC
+
+**Nome:** `_dmarc.hello.tuodominio.it`  
+**Tipo:** TXT  
+**Valore:** `v=DMARC1; p=none; rua=mailto:dmarc@tuodominio.it`
+
+Questo imposta la policy DMARC per il dominio. `p=none` significa solo report; `p=quarantine` o `p=reject` sono più rigidi.
+
+## Esempio: Aggiungere Record in Route 53
+
+Se usi AWS Route 53:
+
+1. Vai a **Route 53** → **Hosted Zones**
+2. Clicca il tuo dominio
+3. Crea tre nuovi record:
+
+| Nome | Tipo | Valore |
+|------|------|--------|
+| `hello.tuodominio.it` | TXT | `v=spf1 include:spf.tratto.email ~all` |
+| `default._domainkey.hello.tuodominio.it` | TXT | (valore DKIM) |
+| `_dmarc.hello.tuodominio.it` | TXT | `v=DMARC1; p=none; rua=mailto:dmarc@tuodominio.it` |
+
+4. Clicca **Create records**
+
+<Callout type="warning">
+La propagazione DNS può richiedere **fino a 48 ore**. Ritorna tra qualche minuto, ma concedi tempo per la diffusione globale.
+</Callout>
+
+## Verifica Proprietà del Dominio
+
+Una volta che i record DNS sono in posto, attiva la verifica.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/domains/dom_abc123/verify \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Node.js**
+```javascript
+const response = await fetch('https://api.tratto.email/v1/domains/dom_abc123/verify', {
+  method: 'POST',
+  headers: { 'Authorization': 'Bearer tratto_live_...' },
+});
+const { data } = await response.json();
+console.log('Status:', data.status);
+```
+
+**Python**
+```python
+import requests
+
+response = requests.post(
+  'https://api.tratto.email/v1/domains/dom_abc123/verify',
+  headers={'Authorization': 'Bearer tratto_live_...'},
+)
+data = response.json()['data']
+print(f"Status: {data['status']}")
+```
+
+**Possibili risposte:**
+
+- `verified` — ✅ Successo! Dominio pronto per inviare
+- `pending_verification` — ⏳ Ancora in corso la verifica dei record DNS (riprova tra qualche minuto)
+- `failed` — ❌ Record DNS non trovati o non validi (controlla i record, attendi la propagazione DNS)
+
+## Controlla lo Status del Dominio
+
+Ottieni i dettagli di un dominio verificato.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/domains/dom_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "id": "dom_abc123",
+    "domain": "hello.tuodominio.it",
+    "status": "verified",
+    "verifiedAt": "2025-06-30T12:10:00Z",
+    "records": { ... }
+  }
+}
+```
+
+## Elenca i Domini
+
+Ottieni tutti i domini per il tuo tenant.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/domains \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Rimuovi un Dominio
+
+Elimina un dominio (non potrai più inviare da esso).
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/domains/dom_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+<Callout type="warning">
+La rimozione di un dominio non può essere annullata. Tutte le email da quel dominio non riusciranno ad essere inviate.
+</Callout>
+
+## Risoluzione dei Problemi DNS
+
+### "pending_verification" dopo l'aggiunta di record
+
+**Causa:** DNS non si è ancora propagato o i record sono non corretti.
+
+**Fix:**
+1. Verifica che i record siano esattamente come mostrato (case-sensitive)
+2. Attendi fino a 48 ore per la propagazione DNS
+3. Usa [MXToolbox](https://mxtoolbox.com) per verificare se i record DNS sono live
+4. Riprova la verifica con `POST /v1/domains/{id}/verify`
+
+### SPF vs DKIM vs DMARC
+
+| Record | Scopo |
+|--------|-------|
+| **SPF** | Autorizza Tratto a inviare dal tuo dominio |
+| **DKIM** | Firma digitalmente le email (verifica crittografica) |
+| **DMARC** | Istruisce i server di posta su come gestire SPF/DKIM falliti |
+
+**Best practice:** Usa tutti e tre per la massima deliverability.
+
+## Invio da Sottodominio
+
+Puoi usare i sottodomini per inviare (es., `hello.tuodominio.it`) mentre il tuo dominio principale rimane pulito.
+
+**Vantaggi:**
+- Isola la reputazione email dal dominio principale
+- Test nuovi domini senza influenzare la produzione
+- Separa l'infrastruttura di invio e ricezione
+
+---
+
+## Prossimi Passi
+
+- **Inviare la tua prima email?** Vai a [Invia Email](/docs/it/send-email)
+- **Testare la configurazione del dominio?** Usa [Quickstart](/docs/it/quickstart)
+- **Hai bisogno di aiuto con DNS?** Vedi [Deliverability](/docs/it/deliverability) per le best practice
