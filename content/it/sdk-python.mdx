@@ -1,0 +1,88 @@
+---
+title: Python SDK
+description: SDK ufficiale Python per Tratto Email API
+---
+
+# Python SDK
+
+SDK ufficiale per Python: **`tratto-email`**
+
+## Installazione
+
+```bash
+pip install tratto-email
+```
+
+## Inizializzazione
+
+```python
+from tratto import TrattoClient
+
+client = TrattoClient(api_key='tratto_live_...')
+```
+
+## Invia Email
+
+```python
+email = client.emails.send(
+    from_='hello@tuodominio.it',
+    to='user@example.com',
+    subject='Ciao!',
+    text='Benvenuto a Tratto',
+    html='<h1>Benvenuto!</h1>',
+)
+
+print(email['id'])  # email_abc123
+```
+
+## Invia con Template
+
+```python
+email = client.emails.send(
+    from_='hello@tuodominio.it',
+    to='user@example.com',
+    template_id='tmpl_abc123',
+    variables={
+        'firstName': 'Alice',
+        'code': 'SECRET123',
+    },
+)
+```
+
+## Ottieni Status Email
+
+```python
+email = client.emails.get('email_abc123')
+print(email['status'])  # 'delivered'
+```
+
+## Crea Dominio
+
+```python
+domain = client.domains.create(domain='hello.tuodominio.it')
+```
+
+## Crea Campagna
+
+```python
+campaign = client.campaigns.create(
+    name='Saldi Q3',
+    template_id='tmpl_abc123',
+    audience_id='aud_abc123',
+)
+```
+
+## Registra Webhook
+
+```python
+webhook = client.webhooks.create(
+    url='https://tuoapi.com/webhooks/tratto',
+    events=['sent', 'delivered', 'opened', 'clicked', 'bounced'],
+)
+```
+
+---
+
+**Links:**
+- PyPI: https://pypi.org/project/tratto-email/
+- GitHub: https://github.com/tratto-email/tratto-python

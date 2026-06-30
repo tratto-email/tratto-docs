@@ -1,0 +1,205 @@
+---
+title: Node.js / TypeScript SDK
+description: Official Node.js SDK for the Tratto Email API
+---
+
+# Node.js / TypeScript SDK
+
+The official SDK for Node.js and TypeScript: **`@tratto/email`**
+
+## Installation
+
+```bash
+npm install @tratto/email
+```
+
+## Initialization
+
+```typescript
+import { TrattoClient } from '@tratto/email';
+
+const client = new TrattoClient({
+  apiKey: process.env.TRATTO_API_KEY,
+});
+```
+
+## Send Email
+
+```typescript
+const email = await client.emails.send({
+  from: 'hello@yourdomain.com',
+  to: 'user@example.com',
+  subject: 'Hello!',
+  text: 'Welcome to Tratto',
+  html: '<h1>Welcome!</h1>',
+});
+
+console.log(email.id); // email_abc123
+console.log(email.status); // 'queued'
+```
+
+## Send with Template
+
+```typescript
+const email = await client.emails.send({
+  from: 'hello@yourdomain.com',
+  to: 'user@example.com',
+  templateId: 'tmpl_abc123',
+  variables: {
+    firstName: 'Alice',
+    code: 'SECRET123',
+  },
+});
+```
+
+## Schedule Email
+
+```typescript
+const email = await client.emails.send({
+  from: 'hello@yourdomain.com',
+  to: 'user@example.com',
+  subject: 'Reminder',
+  text: 'See you tomorrow!',
+  scheduledAt: new Date('2025-07-01T09:00:00Z'),
+});
+```
+
+## Get Email Status
+
+```typescript
+const email = await client.emails.get('email_abc123');
+console.log(email.status); // 'delivered'
+```
+
+## List Emails
+
+```typescript
+const emails = await client.emails.list({
+  limit: 50,
+  after: 'cursor_value', // for pagination
+});
+
+emails.data.forEach(email => {
+  console.log(`${email.id}: ${email.status}`);
+});
+```
+
+## Create Domain
+
+```typescript
+const domain = await client.domains.create({
+  domain: 'hello.yourdomain.com',
+});
+
+console.log(domain.records.spf); // "v=spf1 include:..."
+```
+
+## Verify Domain
+
+```typescript
+const verified = await client.domains.verify('dom_abc123');
+console.log(verified.status); // 'verified' or 'pending_verification'
+```
+
+## Create Contact
+
+```typescript
+const contact = await client.contacts.create({
+  email: 'user@example.com',
+  firstName: 'Alice',
+  lastName: 'Smith',
+  tags: ['vip', 'newsletter'],
+  metadata: { plan: 'pro' },
+});
+```
+
+## Bulk Import Contacts
+
+```typescript
+import fs from 'fs';
+
+const csvFile = fs.createReadStream('contacts.csv');
+const job = await client.contacts.import(csvFile);
+
+console.log(job.jobId); // imp_job_xyz
+console.log(job.status); // 'pending'
+```
+
+## Create Campaign
+
+```typescript
+const campaign = await client.campaigns.create({
+  name: 'Q3 Sale',
+  templateId: 'tmpl_abc123',
+  audienceId: 'aud_abc123',
+});
+
+console.log(campaign.status); // 'draft'
+```
+
+## Send Campaign
+
+```typescript
+const sent = await client.campaigns.send('camp_xyz789');
+console.log(sent.status); // 'sending'
+```
+
+## Get Campaign Stats
+
+```typescript
+const stats = await client.campaigns.stats('camp_xyz789');
+console.log(stats.delivered); // 4950
+console.log(stats.rates.openRate); // 0.50
+```
+
+## Register Webhook
+
+```typescript
+const webhook = await client.webhooks.create({
+  url: 'https://yourapi.com/webhooks/tratto',
+  events: ['sent', 'delivered', 'opened', 'clicked', 'bounced'],
+});
+
+console.log(webhook.secret); // whsec_xyz789...
+```
+
+## Error Handling
+
+```typescript
+try {
+  const email = await client.emails.send({
+    from: 'hello@unverified.com', // not verified
+    to: 'user@example.com',
+    subject: 'Hello',
+    text: 'Test',
+  });
+} catch (error) {
+  if (error.code === 'DOMAIN_NOT_VERIFIED') {
+    console.error('Verify your domain first');
+  }
+}
+```
+
+## Async/Await
+
+All SDK methods are async:
+
+```typescript
+async function sendWelcome() {
+  const email = await client.emails.send({
+    from: 'hello@yourdomain.com',
+    to: 'user@example.com',
+    subject: 'Welcome!',
+    text: 'Thanks for signing up',
+  });
+  return email;
+}
+```
+
+---
+
+## Links
+
+- **npm:** https://www.npmjs.com/package/@tratto/email
+- **GitHub:** https://github.com/tratto-email/tratto-node
+- **API Docs:** [API Reference](/docs/en/api-reference)

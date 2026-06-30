@@ -1,0 +1,245 @@
+---
+title: Flows & Automation
+description: Build automated email workflows with triggers and steps
+---
+
+# Flows & Automation: Triggers and Steps
+
+A **flow** is an automation engine that enrolls contacts and executes a sequence of steps based on triggers.
+
+## Flow Basics
+
+```
+Trigger (e.g., contact joins audience)
+  ↓
+Step 1 (e.g., send email)
+  ↓
+Step 2 (e.g., wait 3 days)
+  ↓
+Step 3 (e.g., send another email)
+  ↓
+Step 4 (e.g., branch on condition)
+  ├─ True path → send email
+  └─ False path → do nothing
+```
+
+## Create a Flow
+
+Create a flow with a trigger and step sequence.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/flows \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":"Welcome Series",
+    "trigger":{"type":"contact_joins_audience","audienceId":"aud_abc123"},
+    "steps":[
+      {"type":"send_email","templateId":"tmpl_welcome"},
+      {"type":"wait","duration":"3d"},
+      {"type":"send_email","templateId":"tmpl_follow_up"}
+    ]
+  }'
+```
+
+## Trigger Types
+
+| Trigger | Description |
+|---------|-------------|
+| `contact_joins_audience` | Enrolls when contact matches audience rules |
+| `contact_tag_added` | Enrolls when tag is added to contact |
+| `contact_tag_removed` | Enrolls when tag is removed from contact |
+| `email_event` | Enrolls when email is opened/clicked/bounced/complained |
+| `manual` | Enrolls via API or dashboard (no auto-trigger) |
+
+### Example: Email Event Trigger
+
+```json
+{
+  "type": "email_event",
+  "event": "opened",
+  "templateId": "tmpl_abc123"
+}
+```
+
+Enrolls contacts that open a specific template.
+
+## Step Types
+
+### send_email
+
+Send an email (immediately or with delay).
+
+```json
+{
+  "type": "send_email",
+  "templateId": "tmpl_abc123",
+  "delay": "1h"
+}
+```
+
+### wait
+
+Pause for a duration before next step.
+
+```json
+{
+  "type": "wait",
+  "duration": "3d"
+}
+```
+
+Durations: `1h`, `2d`, `1w`, etc.
+
+### branch
+
+Conditional branching based on email events or contact properties.
+
+```json
+{
+  "type": "branch",
+  "condition": "email_opened",
+  "truePath": [
+    {"type": "send_email", "templateId": "tmpl_engaged"}
+  ],
+  "falsePath": [
+    {"type": "send_email", "templateId": "tmpl_re_engage"}
+  ]
+}
+```
+
+### update_contact
+
+Update contact status, tags, or metadata.
+
+```json
+{
+  "type": "update_contact",
+  "updates": {
+    "status": "unsubscribed",
+    "tags": ["completed_flow"]
+  }
+}
+```
+
+### webhook_call
+
+Call an external webhook.
+
+```json
+{
+  "type": "webhook_call",
+  "url": "https://yourapi.com/webhook",
+  "method": "POST",
+  "body": {"contactId": "{{contactId}}", "event": "flow_completed"}
+}
+```
+
+## Activate a Flow
+
+Activate a flow so it starts enrolling contacts.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/flows/flow_abc123/activate \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Deactivate a Flow
+
+Stop a flow from enrolling new contacts (existing enrollments continue).
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/flows/flow_abc123/deactivate \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Enrollments
+
+View contacts enrolled in a flow.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/flows/flow_abc123/enrollments \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {"enrollmentId": "enr_001", "contactId": "cont_abc", "status": "active", "enrolledAt": "2025-06-30T12:00:00Z"},
+    {"enrollmentId": "enr_002", "contactId": "cont_def", "status": "completed", "enrolledAt": "2025-06-30T12:05:00Z"}
+  ],
+  "pagination": {"hasMore": true, "nextCursor": "..."}
+}
+```
+
+**Enrollment statuses:**
+- `active` — Currently in the flow
+- `completed` — Finished all steps
+- `paused` — Temporarily paused (user action)
+- `exited` — Left the flow (e.g., unsubscribed)
+
+## List Flows
+
+Get all flows.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/flows \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Get Flow Details
+
+Retrieve a specific flow.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/flows/flow_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Delete a Flow
+
+Remove a flow.
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/flows/flow_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Flow Best Practices
+
+### 1. Start Simple
+
+Begin with a basic trigger + 1-2 steps. Iterate based on results.
+
+### 2. Use Meaningful Names
+
+✅ `Post-Purchase 7-Day Follow-up`  
+❌ `Flow 1`
+
+### 3. Test with Manual Trigger
+
+Use `manual` trigger type to test flow logic before auto-triggers.
+
+### 4. Monitor Enrollments
+
+Check how many contacts are enrolling and progressing through steps.
+
+### 5. Use Wait Steps Strategically
+
+Don't spam — allow time between emails for engagement.
+
+---
+
+## Next Steps
+
+- **Track flow events?** Set up [Webhooks](/docs/en/webhooks)
+- **Send via API?** See [Send Email](/docs/en/send-email)
+- **Use templates in flows?** Go to [Templates](/docs/en/templates)

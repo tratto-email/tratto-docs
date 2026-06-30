@@ -1,0 +1,173 @@
+---
+title: Audiences — Segmentation
+description: Create rule-based audiences for campaigns and flows
+---
+
+# Audiences: Segmentation
+
+An **audience** is a group of contacts defined by rules. Use audiences to segment your contacts for targeted campaigns and flows.
+
+## Create an Audience
+
+Define an audience using filtering rules.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/audiences \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":"VIP Newsletter Subscribers",
+    "rules":[
+      {"field":"status","operator":"equals","value":"subscribed"},
+      {"field":"tags","operator":"contains","value":"vip"}
+    ]
+  }'
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "aud_abc123",
+    "name": "VIP Newsletter Subscribers",
+    "rules": [...],
+    "contactCount": 1250,
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+## Rule Types
+
+| Field | Operators | Example |
+|-------|-----------|---------|
+| `status` | `equals`, `notEquals` | `subscribed`, `bounced` |
+| `tags` | `contains`, `notContains` | Audience has contacts tagged "vip" |
+| `metadata.field` | `equals`, `notEquals`, `greaterThan`, `lessThan` | `plan = "pro"`, `accountValue > 500` |
+| `createdAt` | `after`, `before` | Contacts created after Jan 1, 2025 |
+
+## Multiple Rules (AND Logic)
+
+All rules must match:
+
+```json
+{
+  "rules": [
+    {"field": "status", "operator": "equals", "value": "subscribed"},
+    {"field": "tags", "operator": "contains", "value": "newsletter"},
+    {"field": "metadata.plan", "operator": "equals", "value": "pro"}
+  ]
+}
+```
+
+This audience includes contacts that are:
+- Status: subscribed **AND**
+- Have tag: newsletter **AND**
+- Metadata.plan: pro
+
+## Add Contacts Manually
+
+In addition to rules, manually add specific contacts.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/audiences/aud_abc123/contacts \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contactIds":["cont_abc123","cont_def456"]
+  }'
+```
+
+## Dynamic vs Static
+
+- **Dynamic** — Rules are re-evaluated; membership updates as contact status changes
+- **Static** — Fixed contact list; doesn't update automatically
+
+By default, audiences are **dynamic** if you use rules, **static** if only manually added.
+
+## List Audiences
+
+Get all audiences for your tenant.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/audiences \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Get Audience Details
+
+Retrieve a specific audience.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/audiences/aud_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "aud_abc123",
+    "name": "VIP Newsletter Subscribers",
+    "rules": [...],
+    "contactCount": 1250,
+    "type": "dynamic",
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+## Using Audiences in Campaigns
+
+Send a campaign to an entire audience.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/campaigns \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":"Q3 VIP Offer",
+    "templateId":"tmpl_abc123",
+    "audienceId":"aud_abc123"
+  }'
+```
+
+## Using Audiences in Flows
+
+Trigger a flow when a contact joins an audience.
+
+```json
+{
+  "name": "Welcome VIP",
+  "trigger": {
+    "type": "contact_joins_audience",
+    "audienceId": "aud_abc123"
+  },
+  "steps": [...]
+}
+```
+
+See [Flows](/docs/en/flows) for details.
+
+## Delete an Audience
+
+Remove an audience (contacts are not deleted).
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/audiences/aud_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+---
+
+## Next Steps
+
+- **Send to an audience?** Go to [Campaigns](/docs/en/campaigns)
+- **Trigger flows on audience join?** See [Flows](/docs/en/flows)
+- **Tag contacts?** Go back to [Contacts](/docs/en/contacts)

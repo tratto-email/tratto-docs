@@ -1,0 +1,157 @@
+---
+title: Analytics — Summary & Timeseries
+description: Get email delivery and engagement metrics
+---
+
+# Analytics: Summary & Timeseries
+
+Use analytics endpoints to understand email performance across your campaigns and flows.
+
+## Summary Metrics
+
+Get aggregate metrics for a time period.
+
+**cURL**
+```bash
+curl "https://api.tratto.email/v1/analytics/summary?period=30d" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Query Parameters:**
+- `period` — Time range (`7d`, `30d`, `90d`, or specific date range)
+- `templateId` — Filter by template (optional)
+- `campaignId` — Filter by campaign (optional)
+
+**Response:**
+```json
+{
+  "data": {
+    "period": "30d",
+    "metrics": {
+      "totalSent": 50000,
+      "delivered": 49500,
+      "opened": 24750,
+      "clicked": 7425,
+      "bounced": 400,
+      "complained": 100,
+      "unsubscribed": 50
+    },
+    "rates": {
+      "deliveryRate": 0.99,
+      "openRate": 0.50,
+      "clickRate": 0.15,
+      "bounceRate": 0.008,
+      "complaintRate": 0.002
+    }
+  }
+}
+```
+
+## Metric Definitions
+
+| Metric | Definition |
+|--------|-----------|
+| `totalSent` | Emails sent to mail server |
+| `delivered` | Mail servers confirmed delivery (no bounce) |
+| `opened` | Unique recipients who opened email |
+| `clicked` | Unique recipients who clicked a link |
+| `bounced` | Mail servers rejected delivery (hard or soft bounce) |
+| `complained` | Recipients marked as spam |
+| `unsubscribed` | Recipients clicked unsubscribe link |
+
+## Rates
+
+| Rate | Calculation |
+|------|-------------|
+| `deliveryRate` | delivered / totalSent |
+| `openRate` | opened / delivered |
+| `clickRate` | clicked / delivered |
+| `bounceRate` | bounced / totalSent |
+| `complaintRate` | complained / totalSent |
+
+## Timeseries Data
+
+Get daily breakdown of metrics.
+
+**cURL**
+```bash
+curl "https://api.tratto.email/v1/analytics/timeseries?period=7d" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "date": "2025-06-30",
+      "totalSent": 5000,
+      "delivered": 4950,
+      "opened": 2475,
+      "clicked": 742,
+      "bounced": 40,
+      "complained": 10
+    },
+    {
+      "date": "2025-06-29",
+      "totalSent": 4800,
+      "delivered": 4752,
+      "opened": 2376,
+      "clicked": 713,
+      "bounced": 38,
+      "complained": 10
+    }
+  ]
+}
+```
+
+## Analytics Limitations
+
+- **Window:** Max 90-day lookback
+- **Granularity:** Daily buckets
+- **Email-level data:** Not available in analytics endpoints (use [Email Status](/docs/en/email-status) API for individual emails)
+- **Delays:** Metrics updated with ~5 minute latency
+
+## Best Practices
+
+### 1. Monitor Delivery Rate
+
+Target 99%+. Lower rates indicate domain or list hygiene issues.
+
+```javascript
+if (data.rates.deliveryRate < 0.95) {
+  alert('Low delivery rate detected');
+}
+```
+
+### 2. Track Open & Click Rates
+
+Typical benchmarks:
+- **Open rate:** 20-50% (varies by industry)
+- **Click rate:** 5-20% (varies by industry)
+
+Low rates suggest content or timing issues.
+
+### 3. Monitor Bounce & Complaint Rates
+
+- **Bounce rate:** < 2% acceptable (< 5% is OK)
+- **Complaint rate:** < 0.1% acceptable
+
+High rates damage sender reputation and deliverability.
+
+### 4. Segment Analysis
+
+Filter by template or campaign to identify underperforming sends:
+
+```bash
+curl "https://api.tratto.email/v1/analytics/summary?period=30d&templateId=tmpl_abc123" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+---
+
+## Next Steps
+
+- **View email-level events?** Use [Email Status](/docs/en/email-status) API
+- **Track real-time events?** Set up [Webhooks](/docs/en/webhooks)
+- **Understand deliverability?** See [Deliverability](/docs/en/deliverability)

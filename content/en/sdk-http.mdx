@@ -1,0 +1,196 @@
+---
+title: HTTP / cURL Reference
+description: Language-agnostic HTTP reference for direct API calls
+---
+
+# HTTP / cURL Reference
+
+Use HTTP directly if you don't have an official SDK, or prefer working with raw HTTP requests.
+
+## Base URL
+
+All API endpoints are under:
+
+```
+https://api.tratto.email/v1/
+```
+
+## Authentication
+
+Include your API key as a bearer token:
+
+```http
+Authorization: Bearer tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+## Content-Type
+
+All requests and responses use JSON:
+
+```http
+Content-Type: application/json
+```
+
+## Request Format
+
+```bash
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"from":"hello@yourdomain.com","to":"user@example.com","subject":"Hello","text":"World"}'
+```
+
+## Response Format
+
+**Success (2xx):**
+```json
+{
+  "data": { ... }
+}
+```
+
+**Error (4xx):**
+```json
+{
+  "error": {
+    "code": "DOMAIN_NOT_VERIFIED",
+    "message": "The sending domain is not verified.",
+    "docs": "https://docs.tratto.email/en/domains",
+    "suggestion": "Verify your domain first"
+  }
+}
+```
+
+## Pagination
+
+List endpoints support cursor-based pagination:
+
+```bash
+curl "https://api.tratto.email/v1/contacts?limit=50&after=cursor_value" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Response includes:**
+```json
+{
+  "data": [...],
+  "pagination": {
+    "hasMore": true,
+    "nextCursor": "Y3Vyc29yOnZhbHVl"
+  }
+}
+```
+
+## Common Operations
+
+### Send Email
+
+```bash
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "hello@yourdomain.com",
+    "to": "user@example.com",
+    "subject": "Welcome!",
+    "text": "Thanks for signing up"
+  }'
+```
+
+### Get Email Status
+
+```bash
+curl https://api.tratto.email/v1/emails/email_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+### List Contacts
+
+```bash
+curl "https://api.tratto.email/v1/contacts?status=subscribed&limit=50" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+### Create Domain
+
+```bash
+curl -X POST https://api.tratto.email/v1/domains \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"domain":"hello.yourdomain.com"}'
+```
+
+### Create Campaign
+
+```bash
+curl -X POST https://api.tratto.email/v1/campaigns \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Q3 Sale",
+    "templateId": "tmpl_abc123",
+    "audienceId": "aud_abc123"
+  }'
+```
+
+## HTTP Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | Bearer token | ✓ |
+| `Content-Type` | `application/json` | For POST/PATCH |
+| `Idempotency-Key` | UUID v4 | For critical POST operations |
+
+## cURL Tips
+
+### Pretty-print JSON
+
+```bash
+curl ... | jq '.'
+```
+
+### Save response to file
+
+```bash
+curl ... -o response.json
+```
+
+### Follow redirects
+
+```bash
+curl -L ...
+```
+
+### Include headers in output
+
+```bash
+curl -i ...
+```
+
+### Verbose output (debugging)
+
+```bash
+curl -v ...
+```
+
+## Status Codes
+
+| Code | Meaning |
+|------|---------|
+| 200 | Success |
+| 201 | Created |
+| 400 | Bad Request (validation error) |
+| 401 | Unauthorized (invalid API key) |
+| 403 | Forbidden (no permission) |
+| 404 | Not Found |
+| 409 | Conflict (idempotency error) |
+| 429 | Too Many Requests (rate limited) |
+| 500 | Server Error |
+
+---
+
+## Next Steps
+
+- **Use a compiled SDK?** See [Node.js SDK](/docs/en/sdk-nodejs) or [Python SDK](/docs/en/sdk-python)
+- **Learn the API?** Go to [API Reference](/docs/en/api-reference)
+- **Understand auth?** See [Authentication](/docs/en/authentication)

@@ -1,0 +1,111 @@
+---
+title: Node.js / TypeScript SDK
+description: SDK ufficiale Node.js per Tratto Email API
+---
+
+# Node.js / TypeScript SDK
+
+SDK ufficiale per Node.js e TypeScript: **`@tratto/email`**
+
+## Installazione
+
+```bash
+npm install @tratto/email
+```
+
+## Inizializzazione
+
+```typescript
+import { TrattoClient } from '@tratto/email';
+
+const client = new TrattoClient({
+  apiKey: process.env.TRATTO_API_KEY,
+});
+```
+
+## Invia Email
+
+```typescript
+const email = await client.emails.send({
+  from: 'hello@tuodominio.it',
+  to: 'user@example.com',
+  subject: 'Ciao!',
+  text: 'Benvenuto a Tratto',
+  html: '<h1>Benvenuto!</h1>',
+});
+
+console.log(email.id); // email_abc123
+```
+
+## Invia con Template
+
+```typescript
+const email = await client.emails.send({
+  from: 'hello@tuodominio.it',
+  to: 'user@example.com',
+  templateId: 'tmpl_abc123',
+  variables: {
+    firstName: 'Alice',
+    code: 'SECRET123',
+  },
+});
+```
+
+## Programma Email
+
+```typescript
+const email = await client.emails.send({
+  from: 'hello@tuodominio.it',
+  to: 'user@example.com',
+  subject: 'Promemoria',
+  text: 'Ci vediamo domani!',
+  scheduledAt: new Date('2025-07-01T09:00:00Z'),
+});
+```
+
+## Ottieni Status Email
+
+```typescript
+const email = await client.emails.get('email_abc123');
+console.log(email.status); // 'delivered'
+```
+
+## Crea Dominio
+
+```typescript
+const domain = await client.domains.create({
+  domain: 'hello.tuodominio.it',
+});
+```
+
+## Verifica Dominio
+
+```typescript
+const verified = await client.domains.verify('dom_abc123');
+console.log(verified.status); // 'verified'
+```
+
+## Crea Campagna
+
+```typescript
+const campaign = await client.campaigns.create({
+  name: 'Saldi Q3',
+  templateId: 'tmpl_abc123',
+  audienceId: 'aud_abc123',
+});
+```
+
+## Registra Webhook
+
+```typescript
+const webhook = await client.webhooks.create({
+  url: 'https://tuoapi.com/webhooks/tratto',
+  events: ['sent', 'delivered', 'opened', 'clicked', 'bounced'],
+});
+```
+
+---
+
+**Links:**
+- npm: https://www.npmjs.com/package/@tratto/email
+- GitHub: https://github.com/tratto-email/tratto-node

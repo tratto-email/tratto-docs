@@ -1,0 +1,262 @@
+---
+title: Templates — Create, Version & Test
+description: Manage versioned email templates with variable substitution
+---
+
+# Templates: Create, Version & Test
+
+**Templates** are reusable email templates with placeholder variables. Instead of composing HTML in code every time, define a template once and send it hundreds of times with different variables.
+
+## Create a Template
+
+Create a template with subject, text, and HTML with placeholders.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/templates \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":"Welcome Email",
+    "subject":"Welcome, {{firstName}}!",
+    "text":"Hello {{firstName}}, welcome aboard!",
+    "html":"<h1>Welcome, {{firstName}}!</h1><p>Your code: {{code}}</p>"
+  }'
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "tmpl_abc123",
+    "name": "Welcome Email",
+    "subject": "Welcome, {{firstName}}!",
+    "text": "Hello {{firstName}}, welcome aboard!",
+    "html": "<h1>Welcome, {{firstName}}!</h1><p>Your code: {{code}}</p>",
+    "status": "draft",
+    "version": 1,
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+## Publish a Template
+
+Move a template from `draft` to `published` so it can be used for sending.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/templates/tmpl_abc123/publish \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Send Using a Template
+
+Send an email using a template with variables.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from":"hello@yourdomain.com",
+    "to":"user@example.com",
+    "templateId":"tmpl_abc123",
+    "variables":{
+      "firstName":"Alice",
+      "code":"SECRET123"
+    }
+  }'
+```
+
+The template renders:
+```
+Subject: Welcome, Alice!
+Text: Hello Alice, welcome aboard!
+HTML: <h1>Welcome, Alice!</h1><p>Your code: SECRET123</p>
+```
+
+## Update a Template
+
+Update a template — this creates a new version, leaving previous versions intact.
+
+**cURL**
+```bash
+curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject":"Welcome back, {{firstName}}!",
+    "html":"<h1>Welcome back, {{firstName}}!</h1><p>Code: {{code}}</p>"
+  }'
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "tmpl_abc123",
+    "version": 2,
+    "status": "draft",
+    "createdAt": "2025-06-30T12:05:00Z"
+  }
+}
+```
+
+The new version (2) is in `draft` status. Publish it before using it in sends.
+
+## Version History
+
+Get all versions of a template.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/templates/tmpl_abc123/versions \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "version": 2,
+      "status": "draft",
+      "subject": "Welcome back, {{firstName}}!",
+      "createdAt": "2025-06-30T12:05:00Z"
+    },
+    {
+      "version": 1,
+      "status": "published",
+      "subject": "Welcome, {{firstName}}!",
+      "createdAt": "2025-06-30T12:00:00Z"
+    }
+  ]
+}
+```
+
+## Restore a Previous Version
+
+Roll back to an older version.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/templates/tmpl_abc123/versions/1/restore \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+This creates a new version (3) with the content of version 1 in `draft` status.
+
+## Test Send
+
+Send a test email using the template to verify it looks correct.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/templates/tmpl_abc123/test-send \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to":"your-email@example.com",
+    "variables":{
+      "firstName":"Alice",
+      "code":"TEST123"
+    }
+  }'
+```
+
+A test email is sent immediately to your address so you can review it in your inbox.
+
+## List Templates
+
+Get all templates for your tenant.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/templates \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Get a Template
+
+Retrieve a specific template.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/templates/tmpl_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Delete a Template
+
+Permanently delete a template (cannot be undone).
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/templates/tmpl_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+<Callout type="warning">
+Deleting a template cannot be undone. Campaigns and flows using that template will fail.
+</Callout>
+
+## Template Variable Syntax
+
+Use double curly braces `{{variableName}}` for placeholders. Variables are case-sensitive.
+
+**Example:**
+```
+Subject: Hello {{firstName}}!
+HTML: <p>Your email is {{email}}</p>
+```
+
+**Sending:**
+```json
+{
+  "variables": {
+    "firstName": "Alice",
+    "email": "alice@example.com"
+  }
+}
+```
+
+**Rendered:**
+```
+Subject: Hello Alice!
+HTML: <p>Your email is alice@example.com</p>
+```
+
+## Best Practices
+
+### 1. Use Semantic Variable Names
+
+✅ `{{firstName}}`, `{{orderID}}`, `{{confirmationCode}}`  
+❌ `{{x}}`, `{{var1}}`, `{{v`
+
+### 2. Provide Fallbacks
+
+If a variable is missing, rendering will fail. Provide defaults:
+
+```html
+<p>Hello {{firstName}}, welcome to {{companyName}}!</p>
+```
+
+When sending, always include both variables.
+
+### 3. Use Templates for Bulk Sends
+
+Don't compose HTML per email — use templates + variables for consistency and reusability.
+
+### 4. Test Before Publishing
+
+Always test-send a template before publishing to catch rendering issues.
+
+---
+
+## Next Steps
+
+- **Send with a template?** See [Send Email](/docs/en/send-email)
+- **Use templates in campaigns?** Go to [Campaigns](/docs/en/campaigns)
+- **Use templates in flows?** See [Flows](/docs/en/flows)

@@ -1,0 +1,104 @@
+---
+title: Error Codes Reference
+description: All API error codes with explanations and solutions
+---
+
+# Error Codes Reference
+
+## Error Format
+
+All errors follow this structure:
+
+```json
+{
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human-readable message",
+    "docs": "https://docs.tratto.email/...",
+    "suggestion": "How to fix it"
+  }
+}
+```
+
+## Authentication Errors
+
+| Code | Message | Fix |
+|------|---------|-----|
+| `UNAUTHORIZED` | Missing or invalid API key | Check `Authorization: Bearer` header |
+| `FORBIDDEN` | No permission for this action | Use an API key with proper permissions |
+
+## Validation Errors
+
+| Code | Message | Fix |
+|------|---------|-----|
+| `VALIDATION_ERROR` | Invalid request body | Check required fields and data types |
+| `INVALID_EMAIL` | Email address is invalid | Use valid RFC 5322 format |
+| `MISSING_FIELD` | Required field missing | Check docs for required fields |
+
+## Domain Errors
+
+| Code | Message | Fix |
+|------|---------|-----|
+| `DOMAIN_NOT_VERIFIED` | Domain not verified yet | Add DNS records and verify |
+| `DOMAIN_ALREADY_EXISTS` | Domain already in use | Use a different domain |
+
+## Template Errors
+
+| Code | Message | Fix |
+|------|---------|-----|
+| `TEMPLATE_NOT_FOUND` | Template doesn't exist | Check template ID |
+| `TEMPLATE_NOT_PUBLISHED` | Template is draft, not published | Publish before using |
+
+## Campaign Errors
+
+| Code | Message | Fix |
+|------|---------|-----|
+| `CAMPAIGN_NOT_FOUND` | Campaign doesn't exist | Check campaign ID |
+| `CAMPAIGN_ALREADY_SENT` | Campaign already sent | Create new campaign |
+| `CAMPAIGN_INVALID_STATE` | Can't perform action in current state | Check campaign status |
+
+## Contact Errors
+
+| Code | Message | Fix |
+|------|---------|-----|
+| `CONTACT_NOT_FOUND` | Contact doesn't exist | Check contact ID |
+| `CONTACT_ALREADY_EXISTS` | Contact already in system | Update instead of create |
+
+## Audience Errors
+
+| Code | Message | Fix |
+|------|---------|-----|
+| `AUDIENCE_NOT_FOUND` | Audience doesn't exist | Check audience ID |
+| `INVALID_AUDIENCE_RULES` | Rules syntax invalid | Check rule format |
+
+## Import Errors
+
+| Code | Message | Fix |
+|------|---------|-----|
+| `IMPORT_IN_PROGRESS` | Another import running | Wait for previous import to finish |
+| `INVALID_CSV_FORMAT` | CSV format invalid | Check headers and format |
+| `CSV_FILE_TOO_LARGE` | File exceeds size limit | Split into smaller files |
+
+## Rate Limit & Quota Errors
+
+| Code | Message | Fix |
+|------|---------|-----|
+| `RATE_LIMIT_EXCEEDED` | 500 req/min limit hit | Implement exponential backoff |
+| `PLAN_LIMIT_EXCEEDED` | Email volume quota hit | Upgrade plan or wait for reset |
+
+## Idempotency Errors
+
+| Code | Message | Fix |
+|------|---------|-----|
+| `IDEMPOTENCY_CONFLICT` | Same key, different request | Use consistent request body |
+
+## Server Errors
+
+| Code | Message | Fix |
+|------|---------|-----|
+| `INTERNAL_SERVER_ERROR` | Something went wrong on our side | Retry with backoff, contact support |
+| `SERVICE_UNAVAILABLE` | Service temporarily down | Retry later |
+
+---
+
+Need help? See [Troubleshooting](/docs/en/troubleshooting)

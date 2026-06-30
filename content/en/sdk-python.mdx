@@ -1,0 +1,196 @@
+---
+title: Python SDK
+description: Official Python SDK for the Tratto Email API
+---
+
+# Python SDK
+
+The official SDK for Python: **`tratto-email`**
+
+## Installation
+
+```bash
+pip install tratto-email
+```
+
+## Initialization
+
+```python
+from tratto import TrattoClient
+
+client = TrattoClient(api_key='tratto_live_...')
+```
+
+## Send Email
+
+```python
+email = client.emails.send(
+    from_='hello@yourdomain.com',
+    to='user@example.com',
+    subject='Hello!',
+    text='Welcome to Tratto',
+    html='<h1>Welcome!</h1>',
+)
+
+print(email['id'])  # email_abc123
+print(email['status'])  # 'queued'
+```
+
+## Send with Template
+
+```python
+email = client.emails.send(
+    from_='hello@yourdomain.com',
+    to='user@example.com',
+    template_id='tmpl_abc123',
+    variables={
+        'firstName': 'Alice',
+        'code': 'SECRET123',
+    },
+)
+```
+
+## Schedule Email
+
+```python
+from datetime import datetime, timezone
+
+email = client.emails.send(
+    from_='hello@yourdomain.com',
+    to='user@example.com',
+    subject='Reminder',
+    text='See you tomorrow!',
+    scheduled_at=datetime(2025, 7, 1, 9, 0, 0, tzinfo=timezone.utc),
+)
+```
+
+## Get Email Status
+
+```python
+email = client.emails.get('email_abc123')
+print(email['status'])  # 'delivered'
+```
+
+## List Emails
+
+```python
+response = client.emails.list(limit=50)
+for email in response['data']:
+    print(f"{email['id']}: {email['status']}")
+```
+
+## Create Domain
+
+```python
+domain = client.domains.create(domain='hello.yourdomain.com')
+print(domain['records']['spf'])  # "v=spf1 include:..."
+```
+
+## Verify Domain
+
+```python
+verified = client.domains.verify('dom_abc123')
+print(verified['status'])  # 'verified' or 'pending_verification'
+```
+
+## Create Contact
+
+```python
+contact = client.contacts.create(
+    email='user@example.com',
+    first_name='Alice',
+    last_name='Smith',
+    tags=['vip', 'newsletter'],
+    metadata={'plan': 'pro'},
+)
+```
+
+## Bulk Import Contacts
+
+```python
+with open('contacts.csv', 'rb') as f:
+    job = client.contacts.import_csv(f)
+
+print(job['jobId'])  # imp_job_xyz
+print(job['status'])  # 'pending'
+```
+
+## Create Campaign
+
+```python
+campaign = client.campaigns.create(
+    name='Q3 Sale',
+    template_id='tmpl_abc123',
+    audience_id='aud_abc123',
+)
+
+print(campaign['status'])  # 'draft'
+```
+
+## Send Campaign
+
+```python
+sent = client.campaigns.send('camp_xyz789')
+print(sent['status'])  # 'sending'
+```
+
+## Get Campaign Stats
+
+```python
+stats = client.campaigns.stats('camp_xyz789')
+print(stats['delivered'])  # 4950
+print(stats['rates']['openRate'])  # 0.50
+```
+
+## Register Webhook
+
+```python
+webhook = client.webhooks.create(
+    url='https://yourapi.com/webhooks/tratto',
+    events=['sent', 'delivered', 'opened', 'clicked', 'bounced'],
+)
+
+print(webhook['secret'])  # whsec_xyz789...
+```
+
+## Error Handling
+
+```python
+try:
+    email = client.emails.send(
+        from_='hello@unverified.com',
+        to='user@example.com',
+        subject='Hello',
+        text='Test',
+    )
+except TrattoException as e:
+    if e.code == 'DOMAIN_NOT_VERIFIED':
+        print('Verify your domain first')
+```
+
+## Async Support
+
+```python
+import asyncio
+from tratto import AsyncTrattoClient
+
+async def send_email():
+    client = AsyncTrattoClient(api_key='tratto_live_...')
+    email = await client.emails.send(
+        from_='hello@yourdomain.com',
+        to='user@example.com',
+        subject='Hello!',
+        text='Async send',
+    )
+    return email
+
+asyncio.run(send_email())
+```
+
+---
+
+## Links
+
+- **PyPI:** https://pypi.org/project/tratto-email/
+- **GitHub:** https://github.com/tratto-email/tratto-python
+- **API Docs:** [API Reference](/docs/en/api-reference)

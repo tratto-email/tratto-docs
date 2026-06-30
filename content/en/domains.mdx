@@ -1,0 +1,251 @@
+---
+title: Domains — Add, DNS Setup & Verification
+description: Set up sending domains with proper DNS authentication
+---
+
+# Domains: Add, Verify & Send
+
+A **domain** is your verified sending identity. Before you send emails, you must add a domain and verify ownership via DNS records.
+
+## Why Domains Matter
+
+- **Sender Authentication** — Prove you control the domain
+- **Deliverability** — SPF, DKIM, DMARC prevent spoofing and improve inbox placement
+- **Trust** — Recipients see your branded domain, not a third-party service
+
+## Add a Domain
+
+Register your domain with Tratto.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/domains \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"domain":"hello.yourdomain.com"}'
+```
+
+**Node.js**
+```javascript
+const response = await fetch('https://api.tratto.email/v1/domains', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer tratto_live_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ domain: 'hello.yourdomain.com' }),
+});
+const { data } = await response.json();
+console.log('Domain ID:', data.id);
+```
+
+**Python**
+```python
+import requests
+
+response = requests.post(
+  'https://api.tratto.email/v1/domains',
+  headers={
+    'Authorization': 'Bearer tratto_live_...',
+    'Content-Type': 'application/json',
+  },
+  json={'domain': 'hello.yourdomain.com'},
+)
+data = response.json()['data']
+print(f"Domain ID: {data['id']}")
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "dom_abc123",
+    "domain": "hello.yourdomain.com",
+    "status": "pending_verification",
+    "records": {
+      "spf": "v=spf1 include:spf.tratto.email ~all",
+      "dkim": "v=DKIM1; p=MIIBIjANBg...",
+      "dmarc": "v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com"
+    },
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+Domain status is `pending_verification` — waiting for DNS records.
+
+## DNS Records Setup
+
+Add three records to your domain registrar (GoDaddy, Namecheap, Route 53, etc.):
+
+### 1. SPF Record
+
+**Name:** `hello.yourdomain.com`  
+**Type:** TXT  
+**Value:** `v=spf1 include:spf.tratto.email ~all`
+
+This authorizes Tratto to send on your behalf.
+
+### 2. DKIM Record
+
+**Name:** `default._domainkey.hello.yourdomain.com`  
+**Type:** TXT  
+**Value:** (from API response `records.dkim`)
+
+This uses public-key cryptography to sign emails from your domain.
+
+<Callout>
+The DKIM value starts with `v=DKIM1; p=...` and can be very long. Copy the entire value from the API response.
+</Callout>
+
+### 3. DMARC Record
+
+**Name:** `_dmarc.hello.yourdomain.com`  
+**Type:** TXT  
+**Value:** `v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com`
+
+This sets the DMARC policy for the domain. `p=none` means reports only; `p=quarantine` or `p=reject` are stricter.
+
+## Example: Adding Records in Route 53
+
+If you use AWS Route 53:
+
+1. Go to **Route 53** → **Hosted Zones**
+2. Click your domain
+3. Create three new records:
+
+| Name | Type | Value |
+|------|------|-------|
+| `hello.yourdomain.com` | TXT | `v=spf1 include:spf.tratto.email ~all` |
+| `default._domainkey.hello.yourdomain.com` | TXT | (DKIM value) |
+| `_dmarc.hello.yourdomain.com` | TXT | `v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com` |
+
+4. Click **Create records**
+
+<Callout type="warning">
+DNS propagation can take **up to 48 hours**. Check back in a few minutes, but allow time for changes to spread globally.
+</Callout>
+
+## Verify Domain Ownership
+
+Once DNS records are in place, trigger verification.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/domains/dom_abc123/verify \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Node.js**
+```javascript
+const response = await fetch('https://api.tratto.email/v1/domains/dom_abc123/verify', {
+  method: 'POST',
+  headers: { 'Authorization': 'Bearer tratto_live_...' },
+});
+const { data } = await response.json();
+console.log('Status:', data.status);
+```
+
+**Python**
+```python
+import requests
+
+response = requests.post(
+  'https://api.tratto.email/v1/domains/dom_abc123/verify',
+  headers={'Authorization': 'Bearer tratto_live_...'},
+)
+data = response.json()['data']
+print(f"Status: {data['status']}")
+```
+
+**Possible responses:**
+
+- `verified` — ✅ Success! Domain is ready to send
+- `pending_verification` — ⏳ Still checking DNS records (retry in a few minutes)
+- `failed` — ❌ DNS records not found or invalid (check records, wait for DNS propagation)
+
+## Check Domain Status
+
+Get details about a verified domain.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/domains/dom_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "dom_abc123",
+    "domain": "hello.yourdomain.com",
+    "status": "verified",
+    "verifiedAt": "2025-06-30T12:10:00Z",
+    "records": { ... }
+  }
+}
+```
+
+## List Domains
+
+Get all domains for your tenant.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/domains \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Remove a Domain
+
+Delete a domain (you can't send from it afterward).
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/domains/dom_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+<Callout type="warning">
+Removing a domain cannot be undone. All emails from that domain will fail to send.
+</Callout>
+
+## DNS Troubleshooting
+
+### "pending_verification" after adding records
+
+**Cause:** DNS hasn't propagated yet or records are incorrect.
+
+**Fix:**
+1. Verify records are exactly as shown (case-sensitive)
+2. Wait up to 48 hours for DNS propagation
+3. Use [MXToolbox](https://mxtoolbox.com) to check if DNS records are live
+4. Retry verification with `POST /v1/domains/{id}/verify`
+
+### SPF vs DKIM vs DMARC
+
+| Record | Purpose |
+|--------|---------|
+| **SPF** | Authorizes Tratto to send from your domain |
+| **DKIM** | Digitally signs emails (cryptographic verification) |
+| **DMARC** | Instructs mail servers how to handle failed SPF/DKIM |
+
+**Best practice:** Use all three for maximum deliverability.
+
+## Subdomain Sending
+
+You can use subdomains for sending (e.g., `hello.yourdomain.com`) while your main domain stays clean.
+
+**Advantages:**
+- Isolate email reputation from main domain
+- Test new domains without affecting production
+- Separate sending and receiving infrastructure
+
+---
+
+## Next Steps
+
+- **Send your first email?** Go to [Send Email](/docs/en/send-email)
+- **Test domain setup?** Use [Quickstart](/docs/en/quickstart)
+- **Need help with DNS?** See [Deliverability](/docs/en/deliverability) for best practices

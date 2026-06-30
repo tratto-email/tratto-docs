@@ -1,0 +1,265 @@
+---
+title: Webhooks — Setup, Events & Signature Verification
+description: Receive real-time email events via webhooks
+---
+
+# Webhooks: Setup, Events & Signature Verification
+
+**Webhooks** are HTTP callbacks that notify your app when events happen (email delivered, opened, bounced, etc.). Instead of polling the API, Tratto pushes events to you in real-time.
+
+## Register a Webhook
+
+Create a webhook endpoint.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/webhooks \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url":"https://yourapi.com/webhooks/tratto",
+    "events":["sent","delivered","opened","clicked","bounced","complained","unsubscribed"]
+  }'
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "wh_abc123",
+    "url": "https://yourapi.com/webhooks/tratto",
+    "events": ["sent", "delivered", "opened", "clicked", "bounced", "complained", "unsubscribed"],
+    "secret": "whsec_xyz789...",
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+**Save the `secret`** — you'll use it to verify signatures.
+
+## Webhook Events
+
+Tratto sends `POST` requests to your URL when these events occur:
+
+| Event | Payload |
+|-------|---------|
+| `sent` | Email accepted by mail server |
+| `delivered` | Mail server confirmed delivery |
+| `opened` | Recipient opened email (pixel tracked) |
+| `clicked` | Recipient clicked a link |
+| `bounced` | Mail server rejected delivery |
+| `complained` | Recipient marked as spam |
+| `unsubscribed` | Recipient clicked unsubscribe |
+
+## Webhook Payload
+
+**Example:**
+```json
+{
+  "id": "evt_abc123",
+  "type": "delivered",
+  "emailId": "email_xyz789",
+  "recipient": "user@example.com",
+  "occurredAt": "2025-06-30T12:00:10Z"
+}
+```
+
+## Verify Webhook Signature
+
+Every webhook is signed with HMAC-SHA256 in the `x-tratto-signature` header.
+
+**Always verify signatures** to ensure the webhook comes from Tratto.
+
+### Node.js
+
+```javascript
+const crypto = require('crypto');
+
+app.post('/webhooks/tratto', (req, res) => {
+  const signature = req.headers['x-tratto-signature'];
+  const secret = process.env.TRATTO_WEBHOOK_SECRET;
+  
+  // Compute HMAC-SHA256 of raw body
+  const computed = crypto
+    .createHmac('sha256', secret)
+    .update(JSON.stringify(req.body))
+    .digest('hex');
+  
+  // Compare signatures
+  if (computed !== signature) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+  
+  // Process event
+  const event = req.body;
+  console.log(`Email ${event.emailId} was ${event.type}`);
+  
+  res.status(200).json({ ok: true });
+});
+```
+
+### Python
+
+```python
+import hmac
+import hashlib
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route('/webhooks/tratto', methods=['POST'])
+def tratto_webhook():
+    signature = request.headers.get('x-tratto-signature')
+    secret = os.getenv('TRATTO_WEBHOOK_SECRET')
+    
+    # Compute HMAC-SHA256 of raw body
+    computed = hmac.new(
+        secret.encode(),
+        request.get_data(),
+        hashlib.sha256
+    ).hexdigest()
+    
+    # Compare signatures
+    if not hmac.compare_digest(computed, signature):
+        return {'error': 'Invalid signature'}, 401
+    
+    # Process event
+    event = request.get_json()
+    print(f"Email {event['emailId']} was {event['type']}")
+    
+    return {'ok': True}, 200
+```
+
+### PHP
+
+```php
+$signature = $_SERVER['HTTP_X_TRATTO_SIGNATURE'] ?? '';
+$secret = getenv('TRATTO_WEBHOOK_SECRET');
+$body = file_get_contents('php://input');
+
+$computed = hash_hmac('sha256', $body, $secret);
+
+if (!hash_equals($computed, $signature)) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Invalid signature']);
+    exit;
+}
+
+$event = json_decode($body, true);
+echo json_encode(['ok' => true]);
+```
+
+## Prevent Replay Attacks
+
+Check the `occurredAt` timestamp to prevent replay attacks.
+
+```javascript
+const now = Date.now() / 1000;
+const eventTime = new Date(event.occurredAt).getTime() / 1000;
+
+// Reject events older than 5 minutes
+if (now - eventTime > 300) {
+  return res.status(400).json({ error: 'Event too old' });
+}
+```
+
+## Rotate Webhook Secret
+
+Generate a new signing secret.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/rotate-secret \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "wh_abc123",
+    "secret": "whsec_new...",
+    "oldSecret": "whsec_old...",
+    "rotatedAt": "2025-06-30T12:05:00Z"
+  }
+}
+```
+
+Both old and new secrets work for 24 hours during rotation. Update your app to use the new secret, then the old one expires.
+
+## Test Event
+
+Send a test webhook event to verify setup.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/test \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+A test `sent` event is posted to your URL immediately.
+
+## List Webhooks
+
+Get all registered webhooks.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/webhooks \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Webhook Deliveries
+
+View delivery history for a webhook.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/webhooks/wh_abc123/deliveries \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "del_001",
+      "webhookId": "wh_abc123",
+      "eventId": "evt_abc123",
+      "status": "success",
+      "statusCode": 200,
+      "deliveredAt": "2025-06-30T12:00:10Z"
+    },
+    {
+      "id": "del_002",
+      "webhookId": "wh_abc123",
+      "eventId": "evt_def456",
+      "status": "failed",
+      "statusCode": 500,
+      "retries": 3,
+      "nextRetryAt": "2025-06-30T12:10:00Z"
+    }
+  ]
+}
+```
+
+Tratto retries failed deliveries up to 3 times.
+
+## Delete a Webhook
+
+Unregister a webhook.
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/webhooks/wh_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+---
+
+## Next Steps
+
+- **Send emails?** Go to [Send Email](/docs/en/send-email)
+- **Track email status?** See [Email Status](/docs/en/email-status)
+- **Use webhooks in flows?** See [Flows](/docs/en/flows)
