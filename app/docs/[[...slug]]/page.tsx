@@ -17,9 +17,35 @@ export async function generateMetadata({
   const page = getPage(params.slug);
   if (!page) notFound();
 
+  const title = page.data.title;
+  const description = page.data.description || 'Tratto Email API Documentation';
+  const canonical = params.slug ? `/docs/${params.slug.join('/')}` : '/docs';
+
   return {
-    title: page.data.title,
-    description: page.data.description,
+    title: `${title} — Tratto Docs`,
+    description,
+    canonical,
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      url: canonical,
+      images: [
+        {
+          url: `/docs/${params.slug?.join('/') || 'index'}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    alternates: {
+      languages: {
+        en: `/docs/${params.slug?.join('/') || ''}`,
+        it: `/docs/it/${params.slug?.join('/') || ''}`,
+        'x-default': `/docs/${params.slug?.join('/') || ''}`,
+      },
+    },
   };
 }
 
