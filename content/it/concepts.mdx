@@ -1,0 +1,244 @@
+---
+title: Concetti Fondamentali
+description: Comprendi il modello mentale di Tratto
+---
+
+# Concetti Fondamentali
+
+Comprendi le idee fondamentali dietro Tratto prima di iniziare a programmare.
+
+## Tenant
+
+Un **tenant** è il tuo workspace isolato. Tutto quello che crei (domini, template, contatti, campagne) appartiene a un tenant. Ogni tenant:
+
+- Ha la sua fatturazione
+- Supporta più membri del team (con permessi diversi)
+- Ha chiavi API separate
+- Non può accedere ai dati di altri tenant
+
+Pensa a esso come l'"account" dell'organizzazione — completamente isolato da altri clienti.
+
+## API Key
+
+Un' **API key** è un bearer token che autentica le tue richieste. Le API key di Tratto sono prefissate `tratto_live_` e sono hash quando archiviate (non memorizziamo mai la chiave grezza).
+
+**Proprietà della chiave:**
+- Concedono accesso completo al workspace — trattale come password
+- Mostrate solo una volta durante la creazione
+- Possono essere revocate in qualsiasi momento
+- Dovrebbero essere ruotate periodicamente per sicurezza
+- Non esporle mai nel codice client-side
+
+**Header di autenticazione:**
+```
+Authorization: Bearer tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Vedi [Autenticazione](/docs/it/authentication) per gestire le chiavi.
+
+## Domain
+
+Un **domain** è un dominio di invio verificato. Prima di inviare email, devi:
+
+1. Aggiungere il tuo dominio a Tratto
+2. Pubblicare record DNS (SPF, DKIM, DMARC) sul tuo registrar
+3. Verificare i record con Tratto
+
+I record provano ai server di posta riceventi che controlli il dominio e sei autorizzato a inviare da esso.
+
+**Ciclo di vita del dominio:**
+- `pending_verification` — In attesa di record DNS
+- `verified` — Pronto per l'invio
+- `failed` — Verifica DNS non riuscita (ri-verifica più tardi)
+
+Vedi [Domini](/docs/it/domains) per la configurazione passo dopo passo.
+
+## Email
+
+Un' **email** è un record di invio immutabile. Quando fai `POST /v1/emails`, Tratto:
+
+1. Valida la richiesta (dominio verificato, rate limits, ecc.)
+2. Crea un documento email in Firestore
+3. Pubblica un evento su Pub/Sub
+4. Restituisce l'ID email e lo stato
+
+L'email scorre quindi attraverso la pipeline di consegna.
+
+**Ciclo di vita dello stato dell'email:**
+
+```
+                    ┌─ delivered ─┐
+                    │             │
+                    ▼             ▼
+    queued ─→ scheduled ─→ sent ─┤─ opened (tracking)
+                             │    │─ clicked (tracking)
+                             │    │─ bounced
+                             │    │─ complained
+                             ▼    └─ unsubscribed
+                            failed
+```
+
+**Definizioni dello stato:**
+- `queued` — Email è in coda, verrà inviata a breve
+- `scheduled` — Email è programmata per consegna futura
+- `sent` — Email è stata inviata al server di posta
+- `delivered` — Server di posta ha confermato consegna (senza rimbalzi)
+- `failed` — Consegna non riuscita (dominio non valido, rate limit, ecc.)
+
+Vedi [Stato e Ciclo di Vita dell'Email](/docs/it/email-status) per ulteriori informazioni.
+
+## Events
+
+Gli **eventi** sono record di tracking per quello che è successo a un'email. A differenza dello stato (lo stato dell'email), gli eventi sono azioni discrete:
+
+- `sent` — Email è stata inviata al server di posta
+- `delivered` — Server di posta ha confermato ricezione
+- `opened` — Destinatario ha aperto l'email (pixel tracciato)
+- `clicked` — Destinatario ha cliccato un link
+- `bounced` — Server di posta ha rifiutato consegna
+- `complained` — Destinatario ha segnalato come spam
+- `unsubscribed` — Destinatario ha cliccato "annulla iscrizione"
+
+Ricevi gli eventi tramite:
+- **Webhook** — Notifiche HTTP push real-time
+- **Email events API** — `GET /v1/emails/{id}/events`
+
+Vedi [Webhook](/docs/it/webhooks) per la configurazione.
+
+## Webhook
+
+Un **webhook** è un endpoint HTTP che controlli e che Tratto chiama quando si verifica un evento email. Registri un URL webhook, e Tratto fa `POST` dei payload degli eventi.
+
+**Esempio di payload dell'evento:**
+```json
+{
+  "id": "evt_abc123",
+  "type": "delivered",
+  "emailId": "email_xyz789",
+  "recipient": "user@example.com",
+  "occurredAt": "2025-06-30T12:00:00Z"
+}
+```
+
+**Sicurezza:**
+- I payload sono firmati con HMAC-SHA256 nell'header `x-tratto-signature`
+- Sempre verificare la firma prima di elaborare
+- Attacchi replay: controlla il timestamp `occurredAt`
+
+Vedi [Webhook](/docs/it/webhooks) per il codice di verifica della firma.
+
+## Template
+
+Un **template** è un template email versionato con variabili placeholder. Invece di comporre HTML nel codice, crei un template in Tratto e lo referenzi per ID.
+
+**Struttura del template:**
+```
+Oggetto: Benvenuto {{firstName}}!
+HTML:    <h1>Ciao {{firstName}} {{lastName}}</h1>
+         <p>Il tuo codice: {{code}}</p>
+```
+
+**Uso:**
+```json
+{
+  "from": "hello@tuodominio.it",
+  "to": "user@example.com",
+  "templateId": "tmpl_abc123",
+  "variables": {
+    "firstName": "Alice",
+    "lastName": "Smith",
+    "code": "12345"
+  }
+}
+```
+
+**Versionamento:**
+- Ogni aggiornamento del template crea una nuova versione
+- Puoi ripristinare versioni precedenti
+- Campagne e flussi referenziano una versione template
+
+Vedi [Template](/docs/it/templates) per la documentazione completa.
+
+## Flow
+
+Un **flow** è un motore di automazione. Crea un flusso che si attiva su eventi (contatto si unisce audience, email aperta, ecc.) ed esegue step (invia email, attendi, branchia, aggiorna contatto).
+
+**Struttura del flow:**
+```
+Trigger (es., contact_joins_audience)
+  ↓
+Step 1 (es., send_email)
+  ↓
+Step 2 (es., attendi 3 giorni)
+  ↓
+Step 3 (es., invia un'altra email)
+  ↓
+Step 4 (es., branchia su email_opened)
+  ├─ Percorso vero → invia email
+  └─ Percorso falso → non fare nulla
+```
+
+**Caratteristiche chiave:**
+- Tipi di trigger: `contact_joins_audience`, `email_event`, `contact_tag_added`, `manual`
+- Tipi di step: `send_email`, `wait`, `branch`, `update_contact`, `webhook_call`
+- Contatti iscritti: traccia chi è nel flusso
+- Attiva/disattiva flussi senza perdere dati di iscrizione
+
+Vedi [Flussi](/docs/it/flows) per la configurazione dettagliata.
+
+## Campaign
+
+Una **campagna** è una trasmissione email una tantum a un'audience. Crea una campagna, opzionalmente inviala in prova, poi inviala a tutti i contatti in un'audience.
+
+**Ciclo di vita della campagna:**
+```
+draft → (invio di prova opzionale) → send → scheduled → sending → sent
+```
+
+**Proprietà chiave:**
+- `name` — Nome della campagna
+- `templateId` — Quale template usare
+- `audienceId` — Chi la riceve
+- `sendAt` — Programma per dopo (opzionale)
+- `status` — Stato attuale
+
+**Dopo l'invio:**
+- Ottieni statistiche di consegna: `GET /v1/campaigns/{id}/stats`
+- Visualizza eventi email individuali
+- Non può essere ri-inviata (crea una nuova campagna invece)
+
+Vedi [Campagne](/docs/it/campaigns) per i dettagli.
+
+## Audience
+
+Un' **audience** è un gruppo di contatti, creata tramite filtri basati su regole o aggiunte manuali.
+
+**Tipi di regola:**
+- `status` — `subscribed`, `unsubscribed`, `bounced`, `complained`
+- `tags` — Filtra per tag contatto (es., "vip", "newsletter")
+- `metadata` — Campi personalizzati (es., `plan: "pro"`)
+- `dateRange` — Contatti creati tra date
+
+**Dinamica vs statica:**
+- **Dinamica** — Regole ri-valutate, appartenenza cambia automaticamente
+- **Statica** — Elenco fisso, non si aggiorna
+
+**Uso:**
+- Campagne: invia a un'audience
+- Flussi: attivazione quando contatto si unisce audience
+
+Vedi [Audience](/docs/it/audiences) per la configurazione.
+
+---
+
+## Prossimi Passi
+
+- **Autenticazione?** Inizia con [API Key e Auth](/docs/it/authentication)
+- **Pronto a inviare?** Vai a [Quickstart](/docs/it/quickstart)
+- **Approfondisci?** Esplora i singoli concetti:
+  - [Domini](/docs/it/domains)
+  - [Template](/docs/it/templates)
+  - [Contatti](/docs/it/contacts)
+  - [Campagne](/docs/it/campaigns)
+  - [Webhook](/docs/it/webhooks)
+  - [Flussi](/docs/it/flows)

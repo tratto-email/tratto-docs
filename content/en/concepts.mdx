@@ -1,0 +1,244 @@
+---
+title: Core Concepts
+description: Understand the mental model of Tratto
+---
+
+# Core Concepts
+
+Understand the foundational ideas behind Tratto before you start coding.
+
+## Tenant
+
+A **tenant** is your isolated workspace. Everything you create (domains, templates, contacts, campaigns) belongs to a tenant. Each tenant:
+
+- Has its own billing
+- Supports multiple team members (with different permissions)
+- Has separate API keys
+- Cannot access other tenants' data
+
+Think of it as your organization's "account" — completely isolated from other customers.
+
+## API Key
+
+An **API key** is a bearer token that authenticates your requests. Tratto API keys are prefixed `tratto_live_` and are hashed when stored (we never store the raw key).
+
+**Key properties:**
+- Grant full workspace access — treat them like passwords
+- Shown only once during creation
+- Can be revoked at any time
+- Should be rotated periodically for security
+- Never expose them in client-side code
+
+**Authentication header:**
+```
+Authorization: Bearer tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+See [Authentication](/docs/en/authentication) for managing keys.
+
+## Domain
+
+A **domain** is a verified sending domain. Before you send emails, you must:
+
+1. Add your domain to Tratto
+2. Publish DNS records (SPF, DKIM, DMARC) on your registrar
+3. Verify the records with Tratto
+
+The records prove to receiving mail servers that you control the domain and are authorized to send from it.
+
+**Domain lifecycle:**
+- `pending_verification` — waiting for DNS records
+- `verified` — ready to send
+- `failed` — DNS verification failed (re-verify later)
+
+See [Domains](/docs/en/domains) for step-by-step setup.
+
+## Email
+
+An **email** is an immutable send record. When you `POST /v1/emails`, Tratto:
+
+1. Validates the request (domain verified, rate limits, etc.)
+2. Creates an email document in Firestore
+3. Publishes an event to Pub/Sub
+4. Returns the email ID and status
+
+The email then flows through the delivery pipeline.
+
+**Email status lifecycle:**
+
+```
+                    ┌─ delivered ─┐
+                    │             │
+                    ▼             ▼
+    queued ─→ scheduled ─→ sent ─┤─ opened (tracking)
+                             │    │─ clicked (tracking)
+                             │    │─ bounced
+                             │    │─ complained
+                             ▼    └─ unsubscribed
+                            failed
+```
+
+**Status definitions:**
+- `queued` — Email is in the queue, will be sent shortly
+- `scheduled` — Email is scheduled for future delivery
+- `sent` — Email was sent to the mail server
+- `delivered` — Mail server confirmed delivery (bounce-free)
+- `failed` — Delivery failed (invalid domain, rate limit, etc.)
+
+See [Email Status & Lifecycle](/docs/en/email-status) for more.
+
+## Events
+
+**Events** are tracking records for what happened to an email. Unlike status (the email state), events are discrete actions:
+
+- `sent` — Email was sent to mail server
+- `delivered` — Mail server confirmed receipt
+- `opened` — Recipient opened the email (pixel tracked)
+- `clicked` — Recipient clicked a link
+- `bounced` — Mail server rejected delivery
+- `complained` — Recipient marked as spam
+- `unsubscribed` — Recipient clicked unsubscribe
+
+You get events via:
+- **Webhooks** — Real-time HTTP push notifications
+- **Email events API** — `GET /v1/emails/{id}/events`
+
+See [Webhooks](/docs/en/webhooks) for setup.
+
+## Webhook
+
+A **webhook** is an HTTP endpoint you control that Tratto calls when an email event occurs. You register a webhook URL, and Tratto `POST`s event payloads to it.
+
+**Event payload example:**
+```json
+{
+  "id": "evt_abc123",
+  "type": "delivered",
+  "emailId": "email_xyz789",
+  "recipient": "user@example.com",
+  "occurredAt": "2025-06-30T12:00:00Z"
+}
+```
+
+**Security:**
+- Payloads are signed with HMAC-SHA256 in the `x-tratto-signature` header
+- Always verify the signature before processing
+- Replay attacks: check the `occurredAt` timestamp
+
+See [Webhooks](/docs/en/webhooks) for signature verification code.
+
+## Template
+
+A **template** is a versioned email template with placeholder variables. Instead of composing HTML in code, you create a template in Tratto and reference it by ID.
+
+**Template structure:**
+```
+Subject: Welcome {{firstName}}!
+HTML:    <h1>Hello {{firstName}} {{lastName}}</h1>
+         <p>Your code: {{code}}</p>
+```
+
+**Usage:**
+```json
+{
+  "from": "hello@yourdomain.com",
+  "to": "user@example.com",
+  "templateId": "tmpl_abc123",
+  "variables": {
+    "firstName": "Alice",
+    "lastName": "Smith",
+    "code": "12345"
+  }
+}
+```
+
+**Versioning:**
+- Each template update creates a new version
+- You can restore previous versions
+- Campaigns and flows reference a template version
+
+See [Templates](/docs/en/templates) for full docs.
+
+## Flow
+
+A **flow** is an automation engine. Create a workflow that triggers on events (contact joins audience, email opened, etc.) and executes steps (send email, wait, branch, update contact).
+
+**Flow structure:**
+```
+Trigger (e.g., contact_joins_audience)
+  ↓
+Step 1 (e.g., send_email)
+  ↓
+Step 2 (e.g., wait 3 days)
+  ↓
+Step 3 (e.g., send another email)
+  ↓
+Step 4 (e.g., branch on email_opened)
+  ├─ True path → send email
+  └─ False path → do nothing
+```
+
+**Key features:**
+- Trigger types: `contact_joins_audience`, `email_event`, `contact_tag_added`, `manual`
+- Step types: `send_email`, `wait`, `branch`, `update_contact`, `webhook_call`
+- Enrolled contacts: track who is in the flow
+- Activate/deactivate flows without losing enrollment data
+
+See [Flows](/docs/en/flows) for detailed setup.
+
+## Campaign
+
+A **campaign** is a one-time email broadcast to an audience. Create a campaign, optionally test-send it, then send it to all contacts in an audience.
+
+**Campaign lifecycle:**
+```
+draft → (optional test send) → send → scheduled → sending → sent
+```
+
+**Key properties:**
+- `name` — Campaign name
+- `templateId` — Which template to use
+- `audienceId` — Who receives it
+- `sendAt` — Schedule for later (optional)
+- `status` — Current state
+
+**After sending:**
+- Get delivery stats: `GET /v1/campaigns/{id}/stats`
+- View individual email events
+- Cannot be re-sent (create a new campaign instead)
+
+See [Campaigns](/docs/en/campaigns) for details.
+
+## Audience
+
+An **audience** is a group of contacts, created via rule-based filters or manual additions.
+
+**Rule types:**
+- `status` — `subscribed`, `unsubscribed`, `bounced`, `complained`
+- `tags` — Filter by contact tags (e.g., "vip", "newsletter")
+- `metadata` — Custom fields (e.g., `plan: "pro"`)
+- `dateRange` — Contacts created between dates
+
+**Dynamic vs static:**
+- **Dynamic** — Rules re-evaluated, membership changes automatically
+- **Static** — Fixed list, doesn't update
+
+**Usage:**
+- Campaigns: send to an audience
+- Flows: trigger when contact joins audience
+
+See [Audiences](/docs/en/audiences) for setup.
+
+---
+
+## Next Steps
+
+- **Authentication?** Start with [API Keys & Auth](/docs/en/authentication)
+- **Ready to send?** Go to [Quickstart](/docs/en/quickstart)
+- **Deep dive?** Explore individual concepts:
+  - [Domains](/docs/en/domains)
+  - [Templates](/docs/en/templates)
+  - [Contacts](/docs/en/contacts)
+  - [Campaigns](/docs/en/campaigns)
+  - [Webhooks](/docs/en/webhooks)
+  - [Flows](/docs/en/flows)
