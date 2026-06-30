@@ -1,0 +1,65 @@
+---
+title: Introduzione a Tratto
+description: Scopri cos'è Tratto e come funziona come piattaforma API email transazionale e marketing
+---
+
+# Cos'è Tratto?
+
+Tratto è un'API email developer-friendly e accessibile per email transazionali, marketing e bulk. Costruita come alternativa competitiva a Resend, Tratto semplifica la consegna in inbox con infrastruttura gestita, autenticazione integrata (SPF, DKIM, DMARC) e tracking real-time degli eventi. Che tu stia inviando reset password o campagne newsletter, Tratto gestisce la deliverability mentre tu ti concentri sul tuo prodotto.
+
+## Concetti Fondamentali
+
+Prima di iniziare, comprendi questi concetti chiave:
+
+- **Tenant** — Il tuo workspace. Isolato, multi-utente e unità di fatturazione. Le API key sono scoped al tenant.
+- **API Key** — Token Bearer con prefisso `tratto_live_` che concede accesso completo al workspace. Trattala come una password.
+- **Domain** — Un dominio di invio verificato. Tu controlli i record DNS (SPF, DKIM, DMARC) che provano l'autenticità del mittente.
+- **Email** — Un record di invio immutabile con ciclo di vita dello stato (`queued → sent → delivered`) e tracking degli eventi.
+- **Webhook** — Notifica HTTP push quando un'email viene aperta, cliccata, rimbalzata o segnalata come spam. Gli eventi includono firme HMAC-SHA256.
+
+## Come Funziona
+
+```
+┌──────────────────────────────────────────────────┐
+│  La Tua Applicazione                             │
+│  (POST /v1/emails)                               │
+└──────────────────┬───────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────┐
+│  Tratto API (Cloud Run)                          │
+│  Valida dominio, rate limits, idempotency        │
+└──────────────────┬───────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────┐
+│  Firestore (Email docs) + Pub/Sub (Events)       │
+│  Durabilità e streaming degli eventi             │
+└──────────────────┬───────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────┐
+│  Cloud Functions                                  │
+│  Elabora eventi, traccia aperture/click, IP IPs  │
+└──────────────────┬───────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────┐
+│  BigQuery (Analytics)                            │
+│  Storico email ricercabile e metriche di invio   │
+└──────────────────────────────────────────────────┘
+```
+
+## Navigazione Rapida
+
+- **Primo accesso?** Inizia con [Quickstart](/docs/it/quickstart) per inviare la tua prima email in 5 minuti.
+- **Approfondisci?** Esplora il [Riferimento API](/docs/it/api-reference) per documentazione dettagliata degli endpoint.
+- **Preferisci gli SDK?** Usa [Node.js](/docs/it/sdk/nodejs), [Python](/docs/it/sdk/python), o [HTTP](/docs/it/sdk/http).
+
+## Non sei uno Sviluppatore?
+
+Se stai usando la dashboard di Tratto (interfaccia web) per inviare email o gestire campagne, consulta la **[Guida Dashboard](/docs/it/dashboard)** invece.
+
+---
+
+**Pronto ad inviare?** Vai a [Quickstart](/docs/it/quickstart) →
