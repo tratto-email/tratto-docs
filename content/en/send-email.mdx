@@ -1,0 +1,297 @@
+---
+title: Send Email
+description: The core endpoint for sending emails via Tratto
+---
+
+# Send Email
+
+`POST /v1/emails` is the core endpoint for sending emails. Send a simple transactional email, use a template, schedule for later, or attach files.
+
+## Prerequisites
+
+Before you can send emails, you need a **verified sending domain**. See [Domains](/docs/en/domains) for setup.
+
+## Minimal Send
+
+Send a basic email with just the required fields.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "hello@yourdomain.com",
+    "to": "user@example.com",
+    "subject": "Welcome!",
+    "text": "Hello, this is a test email."
+  }'
+```
+
+**Node.js**
+```javascript
+const response = await fetch('https://api.tratto.email/v1/emails', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer tratto_live_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    from: 'hello@yourdomain.com',
+    to: 'user@example.com',
+    subject: 'Welcome!',
+    text: 'Hello, this is a test email.',
+  }),
+});
+const { data } = await response.json();
+console.log('Email sent:', data.id);
+```
+
+**Python**
+```python
+import requests
+
+response = requests.post(
+  'https://api.tratto.email/v1/emails',
+  headers={
+    'Authorization': 'Bearer tratto_live_...',
+    'Content-Type': 'application/json',
+  },
+  json={
+    'from': 'hello@yourdomain.com',
+    'to': 'user@example.com',
+    'subject': 'Welcome!',
+    'text': 'Hello, this is a test email.',
+  },
+)
+data = response.json()['data']
+print(f"Email sent: {data['id']}")
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "email_abc123xyz",
+    "status": "queued",
+    "from": "hello@yourdomain.com",
+    "to": "user@example.com",
+    "subject": "Welcome!",
+    "text": "Hello, this is a test email.",
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+## Send with HTML
+
+Include both `text` (fallback) and `html` (rendered content):
+
+```bash
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "hello@yourdomain.com",
+    "to": "user@example.com",
+    "subject": "Welcome!",
+    "text": "Hello, this is a test email.",
+    "html": "<h1>Hello!</h1><p>This is a test email.</p>"
+  }'
+```
+
+Email clients show `html` if supported; fall back to `text` otherwise.
+
+## Send with a Template
+
+Instead of composing HTML in code, use a template with variable substitution.
+
+**Step 1: Create a template (see [Templates](/docs/en/templates))**
+
+```json
+{
+  "name": "Welcome Email",
+  "subject": "Welcome, {{firstName}}!",
+  "text": "Hello {{firstName}}!",
+  "html": "<h1>Hello {{firstName}}!</h1><p>Your code: {{code}}</p>"
+}
+```
+
+**Step 2: Send using the template**
+
+```bash
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "hello@yourdomain.com",
+    "to": "user@example.com",
+    "templateId": "tmpl_abc123",
+    "variables": {
+      "firstName": "Alice",
+      "code": "SECRET123"
+    }
+  }'
+```
+
+The template's `subject`, `text`, and `html` are rendered with the provided variables.
+
+## Schedule an Email
+
+Send an email at a future time using the `scheduledAt` field (ISO 8601 format):
+
+```bash
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "hello@yourdomain.com",
+    "to": "user@example.com",
+    "subject": "Reminder!",
+    "text": "See you tomorrow.",
+    "scheduledAt": "2025-07-01T09:00:00Z"
+  }'
+```
+
+The email will be queued and sent at the specified time (must be in the future).
+
+## Add Attachments
+
+Include files as base64-encoded attachments:
+
+```bash
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "hello@yourdomain.com",
+    "to": "user@example.com",
+    "subject": "Invoice",
+    "text": "See attached invoice.",
+    "attachments": [
+      {
+        "filename": "invoice.pdf",
+        "contentType": "application/pdf",
+        "content": "JVBERi0xLjQKJeLj..."
+      }
+    ]
+  }'
+```
+
+**Steps to attach a file:**
+
+1. Read the file as binary
+2. Base64-encode the content
+3. Include `filename`, `contentType`, and `content` in the `attachments` array
+
+**JavaScript example:**
+```javascript
+const fs = require('fs');
+
+const fileBuffer = fs.readFileSync('invoice.pdf');
+const base64Content = fileBuffer.toString('base64');
+
+const attachments = [
+  {
+    filename: 'invoice.pdf',
+    contentType: 'application/pdf',
+    content: base64Content,
+  },
+];
+```
+
+## Tags for Organization
+
+Add tags to organize and filter emails:
+
+```bash
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "hello@yourdomain.com",
+    "to": "user@example.com",
+    "subject": "Order Confirmation",
+    "text": "Your order has been confirmed.",
+    "tags": ["order", "transactional"]
+  }'
+```
+
+Later, filter emails by tags or use them in webhooks.
+
+## Full Request Body Reference
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `from` | string | ✓ | Sender email address (must be from a verified domain) |
+| `to` | string | ✓ | Recipient email address |
+| `cc` | string[] | | Carbon copy recipients |
+| `bcc` | string[] | | Blind carbon copy recipients |
+| `subject` | string | ✓ (if not using template) | Email subject line |
+| `text` | string | | Plain text content (used as fallback) |
+| `html` | string | | HTML content |
+| `templateId` | string | | Template ID (instead of `subject`/`text`/`html`) |
+| `variables` | object | | Variables to interpolate in template |
+| `attachments` | array | | Array of attachment objects |
+| `scheduledAt` | string (ISO 8601) | | Schedule email for future delivery |
+| `tags` | string[] | | Organization tags (max 10) |
+| `replyTo` | string | | Reply-to address |
+| `headers` | object | | Custom email headers (advanced) |
+
+## Response
+
+**Success (2xx):**
+```json
+{
+  "data": {
+    "id": "email_abc123xyz",
+    "status": "queued",
+    "from": "hello@yourdomain.com",
+    "to": "user@example.com",
+    "cc": [],
+    "bcc": [],
+    "subject": "Welcome!",
+    "createdAt": "2025-06-30T12:00:00Z",
+    "scheduledAt": null
+  }
+}
+```
+
+**Error (4xx):**
+```json
+{
+  "error": {
+    "code": "DOMAIN_NOT_VERIFIED",
+    "message": "The sending domain is not verified.",
+    "docs": "https://docs.tratto.email/en/domains",
+    "suggestion": "Run POST /v1/domains/{id}/verify and check DNS records."
+  }
+}
+```
+
+## Common Errors
+
+### DOMAIN_NOT_VERIFIED
+
+**Cause:** The `from` domain hasn't been verified yet.
+
+**Fix:** Complete the [domain verification process](/docs/en/domains).
+
+### RATE_LIMIT_EXCEEDED
+
+**Cause:** You've exceeded your tenant's rate limit (500 requests/minute).
+
+**Fix:** Implement exponential backoff and retry later. See [Rate Limits](/docs/en/rate-limits).
+
+### VALIDATION_ERROR
+
+**Cause:** Invalid request (missing required field, malformed JSON, etc.).
+
+**Fix:** Check the error message and refer to the [Error Codes](/docs/en/error-codes) reference.
+
+## Next Steps
+
+- **Track email events?** Set up [Webhooks](/docs/en/webhooks)
+- **Check email status?** See [Email Status & Lifecycle](/docs/en/email-status)
+- **Create templates?** Go to [Templates](/docs/en/templates)
+- **Manage domains?** Read [Domains](/docs/en/domains)

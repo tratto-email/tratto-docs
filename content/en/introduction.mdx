@@ -1,0 +1,65 @@
+---
+title: Introduction to Tratto
+description: Understand what Tratto is and how it works as a transactional and marketing email API platform
+---
+
+# What is Tratto?
+
+Tratto is an accessible, developer-friendly email API for transactional, marketing, and bulk emails. Built as a competitive alternative to Resend, Tratto simplifies inbox delivery with managed infrastructure, built-in authentication (SPF, DKIM, DMARC), and real-time event tracking. Whether you're sending password resets or newsletter campaigns, Tratto handles deliverability so you can focus on your product.
+
+## Core Concepts
+
+Before you start, understand these key ideas:
+
+- **Tenant** — Your workspace. Isolated, multi-member, and the billing unit. API keys are tenant-scoped.
+- **API Key** — Bearer token prefixed `tratto_live_` that grants full workspace access. Treat it like a password.
+- **Domain** — A verified sending domain. You control the DNS records (SPF, DKIM, DMARC) that prove sender authenticity.
+- **Email** — An immutable send record with a status lifecycle (`queued → sent → delivered`) and tracking events.
+- **Webhook** — HTTP push notification when an email is opened, clicked, bounced, or complained. Events include HMAC-SHA256 signatures.
+
+## How It Works
+
+```
+┌──────────────────────────────────────────────────┐
+│  Your Application                                 │
+│  (POST /v1/emails)                               │
+└──────────────────┬───────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────┐
+│  Tratto API (Cloud Run)                          │
+│  Validates domain, rate limits, idempotency      │
+└──────────────────┬───────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────┐
+│  Firestore (Email docs) + Pub/Sub (Events)       │
+│  Durability and event streaming                  │
+└──────────────────┬───────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────┐
+│  Cloud Functions                                  │
+│  Process events, track opens/clicks, manage IPs  │
+└──────────────────┬───────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────┐
+│  BigQuery (Analytics)                            │
+│  Searchable email history and delivery metrics   │
+└──────────────────────────────────────────────────┘
+```
+
+## Quick Navigation
+
+- **New here?** Start with the [Quickstart](/docs/quickstart) to send your first email in 5 minutes.
+- **Diving deep?** Explore the [API Reference](/docs/api-reference) for detailed endpoint documentation.
+- **Prefer SDKs?** Use [Node.js](/docs/sdk/nodejs), [Python](/docs/sdk/python), or [HTTP](/docs/sdk/http).
+
+## Not a Developer?
+
+If you're using Tratto's dashboard (web UI) to send emails or manage campaigns, see the **[Dashboard Guide](/docs/dashboard)** instead.
+
+---
+
+**Ready to send?** Go to [Quickstart](/docs/quickstart) →
