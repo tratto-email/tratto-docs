@@ -1,0 +1,302 @@
+---
+title: Email Status & Lifecycle
+description: Understand email status states and tracking events
+---
+
+# Email Status & Lifecycle
+
+Every email in Tratto has a **status** (the state of the email) and **events** (what happened to it). Understand the difference and how to track them.
+
+## Status vs Events
+
+- **Status** — The current state of the email (`queued`, `scheduled`, `sent`, `delivered`, `failed`)
+- **Events** — Discrete tracking records (opened, clicked, bounced, complained)
+
+**Example:** An email can have status `delivered` and also have events `opened`, `clicked`, and `clicked` again.
+
+## Email Status Lifecycle
+
+An email progresses through these statuses:
+
+```
+                      ┌─ delivered ─┐
+                      │             │
+                      ▼             ▼
+  queued ──→ scheduled ──→ sent ────┤
+                                     │
+                                     └─ opened (tracking)
+                                     └─ clicked (tracking)
+                                     └─ bounced
+                                     └─ complained
+                                     └─ unsubscribed
+                                     
+                      ▼
+                    failed
+```
+
+### Status Definitions
+
+| Status | Description |
+|--------|-------------|
+| `queued` | Email is in the queue, will be sent shortly (minutes) |
+| `scheduled` | Email is scheduled for future delivery (you set `scheduledAt`) |
+| `sent` | Email was delivered to the mail server, but not yet confirmed by recipient's server |
+| `delivered` | Mail server confirmed receipt and delivery (bounce-free) |
+| `failed` | Email delivery failed (invalid domain, rate limit, mailbox full, etc.) |
+
+### State Transitions
+
+```
+queued
+  └─→ scheduled (only if scheduledAt was set)
+      └─→ sent (email sent to mail server)
+          ├─→ delivered (mail server confirms delivery)
+          │   └─→ opened, clicked, bounced, complained (events)
+          └─→ failed (delivery failed)
+```
+
+## Get Email Status
+
+Retrieve an email's current status and details.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/emails/email_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Node.js**
+```javascript
+const response = await fetch('https://api.tratto.email/v1/emails/email_abc123', {
+  headers: { 'Authorization': 'Bearer tratto_live_...' },
+});
+const { data } = await response.json();
+console.log('Status:', data.status);
+console.log('Created:', data.createdAt);
+console.log('Sent:', data.sentAt);
+```
+
+**Python**
+```python
+import requests
+
+response = requests.get(
+  'https://api.tratto.email/v1/emails/email_abc123',
+  headers={'Authorization': 'Bearer tratto_live_...'},
+)
+data = response.json()['data']
+print(f"Status: {data['status']}")
+print(f"Created: {data['createdAt']}")
+```
+
+**Response**
+```json
+{
+  "data": {
+    "id": "email_abc123",
+    "status": "delivered",
+    "from": "hello@yourdomain.com",
+    "to": "user@example.com",
+    "subject": "Welcome!",
+    "createdAt": "2025-06-30T12:00:00Z",
+    "sentAt": "2025-06-30T12:00:05Z",
+    "deliveredAt": "2025-06-30T12:00:10Z",
+    "scheduledAt": null,
+    "tags": []
+  }
+}
+```
+
+## Email Events
+
+**Events** are discrete tracking records for what happened to an email after it was sent. Unlike status (a single state), an email can have many events.
+
+### Event Types
+
+| Event Type | Description |
+|------------|-------------|
+| `sent` | Email was accepted by the mail server |
+| `delivered` | Mail server confirmed delivery to recipient's mailbox |
+| `opened` | Recipient opened the email (pixel tracking) |
+| `clicked` | Recipient clicked a link in the email |
+| `bounced` | Mail server rejected delivery (hard or soft bounce) |
+| `complained` | Recipient marked email as spam |
+| `unsubscribed` | Recipient clicked unsubscribe link |
+
+### Get Email Events
+
+Retrieve all events for a specific email.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/emails/email_abc123/events \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Node.js**
+```javascript
+const response = await fetch('https://api.tratto.email/v1/emails/email_abc123/events', {
+  headers: { 'Authorization': 'Bearer tratto_live_...' },
+});
+const { data } = await response.json();
+data.forEach(event => {
+  console.log(`${event.type} at ${event.occurredAt}`);
+});
+```
+
+**Python**
+```python
+import requests
+
+response = requests.get(
+  'https://api.tratto.email/v1/emails/email_abc123/events',
+  headers={'Authorization': 'Bearer tratto_live_...'},
+)
+events = response.json()['data']
+for event in events:
+  print(f"{event['type']} at {event['occurredAt']}")
+```
+
+**Response**
+```json
+{
+  "data": [
+    {
+      "id": "evt_001",
+      "type": "sent",
+      "emailId": "email_abc123",
+      "occurredAt": "2025-06-30T12:00:05Z"
+    },
+    {
+      "id": "evt_002",
+      "type": "delivered",
+      "emailId": "email_abc123",
+      "occurredAt": "2025-06-30T12:00:10Z"
+    },
+    {
+      "id": "evt_003",
+      "type": "opened",
+      "emailId": "email_abc123",
+      "occurredAt": "2025-06-30T12:05:00Z"
+    },
+    {
+      "id": "evt_004",
+      "type": "clicked",
+      "emailId": "email_abc123",
+      "occurredAt": "2025-06-30T12:06:00Z",
+      "metadata": {
+        "url": "https://yourdomain.com/offer?ref=email"
+      }
+    }
+  ]
+}
+```
+
+## Polling vs Webhooks
+
+### Polling (GET /v1/emails/{id})
+
+**When to use:**
+- Check status on-demand (user views email details in your dashboard)
+- Low-volume scenarios
+- One-off status checks
+
+**Pros:**
+- Simple to implement
+- No need for webhook infrastructure
+
+**Cons:**
+- Not real-time (you poll periodically)
+- Rate-limited
+- Higher latency
+
+**Example:**
+```javascript
+// Check every 10 seconds
+setInterval(async () => {
+  const response = await fetch('https://api.tratto.email/v1/emails/email_abc123', {
+    headers: { 'Authorization': 'Bearer tratto_live_...' },
+  });
+  const { data } = await response.json();
+  if (data.status === 'delivered') {
+    console.log('Email delivered!');
+    clearInterval();
+  }
+}, 10000);
+```
+
+### Webhooks (Real-time Push)
+
+**When to use:**
+- Real-time event processing
+- High-volume scenarios
+- Trigger downstream actions (email automation, analytics, etc.)
+
+**Pros:**
+- Real-time
+- No polling overhead
+- Efficient
+
+**Cons:**
+- Requires webhook endpoint
+- Must verify HMAC signatures
+- Handle retries and idempotency
+
+**Example:**
+```javascript
+// Your webhook endpoint receives events
+app.post('/webhooks/tratto', (req, res) => {
+  const event = req.body;
+  console.log(`Email ${event.emailId} was ${event.type}`);
+  
+  if (event.type === 'delivered') {
+    // Trigger automation
+  }
+  
+  res.status(200).json({ ok: true });
+});
+```
+
+See [Webhooks](/docs/en/webhooks) for setup.
+
+## Tracking Email Delivery
+
+### Understanding Bounce Types
+
+**Hard Bounce** — Permanent delivery failure
+- Invalid email address
+- Domain doesn't exist
+- User doesn't exist
+
+**Soft Bounce** — Temporary delivery failure
+- Mailbox full
+- Server temporarily unavailable
+- Message too large
+
+**Complaint** — Recipient marked as spam (don't re-send)
+
+### Auto-Unsubscribe
+
+When an email bounces or is complained, Tratto automatically:
+1. Updates the contact's status to `bounced` or `complained`
+2. Creates a bounce/complaint event
+3. Sends a webhook event (if configured)
+
+You can then:
+- Stop sending to bounced addresses
+- Implement re-engagement campaigns for complained addresses
+- Monitor bounce rates for domain health
+
+## Status Summary API
+
+Get aggregate statistics across multiple emails.
+
+**Coming soon:** Endpoint to query email statuses by status, date range, or tags.
+
+---
+
+## Next Steps
+
+- **Set up real-time webhooks?** See [Webhooks](/docs/en/webhooks)
+- **Send emails?** Go to [Send Email](/docs/en/send-email)
+- **Understand bounce/complaint handling?** Read [Deliverability](/docs/en/deliverability)

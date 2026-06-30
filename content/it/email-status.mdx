@@ -1,0 +1,302 @@
+---
+title: Stato e Ciclo di Vita dell'Email
+description: Comprendi gli stati di status e gli eventi di tracciamento
+---
+
+# Stato e Ciclo di Vita dell'Email
+
+Ogni email in Tratto ha uno **status** (lo stato dell'email) e **eventi** (cosa le è successo). Comprendi la differenza e come tracciarla.
+
+## Status vs Eventi
+
+- **Status** — Lo stato attuale dell'email (`queued`, `scheduled`, `sent`, `delivered`, `failed`)
+- **Eventi** — Record discreti di tracciamento (opened, clicked, bounced, complained)
+
+**Esempio:** Un'email può avere status `delivered` e anche avere eventi `opened`, `clicked`, e `clicked` di nuovo.
+
+## Ciclo di Vita dello Status dell'Email
+
+Un'email progredisce attraverso questi status:
+
+```
+                      ┌─ delivered ─┐
+                      │             │
+                      ▼             ▼
+  queued ──→ scheduled ──→ sent ────┤
+                                     │
+                                     └─ opened (tracking)
+                                     └─ clicked (tracking)
+                                     └─ bounced
+                                     └─ complained
+                                     └─ unsubscribed
+                                     
+                      ▼
+                    failed
+```
+
+### Definizioni dello Status
+
+| Status | Descrizione |
+|--------|-------------|
+| `queued` | Email è in coda, verrà inviata a breve (minuti) |
+| `scheduled` | Email è programmata per consegna futura (hai impostato `scheduledAt`) |
+| `sent` | Email è stata consegnata al server di posta, ma non ancora confermata dal server del destinatario |
+| `delivered` | Server di posta ha confermato ricezione e consegna (senza rimbalzi) |
+| `failed` | Consegna email non riuscita (dominio non valido, rate limit, mailbox piena, ecc.) |
+
+### Transizioni di Stato
+
+```
+queued
+  └─→ scheduled (solo se scheduledAt è stato impostato)
+      └─→ sent (email inviata al server di posta)
+          ├─→ delivered (server di posta conferma consegna)
+          │   └─→ opened, clicked, bounced, complained (eventi)
+          └─→ failed (consegna non riuscita)
+```
+
+## Ottieni lo Status dell'Email
+
+Recupera lo status attuale e i dettagli di un'email.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/emails/email_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Node.js**
+```javascript
+const response = await fetch('https://api.tratto.email/v1/emails/email_abc123', {
+  headers: { 'Authorization': 'Bearer tratto_live_...' },
+});
+const { data } = await response.json();
+console.log('Status:', data.status);
+console.log('Creata:', data.createdAt);
+console.log('Inviata:', data.sentAt);
+```
+
+**Python**
+```python
+import requests
+
+response = requests.get(
+  'https://api.tratto.email/v1/emails/email_abc123',
+  headers={'Authorization': 'Bearer tratto_live_...'},
+)
+data = response.json()['data']
+print(f"Status: {data['status']}")
+print(f"Creata: {data['createdAt']}")
+```
+
+**Risposta**
+```json
+{
+  "data": {
+    "id": "email_abc123",
+    "status": "delivered",
+    "from": "hello@tuodominio.it",
+    "to": "user@example.com",
+    "subject": "Benvenuto!",
+    "createdAt": "2025-06-30T12:00:00Z",
+    "sentAt": "2025-06-30T12:00:05Z",
+    "deliveredAt": "2025-06-30T12:00:10Z",
+    "scheduledAt": null,
+    "tags": []
+  }
+}
+```
+
+## Eventi Email
+
+Gli **eventi** sono record discreti di tracciamento per quello che è successo a un'email dopo l'invio. A differenza dello status (uno stato singolo), un'email può avere molti eventi.
+
+### Tipi di Evento
+
+| Tipo Evento | Descrizione |
+|-------------|-------------|
+| `sent` | Email è stata accettata dal server di posta |
+| `delivered` | Server di posta ha confermato consegna alla mailbox del destinatario |
+| `opened` | Destinatario ha aperto l'email (tracciamento pixel) |
+| `clicked` | Destinatario ha cliccato un link nell'email |
+| `bounced` | Server di posta ha rifiutato consegna (rimbalzo hard o soft) |
+| `complained` | Destinatario ha segnalato l'email come spam |
+| `unsubscribed` | Destinatario ha cliccato il link di annullamento iscrizione |
+
+### Ottieni Eventi Email
+
+Recupera tutti gli eventi per un'email specifica.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/emails/email_abc123/events \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Node.js**
+```javascript
+const response = await fetch('https://api.tratto.email/v1/emails/email_abc123/events', {
+  headers: { 'Authorization': 'Bearer tratto_live_...' },
+});
+const { data } = await response.json();
+data.forEach(event => {
+  console.log(`${event.type} at ${event.occurredAt}`);
+});
+```
+
+**Python**
+```python
+import requests
+
+response = requests.get(
+  'https://api.tratto.email/v1/emails/email_abc123/events',
+  headers={'Authorization': 'Bearer tratto_live_...'},
+)
+events = response.json()['data']
+for event in events:
+  print(f"{event['type']} at {event['occurredAt']}")
+```
+
+**Risposta**
+```json
+{
+  "data": [
+    {
+      "id": "evt_001",
+      "type": "sent",
+      "emailId": "email_abc123",
+      "occurredAt": "2025-06-30T12:00:05Z"
+    },
+    {
+      "id": "evt_002",
+      "type": "delivered",
+      "emailId": "email_abc123",
+      "occurredAt": "2025-06-30T12:00:10Z"
+    },
+    {
+      "id": "evt_003",
+      "type": "opened",
+      "emailId": "email_abc123",
+      "occurredAt": "2025-06-30T12:05:00Z"
+    },
+    {
+      "id": "evt_004",
+      "type": "clicked",
+      "emailId": "email_abc123",
+      "occurredAt": "2025-06-30T12:06:00Z",
+      "metadata": {
+        "url": "https://tuodominio.it/offerta?ref=email"
+      }
+    }
+  ]
+}
+```
+
+## Polling vs Webhook
+
+### Polling (GET /v1/emails/{id})
+
+**Quando usare:**
+- Controlla status su richiesta (utente visualizza dettagli email nel tuo dashboard)
+- Scenari a basso volume
+- Verifiche di status singole
+
+**Vantaggi:**
+- Semplice da implementare
+- Nessuna necessità di infrastruttura webhook
+
+**Svantaggi:**
+- Non real-time (esegui il polling periodicamente)
+- Rate-limited
+- Latenza più elevata
+
+**Esempio:**
+```javascript
+// Controlla ogni 10 secondi
+setInterval(async () => {
+  const response = await fetch('https://api.tratto.email/v1/emails/email_abc123', {
+    headers: { 'Authorization': 'Bearer tratto_live_...' },
+  });
+  const { data } = await response.json();
+  if (data.status === 'delivered') {
+    console.log('Email consegnata!');
+    clearInterval();
+  }
+}, 10000);
+```
+
+### Webhook (Push Real-Time)
+
+**Quando usare:**
+- Elaborazione eventi real-time
+- Scenari ad alto volume
+- Attivare azioni downstream (automazione email, analytics, ecc.)
+
+**Vantaggi:**
+- Real-time
+- Nessun overhead di polling
+- Efficiente
+
+**Svantaggi:**
+- Richiede endpoint webhook
+- Deve verificare le firme HMAC
+- Gestire i retry e l'idempotenza
+
+**Esempio:**
+```javascript
+// Il tuo endpoint webhook riceve gli eventi
+app.post('/webhooks/tratto', (req, res) => {
+  const event = req.body;
+  console.log(`Email ${event.emailId} was ${event.type}`);
+  
+  if (event.type === 'delivered') {
+    // Attiva automazione
+  }
+  
+  res.status(200).json({ ok: true });
+});
+```
+
+Vedi [Webhook](/docs/it/webhooks) per la configurazione.
+
+## Tracciare la Consegna Email
+
+### Comprendi i Tipi di Rimbalzo
+
+**Hard Bounce** — Fallimento permanente della consegna
+- Indirizzo email non valido
+- Dominio non esiste
+- Utente non esiste
+
+**Soft Bounce** — Fallimento temporaneo della consegna
+- Mailbox piena
+- Server temporaneamente non disponibile
+- Messaggio troppo grande
+
+**Complaint** — Destinatario ha segnalato come spam (non ri-inviare)
+
+### Auto-Unsubscribe
+
+Quando un'email rimbalza o è segnalata, Tratto automaticamente:
+1. Aggiorna lo status del contatto a `bounced` o `complained`
+2. Crea un evento bounce/complaint
+3. Invia un evento webhook (se configurato)
+
+Puoi quindi:
+- Smettere di inviare a indirizzi con rimbalzo
+- Implementare campagne di re-engagement per indirizzi segnalati
+- Monitorare i tassi di rimbalzo per la salute del dominio
+
+## API Riepilogo Status
+
+Ottieni statistiche aggregate su più email.
+
+**Coming soon:** Endpoint per interrogare gli status email per status, intervallo di date, o tag.
+
+---
+
+## Prossimi Passi
+
+- **Configurare webhook real-time?** Vedi [Webhook](/docs/it/webhooks)
+- **Inviare email?** Vai a [Invia Email](/docs/it/send-email)
+- **Comprendi la gestione bounce/complaint?** Leggi [Deliverability](/docs/it/deliverability)
