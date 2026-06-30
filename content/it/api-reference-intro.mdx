@@ -1,0 +1,67 @@
+---
+title: API Reference
+description: Documentazione completa dell'API REST per Tratto Email
+---
+
+# API Reference
+
+Documentazione completa dell'API REST per Tratto Email. Tutti gli endpoint richiedono autenticazione con una chiave API.
+
+## URL di Base
+
+```
+https://api.tratto.email/v1/
+```
+
+## Autenticazione
+
+Includi la tua chiave API come bearer token:
+
+```http
+Authorization: Bearer tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+## API Reference Interattiva
+
+Per documentazione dettagliata degli endpoint, esempi di richiesta/risposta, e un explorer API live, visita il [**riferimento interattivo**](/docs/api-reference).
+
+Il riferimento interattivo include:
+- **Documentazione completa degli endpoint** — Metodo, percorso, parametri, schema richiesta/risposta
+- **Requisiti di autenticazione** — Quali endpoint richiedono la chiave API
+- **Codici di errore** — Tutte le possibili risposte di errore
+- **Pannello Try it** — Fai richieste API reali dalla documentazione (la tua chiave API rimane nel browser)
+- **Esempi di codice** — cURL, JavaScript, Python
+
+## Link Rapidi
+
+- [Invia Email](/docs/it/send-email) — POST /emails
+- [Status Email](/docs/it/email-status) — GET /emails/{id}
+- [Domini](/docs/it/domains) — Verifica dei domini
+- [Template](/docs/it/templates) — Template di email
+- [Contatti](/docs/it/contacts) — Gestione contatti
+- [Webhook](/docs/it/webhooks) — Sottoscrizioni agli eventi
+- [Analytics](/docs/it/analytics) — Metriche e statistiche
+
+## Rate Limiting
+
+Tutte le richieste sono limitate a **500 per minuto** per chiave API. Vedi [Rate Limits](/docs/it/rate-limits) per dettagli.
+
+## Gestione Errori
+
+Tutti gli errori restituiscono JSON con codice e messaggio:
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Invalid or missing API key",
+    "docs": "https://docs.tratto.email/docs/authentication"
+  }
+}
+```
+
+Vedi [Error Codes](/docs/it/error-codes) per il riferimento completo.
+
+---
+
+👉 **Inizia dal [riferimento API interattivo](/docs/api-reference)** per esplorare tutti gli endpoint.
