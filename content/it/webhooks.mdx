@@ -1,0 +1,265 @@
+---
+title: Webhook — Setup, Eventi e Verifica Firma
+description: Ricevi gli eventi email in tempo reale tramite webhook
+---
+
+# Webhook: Setup, Eventi e Verifica Firma
+
+I **webhook** sono callback HTTP che notificano la tua app quando si verificano eventi (email consegnata, aperta, rimbalzata, ecc.). Invece di eseguire il polling dell'API, Tratto ti spinge gli eventi in tempo reale.
+
+## Registra un Webhook
+
+Crea un endpoint webhook.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/webhooks \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url":"https://tuoapi.com/webhooks/tratto",
+    "events":["sent","delivered","opened","clicked","bounced","complained","unsubscribed"]
+  }'
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "id": "wh_abc123",
+    "url": "https://tuoapi.com/webhooks/tratto",
+    "events": ["sent", "delivered", "opened", "clicked", "bounced", "complained", "unsubscribed"],
+    "secret": "whsec_xyz789...",
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+**Salva il `secret`** — lo userai per verificare le firme.
+
+## Eventi Webhook
+
+Tratto invia richieste `POST` al tuo URL quando si verificano questi eventi:
+
+| Evento | Payload |
+|--------|---------|
+| `sent` | Email accettata dal server di posta |
+| `delivered` | Server di posta ha confermato consegna |
+| `opened` | Destinatario ha aperto l'email (pixel tracciato) |
+| `clicked` | Destinatario ha cliccato un link |
+| `bounced` | Server di posta ha rifiutato consegna |
+| `complained` | Destinatario ha segnalato come spam |
+| `unsubscribed` | Destinatario ha cliccato annulla iscrizione |
+
+## Payload Webhook
+
+**Esempio:**
+```json
+{
+  "id": "evt_abc123",
+  "type": "delivered",
+  "emailId": "email_xyz789",
+  "recipient": "user@example.com",
+  "occurredAt": "2025-06-30T12:00:10Z"
+}
+```
+
+## Verifica Firma Webhook
+
+Ogni webhook è firmato con HMAC-SHA256 nell'header `x-tratto-signature`.
+
+**Sempre verifica le firme** per assicurarti che il webhook viene da Tratto.
+
+### Node.js
+
+```javascript
+const crypto = require('crypto');
+
+app.post('/webhooks/tratto', (req, res) => {
+  const signature = req.headers['x-tratto-signature'];
+  const secret = process.env.TRATTO_WEBHOOK_SECRET;
+  
+  // Calcola HMAC-SHA256 del body grezzo
+  const computed = crypto
+    .createHmac('sha256', secret)
+    .update(JSON.stringify(req.body))
+    .digest('hex');
+  
+  // Confronta firme
+  if (computed !== signature) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+  
+  // Processa evento
+  const event = req.body;
+  console.log(`Email ${event.emailId} was ${event.type}`);
+  
+  res.status(200).json({ ok: true });
+});
+```
+
+### Python
+
+```python
+import hmac
+import hashlib
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route('/webhooks/tratto', methods=['POST'])
+def tratto_webhook():
+    signature = request.headers.get('x-tratto-signature')
+    secret = os.getenv('TRATTO_WEBHOOK_SECRET')
+    
+    # Calcola HMAC-SHA256 del body grezzo
+    computed = hmac.new(
+        secret.encode(),
+        request.get_data(),
+        hashlib.sha256
+    ).hexdigest()
+    
+    # Confronta firme
+    if not hmac.compare_digest(computed, signature):
+        return {'error': 'Invalid signature'}, 401
+    
+    # Processa evento
+    event = request.get_json()
+    print(f"Email {event['emailId']} was {event['type']}")
+    
+    return {'ok': True}, 200
+```
+
+### PHP
+
+```php
+$signature = $_SERVER['HTTP_X_TRATTO_SIGNATURE'] ?? '';
+$secret = getenv('TRATTO_WEBHOOK_SECRET');
+$body = file_get_contents('php://input');
+
+$computed = hash_hmac('sha256', $body, $secret);
+
+if (!hash_equals($computed, $signature)) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Invalid signature']);
+    exit;
+}
+
+$event = json_decode($body, true);
+echo json_encode(['ok' => true]);
+```
+
+## Previeni Attacchi Replay
+
+Controlla il timestamp `occurredAt` per prevenire attacchi replay.
+
+```javascript
+const now = Date.now() / 1000;
+const eventTime = new Date(event.occurredAt).getTime() / 1000;
+
+// Rifiuta gli eventi più vecchi di 5 minuti
+if (now - eventTime > 300) {
+  return res.status(400).json({ error: 'Event too old' });
+}
+```
+
+## Ruota il Segreto Webhook
+
+Genera un nuovo segreto di firma.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/rotate-secret \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "id": "wh_abc123",
+    "secret": "whsec_new...",
+    "oldSecret": "whsec_old...",
+    "rotatedAt": "2025-06-30T12:05:00Z"
+  }
+}
+```
+
+Sia il segreto vecchio che nuovo funzionano per 24 ore durante la rotazione. Aggiorna la tua app per usare il nuovo segreto, poi il vecchio scade.
+
+## Evento di Test
+
+Invia un evento webhook di test per verificare la configurazione.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/test \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+Un evento `sent` di test viene postato al tuo URL immediatamente.
+
+## Elenca i Webhook
+
+Ottieni tutti i webhook registrati.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/webhooks \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Consegne Webhook
+
+Visualizza la cronologia delle consegne per un webhook.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/webhooks/wh_abc123/deliveries \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Risposta:**
+```json
+{
+  "data": [
+    {
+      "id": "del_001",
+      "webhookId": "wh_abc123",
+      "eventId": "evt_abc123",
+      "status": "success",
+      "statusCode": 200,
+      "deliveredAt": "2025-06-30T12:00:10Z"
+    },
+    {
+      "id": "del_002",
+      "webhookId": "wh_abc123",
+      "eventId": "evt_def456",
+      "status": "failed",
+      "statusCode": 500,
+      "retries": 3,
+      "nextRetryAt": "2025-06-30T12:10:00Z"
+    }
+  ]
+}
+```
+
+Tratto riprova le consegne fallite fino a 3 volte.
+
+## Elimina un Webhook
+
+Annulla la registrazione di un webhook.
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/webhooks/wh_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+---
+
+## Prossimi Passi
+
+- **Inviare email?** Vai a [Invia Email](/docs/it/send-email)
+- **Tracciare lo stato dell'email?** Vedi [Stato Email](/docs/it/email-status)
+- **Usare webhook nei flussi?** Vedi [Flussi](/docs/it/flows)

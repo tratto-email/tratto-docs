@@ -1,0 +1,157 @@
+---
+title: Analytics — Riepilogo e Timeseries
+description: Ottieni metriche di consegna e engagement email
+---
+
+# Analytics: Riepilogo e Timeseries
+
+Usa gli endpoint analytics per comprendere le prestazioni email nelle tue campagne e flussi.
+
+## Metriche di Riepilogo
+
+Ottieni metriche aggregate per un periodo di tempo.
+
+**cURL**
+```bash
+curl "https://api.tratto.email/v1/analytics/summary?period=30d" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Parametri di Query:**
+- `period` — Intervallo di tempo (`7d`, `30d`, `90d`, o intervallo di date specifico)
+- `templateId` — Filtra per template (opzionale)
+- `campaignId` — Filtra per campagna (opzionale)
+
+**Risposta:**
+```json
+{
+  "data": {
+    "period": "30d",
+    "metrics": {
+      "totalSent": 50000,
+      "delivered": 49500,
+      "opened": 24750,
+      "clicked": 7425,
+      "bounced": 400,
+      "complained": 100,
+      "unsubscribed": 50
+    },
+    "rates": {
+      "deliveryRate": 0.99,
+      "openRate": 0.50,
+      "clickRate": 0.15,
+      "bounceRate": 0.008,
+      "complaintRate": 0.002
+    }
+  }
+}
+```
+
+## Definizioni Metriche
+
+| Metrica | Definizione |
+|---------|-------------|
+| `totalSent` | Email inviate al server di posta |
+| `delivered` | Server di posta ha confermato consegna (nessun rimbalzo) |
+| `opened` | Destinatari unici che hanno aperto l'email |
+| `clicked` | Destinatari unici che hanno cliccato un link |
+| `bounced` | Server di posta ha rifiutato consegna (rimbalzo hard o soft) |
+| `complained` | Destinatari hanno segnalato come spam |
+| `unsubscribed` | Destinatari hanno cliccato link annulla iscrizione |
+
+## Tassi
+
+| Tasso | Calcolo |
+|-------|---------|
+| `deliveryRate` | delivered / totalSent |
+| `openRate` | opened / delivered |
+| `clickRate` | clicked / delivered |
+| `bounceRate` | bounced / totalSent |
+| `complaintRate` | complained / totalSent |
+
+## Dati Timeseries
+
+Ottieni scomposizione giornaliera delle metriche.
+
+**cURL**
+```bash
+curl "https://api.tratto.email/v1/analytics/timeseries?period=7d" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Risposta:**
+```json
+{
+  "data": [
+    {
+      "date": "2025-06-30",
+      "totalSent": 5000,
+      "delivered": 4950,
+      "opened": 2475,
+      "clicked": 742,
+      "bounced": 40,
+      "complained": 10
+    },
+    {
+      "date": "2025-06-29",
+      "totalSent": 4800,
+      "delivered": 4752,
+      "opened": 2376,
+      "clicked": 713,
+      "bounced": 38,
+      "complained": 10
+    }
+  ]
+}
+```
+
+## Limitazioni Analytics
+
+- **Finestra:** Max lookback di 90 giorni
+- **Granularità:** Bucket giornalieri
+- **Dati a livello di email:** Non disponibili negli endpoint analytics (usa l'API [Stato Email](/docs/it/email-status) per email individuali)
+- **Ritardi:** Metriche aggiornate con ~5 minuti di latenza
+
+## Best Practice
+
+### 1. Monitora il Tasso di Consegna
+
+Target 99%+. Tassi più bassi indicano problemi di dominio o igiene dell'elenco.
+
+```javascript
+if (data.rates.deliveryRate < 0.95) {
+  alert('Low delivery rate detected');
+}
+```
+
+### 2. Traccia i Tassi di Apertura e Clic
+
+Benchmark tipici:
+- **Tasso di apertura:** 20-50% (varia per settore)
+- **Tasso di clic:** 5-20% (varia per settore)
+
+Tassi bassi suggeriscono problemi di contenuto o tempistica.
+
+### 3. Monitora i Tassi di Rimbalzo e Reclamo
+
+- **Tasso di rimbalzo:** < 2% accettabile (< 5% è OK)
+- **Tasso di reclamo:** < 0.1% accettabile
+
+Tassi alti danneggiano la reputazione del mittente e la deliverability.
+
+### 4. Analisi Segmentata
+
+Filtra per template o campagna per identificare gli invii con prestazioni inferiori:
+
+```bash
+curl "https://api.tratto.email/v1/analytics/summary?period=30d&templateId=tmpl_abc123" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+---
+
+## Prossimi Passi
+
+- **Visualizzare gli eventi a livello di email?** Usa l'API [Stato Email](/docs/it/email-status)
+- **Tracciare gli eventi in tempo reale?** Configura [Webhook](/docs/it/webhooks)
+- **Comprendere la deliverability?** Vedi [Deliverability](/docs/it/deliverability)

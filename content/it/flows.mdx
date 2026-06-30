@@ -1,0 +1,245 @@
+---
+title: Flussi e Automazione
+description: Crea flussi email automatizzati con trigger e step
+---
+
+# Flussi e Automazione: Trigger e Step
+
+Un **flusso** è un motore di automazione che iscrive i contatti ed esegue una sequenza di step in base ai trigger.
+
+## Fondamenti del Flusso
+
+```
+Trigger (es., contatto si unisce audience)
+  ↓
+Step 1 (es., invia email)
+  ↓
+Step 2 (es., attendi 3 giorni)
+  ↓
+Step 3 (es., invia un'altra email)
+  ↓
+Step 4 (es., branchia su condizione)
+  ├─ Percorso vero → invia email
+  └─ Percorso falso → non fare nulla
+```
+
+## Crea un Flusso
+
+Crea un flusso con un trigger e una sequenza di step.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/flows \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":"Serie di Benvenuto",
+    "trigger":{"type":"contact_joins_audience","audienceId":"aud_abc123"},
+    "steps":[
+      {"type":"send_email","templateId":"tmpl_welcome"},
+      {"type":"wait","duration":"3d"},
+      {"type":"send_email","templateId":"tmpl_follow_up"}
+    ]
+  }'
+```
+
+## Tipi di Trigger
+
+| Trigger | Descrizione |
+|---------|-------------|
+| `contact_joins_audience` | Iscrive quando contatto corrisponde alle regole audience |
+| `contact_tag_added` | Iscrive quando tag è aggiunto al contatto |
+| `contact_tag_removed` | Iscrive quando tag è rimosso dal contatto |
+| `email_event` | Iscrive quando email è aperta/cliccata/rimbalzata/segnalata |
+| `manual` | Iscrive tramite API o dashboard (no auto-trigger) |
+
+### Esempio: Email Event Trigger
+
+```json
+{
+  "type": "email_event",
+  "event": "opened",
+  "templateId": "tmpl_abc123"
+}
+```
+
+Iscrive i contatti che aprono un template specifico.
+
+## Tipi di Step
+
+### send_email
+
+Invia un'email (immediatamente o con ritardo).
+
+```json
+{
+  "type": "send_email",
+  "templateId": "tmpl_abc123",
+  "delay": "1h"
+}
+```
+
+### wait
+
+Pausa per una durata prima del prossimo step.
+
+```json
+{
+  "type": "wait",
+  "duration": "3d"
+}
+```
+
+Durate: `1h`, `2d`, `1w`, ecc.
+
+### branch
+
+Branchia condizionale basata su eventi email o proprietà contatto.
+
+```json
+{
+  "type": "branch",
+  "condition": "email_opened",
+  "truePath": [
+    {"type": "send_email", "templateId": "tmpl_engaged"}
+  ],
+  "falsePath": [
+    {"type": "send_email", "templateId": "tmpl_re_engage"}
+  ]
+}
+```
+
+### update_contact
+
+Aggiorna status contatto, tag, o metadata.
+
+```json
+{
+  "type": "update_contact",
+  "updates": {
+    "status": "unsubscribed",
+    "tags": ["completed_flow"]
+  }
+}
+```
+
+### webhook_call
+
+Chiama un webhook esterno.
+
+```json
+{
+  "type": "webhook_call",
+  "url": "https://tuoapi.com/webhook",
+  "method": "POST",
+  "body": {"contactId": "{{contactId}}", "event": "flow_completed"}
+}
+```
+
+## Attiva un Flusso
+
+Attiva un flusso in modo che inizi a iscrivere i contatti.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/flows/flow_abc123/activate \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Disattiva un Flusso
+
+Interrompi un flusso dall'iscrivere nuovi contatti (le iscrizioni esistenti continuano).
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/flows/flow_abc123/deactivate \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Iscrizioni
+
+Visualizza i contatti iscritti a un flusso.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/flows/flow_abc123/enrollments \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Risposta:**
+```json
+{
+  "data": [
+    {"enrollmentId": "enr_001", "contactId": "cont_abc", "status": "active", "enrolledAt": "2025-06-30T12:00:00Z"},
+    {"enrollmentId": "enr_002", "contactId": "cont_def", "status": "completed", "enrolledAt": "2025-06-30T12:05:00Z"}
+  ],
+  "pagination": {"hasMore": true, "nextCursor": "..."}
+}
+```
+
+**Status di iscrizione:**
+- `active` — Attualmente nel flusso
+- `completed` — Ha finito tutti gli step
+- `paused` — Temporaneamente in pausa (azione utente)
+- `exited` — Ha lasciato il flusso (es., annullato iscrizione)
+
+## Elenca i Flussi
+
+Ottieni tutti i flussi.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/flows \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Ottieni Dettagli Flusso
+
+Recupera un flusso specifico.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/flows/flow_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Elimina un Flusso
+
+Rimuovi un flusso.
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/flows/flow_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Best Practice per i Flussi
+
+### 1. Inizia Semplice
+
+Inizia con un trigger di base + 1-2 step. Itera in base ai risultati.
+
+### 2. Usa Nomi Significativi
+
+✅ `Follow-up Post-Acquisto 7 Giorni`  
+❌ `Flusso 1`
+
+### 3. Test con Trigger Manuale
+
+Usa il tipo di trigger `manual` per testare la logica del flusso prima dei auto-trigger.
+
+### 4. Monitora le Iscrizioni
+
+Controlla quanti contatti si stanno iscrivendo e progredendo attraverso gli step.
+
+### 5. Usa gli Step Wait Strategicamente
+
+Non spammare — consenti tempo tra le email per l'engagement.
+
+---
+
+## Prossimi Passi
+
+- **Tracciare gli eventi del flusso?** Configura [Webhook](/docs/it/webhooks)
+- **Inviare via API?** Vedi [Invia Email](/docs/it/send-email)
+- **Usare template nei flussi?** Vai a [Template](/docs/it/templates)
