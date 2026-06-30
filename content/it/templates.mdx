@@ -1,0 +1,262 @@
+---
+title: Template — Crea, Versiona e Test
+description: Gestisci template email versionati con sostituzione di variabili
+---
+
+# Template: Crea, Versiona e Test
+
+I **template** sono template email riutilizzabili con variabili placeholder. Invece di comporre HTML nel codice ogni volta, definisci un template una volta e invialo centinaia di volte con variabili diverse.
+
+## Crea un Template
+
+Crea un template con subject, text e HTML con placeholder.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/templates \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":"Email di Benvenuto",
+    "subject":"Benvenuto, {{firstName}}!",
+    "text":"Ciao {{firstName}}, benvenuto a bordo!",
+    "html":"<h1>Benvenuto, {{firstName}}!</h1><p>Il tuo codice: {{code}}</p>"
+  }'
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "id": "tmpl_abc123",
+    "name": "Email di Benvenuto",
+    "subject": "Benvenuto, {{firstName}}!",
+    "text": "Ciao {{firstName}}, benvenuto a bordo!",
+    "html": "<h1>Benvenuto, {{firstName}}!</h1><p>Il tuo codice: {{code}}</p>",
+    "status": "draft",
+    "version": 1,
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+## Pubblica un Template
+
+Sposta un template da `draft` a `published` in modo che possa essere usato per l'invio.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/templates/tmpl_abc123/publish \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Invia Usando un Template
+
+Invia un'email usando un template con variabili.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from":"hello@tuodominio.it",
+    "to":"user@example.com",
+    "templateId":"tmpl_abc123",
+    "variables":{
+      "firstName":"Alice",
+      "code":"SECRET123"
+    }
+  }'
+```
+
+Il template si renderizza:
+```
+Subject: Benvenuto, Alice!
+Text: Ciao Alice, benvenuto a bordo!
+HTML: <h1>Benvenuto, Alice!</h1><p>Il tuo codice: SECRET123</p>
+```
+
+## Aggiorna un Template
+
+Aggiorna un template — questo crea una nuova versione, lasciando intatte le versioni precedenti.
+
+**cURL**
+```bash
+curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject":"Benvenuto di nuovo, {{firstName}}!",
+    "html":"<h1>Benvenuto di nuovo, {{firstName}}!</h1><p>Codice: {{code}}</p>"
+  }'
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "id": "tmpl_abc123",
+    "version": 2,
+    "status": "draft",
+    "createdAt": "2025-06-30T12:05:00Z"
+  }
+}
+```
+
+La nuova versione (2) è in status `draft`. Pubblicala prima di usarla negli invii.
+
+## Cronologia delle Versioni
+
+Ottieni tutte le versioni di un template.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/templates/tmpl_abc123/versions \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Risposta:**
+```json
+{
+  "data": [
+    {
+      "version": 2,
+      "status": "draft",
+      "subject": "Benvenuto di nuovo, {{firstName}}!",
+      "createdAt": "2025-06-30T12:05:00Z"
+    },
+    {
+      "version": 1,
+      "status": "published",
+      "subject": "Benvenuto, {{firstName}}!",
+      "createdAt": "2025-06-30T12:00:00Z"
+    }
+  ]
+}
+```
+
+## Ripristina una Versione Precedente
+
+Torna a una versione precedente.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/templates/tmpl_abc123/versions/1/restore \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+Questo crea una nuova versione (3) con il contenuto della versione 1 in status `draft`.
+
+## Invio di Test
+
+Invia un'email di test usando il template per verificare che appaia corretta.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/templates/tmpl_abc123/test-send \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to":"your-email@example.com",
+    "variables":{
+      "firstName":"Alice",
+      "code":"TEST123"
+    }
+  }'
+```
+
+Un'email di test viene inviata immediatamente al tuo indirizzo in modo che tu possa esaminarla nella tua inbox.
+
+## Elenca i Template
+
+Ottieni tutti i template per il tuo tenant.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/templates \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Ottieni un Template
+
+Recupera un template specifico.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/templates/tmpl_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Elimina un Template
+
+Elimina permanentemente un template (non può essere annullato).
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/templates/tmpl_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+<Callout type="warning">
+L'eliminazione di un template non può essere annullata. Le campagne e i flussi che usano quel template falliranno.
+</Callout>
+
+## Sintassi Variabile del Template
+
+Usa le doppie graffe `{{variableName}}` per i placeholder. Le variabili fanno distinzione tra maiuscole e minuscole.
+
+**Esempio:**
+```
+Subject: Ciao {{firstName}}!
+HTML: <p>La tua email è {{email}}</p>
+```
+
+**Invio:**
+```json
+{
+  "variables": {
+    "firstName": "Alice",
+    "email": "alice@example.com"
+  }
+}
+```
+
+**Renderizzato:**
+```
+Subject: Ciao Alice!
+HTML: <p>La tua email è alice@example.com</p>
+```
+
+## Best Practice
+
+### 1. Usa Nomi Variabili Semantici
+
+✅ `{{firstName}}`, `{{orderID}}`, `{{confirmationCode}}`  
+❌ `{{x}}`, `{{var1}}`, `{{v}}`
+
+### 2. Fornisci Fallback
+
+Se una variabile manca, il rendering fallirà. Fornisci valori predefiniti:
+
+```html
+<p>Ciao {{firstName}}, benvenuto a {{companyName}}!</p>
+```
+
+Durante l'invio, includi sempre entrambe le variabili.
+
+### 3. Usa Template per Invii Bulk
+
+Non comporre HTML per ogni email — usa template + variabili per consistenza e riutilizzabilità.
+
+### 4. Test Prima di Pubblicare
+
+Sempre fai un test-send di un template prima di pubblicarlo per catturare problemi di rendering.
+
+---
+
+## Prossimi Passi
+
+- **Inviare con un template?** Vedi [Invia Email](/docs/it/send-email)
+- **Usare i template nelle campagne?** Vai a [Campagne](/docs/it/campaigns)
+- **Usare i template nei flussi?** Vedi [Flussi](/docs/it/flows)

@@ -1,0 +1,173 @@
+---
+title: Audience — Segmentazione
+description: Crea audience basate su regole per campagne e flussi
+---
+
+# Audience: Segmentazione
+
+Un' **audience** è un gruppo di contatti definito da regole. Usa le audience per segmentare i tuoi contatti per campagne e flussi mirati.
+
+## Crea un'Audience
+
+Definisci un'audience usando regole di filtraggio.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/audiences \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":"Iscritti Newsletter VIP",
+    "rules":[
+      {"field":"status","operator":"equals","value":"subscribed"},
+      {"field":"tags","operator":"contains","value":"vip"}
+    ]
+  }'
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "id": "aud_abc123",
+    "name": "Iscritti Newsletter VIP",
+    "rules": [...],
+    "contactCount": 1250,
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+## Tipi di Regole
+
+| Campo | Operatori | Esempio |
+|-------|-----------|---------|
+| `status` | `equals`, `notEquals` | `subscribed`, `bounced` |
+| `tags` | `contains`, `notContains` | L'audience ha contatti taggati "vip" |
+| `metadata.field` | `equals`, `notEquals`, `greaterThan`, `lessThan` | `plan = "pro"`, `accountValue > 500` |
+| `createdAt` | `after`, `before` | Contatti creati dopo 1 Gen 2025 |
+
+## Regole Multiple (Logica AND)
+
+Tutte le regole devono corrispondere:
+
+```json
+{
+  "rules": [
+    {"field": "status", "operator": "equals", "value": "subscribed"},
+    {"field": "tags", "operator": "contains", "value": "newsletter"},
+    {"field": "metadata.plan", "operator": "equals", "value": "pro"}
+  ]
+}
+```
+
+Questa audience include contatti che sono:
+- Status: subscribed **E**
+- Hanno tag: newsletter **E**
+- Metadata.plan: pro
+
+## Aggiungi Contatti Manualmente
+
+In aggiunta alle regole, aggiungi manualmente contatti specifici.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/audiences/aud_abc123/contacts \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contactIds":["cont_abc123","cont_def456"]
+  }'
+```
+
+## Dinamica vs Statica
+
+- **Dinamica** — Le regole vengono rivalutate; l'appartenenza si aggiorna quando lo status del contatto cambia
+- **Statica** — Elenco di contatti fisso; non si aggiorna automaticamente
+
+Per impostazione predefinita, le audience sono **dinamiche** se usi regole, **statiche** se solo aggiunte manualmente.
+
+## Elenca le Audience
+
+Ottieni tutte le audience per il tuo tenant.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/audiences \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Ottieni Dettagli dell'Audience
+
+Recupera un'audience specifica.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/audiences/aud_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "id": "aud_abc123",
+    "name": "Iscritti Newsletter VIP",
+    "rules": [...],
+    "contactCount": 1250,
+    "type": "dynamic",
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+## Usare le Audience nelle Campagne
+
+Invia una campagna a un'intera audience.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/campaigns \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":"Offerta Q3 VIP",
+    "templateId":"tmpl_abc123",
+    "audienceId":"aud_abc123"
+  }'
+```
+
+## Usare le Audience nei Flussi
+
+Attiva un flusso quando un contatto si unisce a un'audience.
+
+```json
+{
+  "name": "Benvenuto VIP",
+  "trigger": {
+    "type": "contact_joins_audience",
+    "audienceId": "aud_abc123"
+  },
+  "steps": [...]
+}
+```
+
+Vedi [Flussi](/docs/it/flows) per i dettagli.
+
+## Elimina un'Audience
+
+Rimuovi un'audience (i contatti non vengono eliminati).
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/audiences/aud_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+---
+
+## Prossimi Passi
+
+- **Inviare a un'audience?** Vai a [Campagne](/docs/it/campaigns)
+- **Attivare flussi all'unione dell'audience?** Vedi [Flussi](/docs/it/flows)
+- **Taggare contatti?** Torna a [Contatti](/docs/it/contacts)

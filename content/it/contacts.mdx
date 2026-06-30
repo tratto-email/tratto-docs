@@ -1,0 +1,230 @@
+---
+title: Contatti — Crea, Importa e Status
+description: Gestisci contatti email con status, tag e metadata
+---
+
+# Contatti: Crea, Importa e Status
+
+I **contatti** sono i destinatari delle tue email. Creali individualmente, importali in massa da CSV, gestisci il loro status e traccia rimbalzi/reclami.
+
+## Crea un Contatto
+
+Crea un singolo contatto.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/contacts \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email":"user@example.com",
+    "firstName":"Alice",
+    "lastName":"Smith",
+    "status":"subscribed",
+    "tags":["vip","newsletter"],
+    "metadata":{"plan":"pro","signupDate":"2025-01-01"}
+  }'
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "id": "cont_abc123",
+    "email": "user@example.com",
+    "firstName": "Alice",
+    "lastName": "Smith",
+    "status": "subscribed",
+    "tags": ["vip", "newsletter"],
+    "metadata": { "plan": "pro", "signupDate": "2025-01-01" },
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+## Importazione Bulk di Contatti
+
+Importa molti contatti da un file CSV.
+
+**Formato CSV:**
+```csv
+email,firstName,lastName,tags,metadata.plan
+alice@example.com,Alice,Smith,"vip,newsletter",pro
+bob@example.com,Bob,Jones,"newsletter",free
+carol@example.com,Carol,Davis,,pro
+```
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/contacts/import \
+  -H "Authorization: Bearer tratto_live_..." \
+  -F "file=@contacts.csv"
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "jobId": "imp_job_xyz",
+    "status": "pending",
+    "totalCount": 3,
+    "processedCount": 0,
+    "errorCount": 0,
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+Controlla lo status del job di importazione in seguito.
+
+## Controlla lo Status di Importazione
+
+Monitora un job di importazione bulk.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/contacts/import/imp_job_xyz \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "jobId": "imp_job_xyz",
+    "status": "completed",
+    "totalCount": 3,
+    "processedCount": 3,
+    "errorCount": 0,
+    "createdAt": "2025-06-30T12:00:00Z",
+    "completedAt": "2025-06-30T12:02:00Z"
+  }
+}
+```
+
+Status: `pending`, `processing`, `completed`, `failed`
+
+## Elenca i Contatti
+
+Recupera tutti i contatti con filtraggio opzionale.
+
+**cURL**
+```bash
+curl "https://api.tratto.email/v1/contacts?status=subscribed&limit=50" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Parametri di Query:**
+- `status` — Filtra per status (`subscribed`, `unsubscribed`, `bounced`, `complained`)
+- `limit` — Max risultati per pagina (default 50, max 100)
+- `after` — Cursor per paginazione
+
+**Risposta:**
+```json
+{
+  "data": [
+    { "id": "cont_abc123", "email": "alice@example.com", ... },
+    { "id": "cont_def456", "email": "bob@example.com", ... }
+  ],
+  "pagination": {
+    "hasMore": true,
+    "nextCursor": "Y3Vyc29yOnZhbHVl"
+  }
+}
+```
+
+## Ottieni un Contatto
+
+Recupera un contatto specifico per ID o email.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/contacts/cont_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Aggiorna un Contatto
+
+Aggiorna i dettagli di un contatto (status, tag, metadata).
+
+**cURL**
+```bash
+curl -X PATCH https://api.tratto.email/v1/contacts/cont_abc123 \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status":"unsubscribed",
+    "tags":["unsubscribed"],
+    "metadata":{"unsubscribedAt":"2025-06-30T12:00:00Z"}
+  }'
+```
+
+## Valori dello Status del Contatto
+
+| Status | Significato |
+|--------|-------------|
+| `subscribed` | Contatto attivo, può ricevere email |
+| `unsubscribed` | Contatto ha rinunciato (manualmente o tramite link di annullamento iscrizione) |
+| `bounced` | Email ha rimbalzato (indirizzo non valido) |
+| `complained` | Contatto ha segnalato come spam |
+
+**Auto-aggiornamenti:**
+- Quando un'email rimbalza → status diventa `bounced`
+- Quando un contatto clicca annulla iscrizione → status diventa `unsubscribed`
+- Quando un'email è segnalata → status diventa `complained`
+
+## Tag
+
+Usa i tag per organizzare i contatti in gruppi logici:
+
+- `vip` — Clienti di alto valore
+- `newsletter` — Iscritti newsletter
+- `beta` — Membri programma beta
+- `churned` — Clienti a rischio
+
+**Casi d'uso dei tag:**
+- Segmenta campagne per tag
+- Filtra contatti per flussi specifici
+- Traccia coorti
+
+## Metadata
+
+Metadata è un oggetto JSON a forma libera per proprietà personalizzate:
+
+```json
+{
+  "metadata": {
+    "plan": "pro",
+    "signupDate": "2025-01-01",
+    "lastPurchase": "2025-06-15",
+    "accountValue": 599.99
+  }
+}
+```
+
+Usa metadata per:
+- Archiviare proprietà personalizzate
+- Filtrare audience per condizioni metadata
+- Personalizzare contenuto email con variabili
+
+## Elimina un Contatto
+
+Rimuovi permanentemente un contatto.
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/contacts/cont_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+<Callout type="warning">
+L'eliminazione di un contatto è permanente. Usa lo status `unsubscribed` invece per disattivare senza eliminare.
+</Callout>
+
+---
+
+## Prossimi Passi
+
+- **Usare contatti nelle campagne?** Vedi [Campagne](/docs/it/campaigns)
+- **Segmentare contatti in audience?** Vai a [Audience](/docs/it/audiences)
+- **Usare metadata contatto nei template?** Vedi [Template](/docs/it/templates)

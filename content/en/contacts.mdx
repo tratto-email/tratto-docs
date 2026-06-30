@@ -1,0 +1,230 @@
+---
+title: Contacts — Create, Import & Status
+description: Manage email contacts with status, tags, and metadata
+---
+
+# Contacts: Create, Import & Status
+
+**Contacts** are the recipients of your emails. Create them individually, bulk-import from CSV, manage their status, and track bounces/complaints.
+
+## Create a Contact
+
+Create a single contact.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/contacts \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email":"user@example.com",
+    "firstName":"Alice",
+    "lastName":"Smith",
+    "status":"subscribed",
+    "tags":["vip","newsletter"],
+    "metadata":{"plan":"pro","signupDate":"2025-01-01"}
+  }'
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "cont_abc123",
+    "email": "user@example.com",
+    "firstName": "Alice",
+    "lastName": "Smith",
+    "status": "subscribed",
+    "tags": ["vip", "newsletter"],
+    "metadata": { "plan": "pro", "signupDate": "2025-01-01" },
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+## Bulk Import Contacts
+
+Import many contacts from a CSV file.
+
+**CSV Format:**
+```csv
+email,firstName,lastName,tags,metadata.plan
+alice@example.com,Alice,Smith,"vip,newsletter",pro
+bob@example.com,Bob,Jones,"newsletter",free
+carol@example.com,Carol,Davis,,pro
+```
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/contacts/import \
+  -H "Authorization: Bearer tratto_live_..." \
+  -F "file=@contacts.csv"
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "jobId": "imp_job_xyz",
+    "status": "pending",
+    "totalCount": 3,
+    "processedCount": 0,
+    "errorCount": 0,
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+Check the import job status later.
+
+## Check Import Status
+
+Monitor a bulk import job.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/contacts/import/imp_job_xyz \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "jobId": "imp_job_xyz",
+    "status": "completed",
+    "totalCount": 3,
+    "processedCount": 3,
+    "errorCount": 0,
+    "createdAt": "2025-06-30T12:00:00Z",
+    "completedAt": "2025-06-30T12:02:00Z"
+  }
+}
+```
+
+Statuses: `pending`, `processing`, `completed`, `failed`
+
+## List Contacts
+
+Retrieve all contacts with optional filtering.
+
+**cURL**
+```bash
+curl "https://api.tratto.email/v1/contacts?status=subscribed&limit=50" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Query Parameters:**
+- `status` — Filter by status (`subscribed`, `unsubscribed`, `bounced`, `complained`)
+- `limit` — Max results per page (default 50, max 100)
+- `after` — Cursor for pagination
+
+**Response:**
+```json
+{
+  "data": [
+    { "id": "cont_abc123", "email": "alice@example.com", ... },
+    { "id": "cont_def456", "email": "bob@example.com", ... }
+  ],
+  "pagination": {
+    "hasMore": true,
+    "nextCursor": "Y3Vyc29yOnZhbHVl"
+  }
+}
+```
+
+## Get a Contact
+
+Retrieve a specific contact by ID or email.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/contacts/cont_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Update a Contact
+
+Update a contact's details (status, tags, metadata).
+
+**cURL**
+```bash
+curl -X PATCH https://api.tratto.email/v1/contacts/cont_abc123 \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status":"unsubscribed",
+    "tags":["unsubscribed"],
+    "metadata":{"unsubscribedAt":"2025-06-30T12:00:00Z"}
+  }'
+```
+
+## Contact Status Values
+
+| Status | Meaning |
+|--------|---------|
+| `subscribed` | Active contact, can receive emails |
+| `unsubscribed` | Contact opted out (manually or via unsubscribe link) |
+| `bounced` | Email hard-bounced (invalid address) |
+| `complained` | Contact marked as spam |
+
+**Auto-updates:**
+- When an email bounces → status becomes `bounced`
+- When a contact clicks unsubscribe → status becomes `unsubscribed`
+- When an email is complained → status becomes `complained`
+
+## Tags
+
+Use tags to organize contacts into logical groups:
+
+- `vip` — High-value customers
+- `newsletter` — Newsletter subscribers
+- `beta` — Beta program members
+- `churned` — At-risk customers
+
+**Tagging use cases:**
+- Segment campaigns by tag
+- Filter contacts for specific flows
+- Track cohorts
+
+## Metadata
+
+Metadata is a free-form JSON object for custom properties:
+
+```json
+{
+  "metadata": {
+    "plan": "pro",
+    "signupDate": "2025-01-01",
+    "lastPurchase": "2025-06-15",
+    "accountValue": 599.99
+  }
+}
+```
+
+Use metadata to:
+- Store custom properties
+- Filter audiences by metadata conditions
+- Personalize email content with variables
+
+## Delete a Contact
+
+Permanently remove a contact.
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/contacts/cont_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+<Callout type="warning">
+Deleting a contact is permanent. Use status `unsubscribed` instead to deactivate without deleting.
+</Callout>
+
+---
+
+## Next Steps
+
+- **Use contacts in campaigns?** See [Campaigns](/docs/en/campaigns)
+- **Segment contacts into audiences?** Go to [Audiences](/docs/en/audiences)
+- **Use contact metadata in templates?** See [Templates](/docs/en/templates)

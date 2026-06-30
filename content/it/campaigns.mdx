@@ -1,0 +1,220 @@
+---
+title: Campagne — Draft, Programma e Invia
+description: Crea e invia campagne email alle audience
+---
+
+# Campagne: Draft, Programma e Invia
+
+Una **campagna** è una trasmissione email una tantum a un'audience. Crea una campagna, opzionalmente testala, poi inviala a centinaia o migliaia di destinatari.
+
+## Crea una Campagna (Draft)
+
+Crea una campagna in status draft.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/campaigns \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":"Saldi Estivi Q3",
+    "templateId":"tmpl_abc123",
+    "audienceId":"aud_abc123"
+  }'
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "id": "camp_xyz789",
+    "name": "Saldi Estivi Q3",
+    "status": "draft",
+    "templateId": "tmpl_abc123",
+    "audienceId": "aud_abc123",
+    "contactCount": 5000,
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+## Invio di Test
+
+Invia un'email di test prima del lancio per assicurarti che tutto appaia corretto.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/test-send \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"to":"your-email@example.com"}'
+```
+
+Un'email di test viene inviata al tuo indirizzo immediatamente.
+
+## Invia Immediatamente
+
+Invia la campagna a tutti i contatti nell'audience proprio adesso.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/send \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "id": "camp_xyz789",
+    "status": "sending",
+    "sentAt": "2025-06-30T12:05:00Z",
+    "contactCount": 5000
+  }
+}
+```
+
+Lo status della campagna diventa `sending`, poi `sent` al completamento.
+
+## Programma per Dopo
+
+Programma la campagna per l'invio a un orario specifico (ISO 8601).
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/send \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"sendAt":"2025-07-01T09:00:00Z"}'
+```
+
+Lo status della campagna diventa `scheduled`. Verrà inviata automaticamente all'orario specificato.
+
+## Ciclo di Vita dello Status della Campagna
+
+```
+draft
+  ├─→ (test-send)
+  └─→ send (immediatamente)
+      └─→ sending
+          └─→ sent
+```
+
+O:
+
+```
+draft
+  ├─→ (test-send)
+  └─→ send (programmato)
+      └─→ scheduled
+          └─→ sending
+              └─→ sent
+```
+
+## Pausa una Campagna
+
+Interrompi una campagna programmata o in corso.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/pause \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+Le campagne in pausa possono essere riprese o eliminate (ma non ri-inviate così com'è).
+
+## Ottieni Statistiche Campagna
+
+Visualizza le statistiche di consegna dopo l'invio.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/campaigns/camp_xyz789/stats \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "totalSent": 5000,
+    "delivered": 4950,
+    "opened": 2475,
+    "clicked": 742,
+    "bounced": 40,
+    "complained": 10,
+    "deliveryRate": 0.99,
+    "openRate": 0.50,
+    "clickRate": 0.15
+  }
+}
+```
+
+## Elenca le Campagne
+
+Ottieni tutte le campagne.
+
+**cURL**
+```bash
+curl "https://api.tratto.email/v1/campaigns?status=sent&limit=50" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Parametri di query:**
+- `status` — Filtra per status (`draft`, `scheduled`, `sending`, `sent`, `paused`)
+- `limit` — Risultati per pagina (default 50, max 100)
+
+## Ottieni Dettagli Campagna
+
+Recupera una campagna specifica.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/campaigns/camp_xyz789 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Elimina una Campagna
+
+Rimuovi una campagna (puoi eliminare solo se non ancora inviata).
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/campaigns/camp_xyz789 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Best Practice per le Campagne
+
+### 1. Testa Sempre Prima
+
+Invia un'email di test a te stesso prima del lancio a qualsiasi audience.
+
+### 2. Usa Nomi Descrittivi
+
+✅ `Saldi Estivi Q3 - Segmento Newsletter`  
+❌ `Campagna 1`, `Test`
+
+### 3. Rivedi la Dimensione dell'Audience
+
+Controlla che l'audience abbia il giusto numero di contatti prima dell'invio. Un'audience con 0 contatti significa che nessuno la riceve.
+
+### 4. Programma Durante i Tempi Ottimali
+
+Considera il fuso orario della tua audience quando programmi. Inizio mattina o pausa pranzo di solito vedono tassi di apertura più alti.
+
+### 5. Monitora le Statistiche di Consegna
+
+Dopo l'invio, esamina i tassi di rimbalzo, reclamo e apertura per comprendere l'engagement.
+
+### 6. Crea Nuove Campagne, Non Reinviare
+
+Le campagne vengono inviate una volta. Per inviare di nuovo, crea una nuova campagna.
+
+---
+
+## Prossimi Passi
+
+- **Tracciare gli eventi della campagna?** Configura [Webhook](/docs/it/webhooks)
+- **Automatizzare l'invio?** Usa [Flussi](/docs/it/flows)
+- **Analizzare le prestazioni?** Controlla [Analytics](/docs/it/analytics)

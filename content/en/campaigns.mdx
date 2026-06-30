@@ -1,0 +1,220 @@
+---
+title: Campaigns — Draft, Schedule & Send
+description: Create and send email campaigns to audiences
+---
+
+# Campaigns: Draft, Schedule & Send
+
+A **campaign** is a one-time email broadcast to an audience. Create a campaign, optionally test it, then send it to hundreds or thousands of recipients.
+
+## Create a Campaign (Draft)
+
+Create a campaign in draft status.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/campaigns \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":"Q3 Summer Sale",
+    "templateId":"tmpl_abc123",
+    "audienceId":"aud_abc123"
+  }'
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "camp_xyz789",
+    "name": "Q3 Summer Sale",
+    "status": "draft",
+    "templateId": "tmpl_abc123",
+    "audienceId": "aud_abc123",
+    "contactCount": 5000,
+    "createdAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+## Test Send
+
+Send a test email before launching to make sure everything looks correct.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/test-send \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"to":"your-email@example.com"}'
+```
+
+A test email is sent to your address immediately.
+
+## Send Immediately
+
+Send the campaign to all contacts in the audience right now.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/send \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "camp_xyz789",
+    "status": "sending",
+    "sentAt": "2025-06-30T12:05:00Z",
+    "contactCount": 5000
+  }
+}
+```
+
+The campaign status becomes `sending`, then `sent` when complete.
+
+## Schedule for Later
+
+Schedule the campaign to send at a specific time (ISO 8601).
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/send \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"sendAt":"2025-07-01T09:00:00Z"}'
+```
+
+The campaign status becomes `scheduled`. It will send automatically at the specified time.
+
+## Campaign Status Lifecycle
+
+```
+draft
+  ├─→ (test-send)
+  └─→ send (immediately)
+      └─→ sending
+          └─→ sent
+```
+
+Or:
+
+```
+draft
+  ├─→ (test-send)
+  └─→ send (scheduled)
+      └─→ scheduled
+          └─→ sending
+              └─→ sent
+```
+
+## Pause a Campaign
+
+Stop a scheduled or in-progress campaign.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/pause \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+Paused campaigns can be resumed or deleted (but not re-sent as-is).
+
+## Get Campaign Stats
+
+View delivery statistics after sending.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/campaigns/camp_xyz789/stats \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "totalSent": 5000,
+    "delivered": 4950,
+    "opened": 2475,
+    "clicked": 742,
+    "bounced": 40,
+    "complained": 10,
+    "deliveryRate": 0.99,
+    "openRate": 0.50,
+    "clickRate": 0.15
+  }
+}
+```
+
+## List Campaigns
+
+Get all campaigns.
+
+**cURL**
+```bash
+curl "https://api.tratto.email/v1/campaigns?status=sent&limit=50" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Query parameters:**
+- `status` — Filter by status (`draft`, `scheduled`, `sending`, `sent`, `paused`)
+- `limit` — Results per page (default 50, max 100)
+
+## Get Campaign Details
+
+Retrieve a specific campaign.
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/campaigns/camp_xyz789 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Delete a Campaign
+
+Remove a campaign (can only delete if not yet sent).
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/campaigns/camp_xyz789 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+## Campaign Best Practices
+
+### 1. Always Test First
+
+Send a test email to yourself before launching to any audience.
+
+### 2. Use Descriptive Names
+
+✅ `Q3 Summer Sale - Newsletter Segment`  
+❌ `Campaign 1`, `Test`
+
+### 3. Review Audience Size
+
+Check that the audience has the right contact count before sending. A 0-contact audience means no one receives it.
+
+### 4. Schedule During Optimal Times
+
+Consider your audience's timezone when scheduling. Early morning or lunch time usually see higher open rates.
+
+### 5. Monitor Delivery Stats
+
+After sending, review bounce, complaint, and open rates to understand engagement.
+
+### 6. Create New Campaigns, Don't Re-send
+
+Campaigns are sent once. To send again, create a new campaign.
+
+---
+
+## Next Steps
+
+- **Track campaign events?** Set up [Webhooks](/docs/en/webhooks)
+- **Automate sending?** Use [Flows](/docs/en/flows)
+- **Analyze performance?** Check [Analytics](/docs/en/analytics)
