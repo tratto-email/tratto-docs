@@ -301,7 +301,8 @@ Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 - Il valore dovrebbe essere un UUID v4 (RFC 4122)
 - Tratto mette in cache la risposta per 24 ore
 - Se riprovi con la stessa chiave, ottieni la stessa risposta senza un'azione duplicata
-- Usare la stessa chiave con corpi di richiesta diversi restituisce `409 IDEMPOTENCY_CONFLICT`
+- La risposta in cache viene restituita per ogni retry con quella chiave; il corpo
+  non viene confrontato, quindi riusa una chiave solo per l'operazione che l'ha creata
 
 **Esempio:**
 

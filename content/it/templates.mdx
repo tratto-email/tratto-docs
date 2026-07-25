@@ -42,13 +42,19 @@ curl -X POST https://api.tratto.email/v1/templates \
 
 ## Pubblica un Template
 
-Sposta un template da `draft` a `published` in modo che possa essere usato per l'invio.
+I template nascono come `draft` e non possono essere usati per l'invio finché non
+sono `published`. La pubblicazione è un cambio di status sul template stesso: non
+esiste un endpoint di pubblicazione separato.
 
 **cURL**
 ```bash
-curl -X POST https://api.tratto.email/v1/templates/tmpl_abc123/publish \
-  -H "Authorization: Bearer tratto_live_..."
+curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"status":"published"}'
 ```
+
+`status` accetta soltanto `draft` e `published`.
 
 ## Invia Usando un Template
 
@@ -135,18 +141,6 @@ curl https://api.tratto.email/v1/templates/tmpl_abc123/versions \
   ]
 }
 ```
-
-## Ripristina una Versione Precedente
-
-Torna a una versione precedente.
-
-**cURL**
-```bash
-curl -X POST https://api.tratto.email/v1/templates/tmpl_abc123/versions/1/restore \
-  -H "Authorization: Bearer tratto_live_..."
-```
-
-Questo crea una nuova versione (3) con il contenuto della versione 1 in status `draft`.
 
 ## Invio di Test
 

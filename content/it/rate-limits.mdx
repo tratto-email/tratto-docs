@@ -14,10 +14,14 @@ description: Comprendi i rate limit dell'API e pianifica la tua integrazione
 Ogni risposta include le informazioni sul rate limit:
 
 ```http
-X-RateLimit-Limit: 500
-X-RateLimit-Remaining: 245
-X-RateLimit-Reset: 1625084400
+x-ratelimit-limit: 500
+x-ratelimit-remaining: 245
+x-ratelimit-reset: 47
 ```
+
+`x-ratelimit-reset` è il numero di **secondi rimanenti** nella finestra corrente,
+non un timestamp Unix. In caso di 429 la risposta include anche l'header
+`retry-after`, in secondi.
 
 ## Verificare lo Stato del Rate Limit
 
@@ -37,12 +41,15 @@ Quando superi il limite:
 ```json
 {
   "error": {
-    "code": "RATE_LIMIT_EXCEEDED",
-    "message": "Too many requests. Try again after 60 seconds.",
-    "retryAfter": 60
+    "code": "RATE_LIMITED",
+    "message": "Too many requests. Slow down.",
+    "docs": "https://tratto.email/docs/api/errors#rate_limited"
   }
 }
 ```
+
+La risposta non contiene alcun campo `retryAfter`: usa l'header
+`x-ratelimit-reset` e il tuo backoff.
 
 ## Strategia di Retry
 
@@ -76,11 +83,13 @@ Limiti per piano (finestra mobile di 30 giorni):
 | Growth | 100.000 | 3.333 |
 | Pro | Illimitate | Illimitato |
 
-Se superi la quota ottieni l'errore `PLAN_LIMIT_EXCEEDED`.
+Se superi la quota le richieste falliscono con `QUOTA_EXCEEDED`, anch'esso 429.
+A differenza di `RATE_LIMITED` non si risolve riprovando — vedi
+[Codici di Errore](/it/docs/error-codes).
 
 ## Comportamento nei Picchi
 
-I picchi brevi (nell'ordine dei secondi) possono superare `X-RateLimit-Remaining` a causa dell'elaborazione asincrona. Il limite di 500 req/min è un tetto rigido, ma i picchi brevi sono ammessi se la media resta sotto la soglia.
+I picchi brevi (nell'ordine dei secondi) possono superare `x-ratelimit-remaining` a causa dell'elaborazione asincrona. Il limite di 500 req/min è un tetto rigido, ma i picchi brevi sono ammessi se la media resta sotto la soglia.
 
 ---
 

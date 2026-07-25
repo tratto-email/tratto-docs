@@ -156,33 +156,6 @@ curl -X POST https://api.tratto.email/v1/flows/flow_abc123/deactivate \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
-## Enrollments
-
-View contacts enrolled in a flow.
-
-**cURL**
-```bash
-curl https://api.tratto.email/v1/flows/flow_abc123/enrollments \
-  -H "Authorization: Bearer tratto_live_..."
-```
-
-**Response:**
-```json
-{
-  "data": [
-    {"enrollmentId": "enr_001", "contactId": "cont_abc", "status": "active", "enrolledAt": "2025-06-30T12:00:00Z"},
-    {"enrollmentId": "enr_002", "contactId": "cont_def", "status": "completed", "enrolledAt": "2025-06-30T12:05:00Z"}
-  ],
-  "pagination": {"hasMore": true, "nextCursor": "..."}
-}
-```
-
-**Enrollment statuses:**
-- `active` — Currently in the flow
-- `completed` — Finished all steps
-- `paused` — Temporarily paused (user action)
-- `exited` — Left the flow (e.g., unsubscribed)
-
 ## List Flows
 
 Get all flows.

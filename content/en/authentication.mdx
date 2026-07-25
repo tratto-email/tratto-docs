@@ -300,7 +300,8 @@ Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 - Value should be a UUID v4 (RFC 4122)
 - Tratto caches the response for 24 hours
 - If you retry with the same key, you get the same response without a duplicate action
-- Using the same key with different request bodies returns `409 IDEMPOTENCY_CONFLICT`
+- The cached response is returned for any retry with that key; the request body
+  is not compared, so reuse a key only for the operation that created it
 
 **Example:**
 

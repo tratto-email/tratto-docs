@@ -261,25 +261,26 @@ Later, filter emails by tags or use them in webhooks.
 ```json
 {
   "error": {
-    "code": "DOMAIN_NOT_VERIFIED",
-    "message": "The sending domain is not verified.",
+    "code": "FORBIDDEN",
+    "message": "Domain 'mail.acme.com' is not verified for this tenant.",
     "docs": "https://docs.tratto.email/en/domains",
-    "suggestion": "Run POST /v1/domains/{id}/verify and check DNS records."
+    "suggestion": "Add and verify the domain at https://app.tratto.email/domains before sending."
   }
 }
 ```
 
 ## Common Errors
 
-### DOMAIN_NOT_VERIFIED
+### FORBIDDEN — unverified domain
 
-**Cause:** The `from` domain hasn't been verified yet.
+**Cause:** The `from` domain has not been verified yet. The API returns 403 with
+the domain named in `message`.
 
 **Fix:** Complete the [domain verification process](/en/docs/domains).
 
-### RATE_LIMIT_EXCEEDED
+### RATE_LIMITED
 
-**Cause:** You've exceeded your tenant's rate limit (500 requests/minute).
+**Cause:** You have exceeded the rate limit of 500 requests per minute.
 
 **Fix:** Implement exponential backoff and retry later. See [Rate Limits](/en/docs/rate-limits).
 

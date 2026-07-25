@@ -156,33 +156,6 @@ curl -X POST https://api.tratto.email/v1/flows/flow_abc123/deactivate \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
-## Iscrizioni
-
-Visualizza i contatti iscritti a un flusso.
-
-**cURL**
-```bash
-curl https://api.tratto.email/v1/flows/flow_abc123/enrollments \
-  -H "Authorization: Bearer tratto_live_..."
-```
-
-**Risposta:**
-```json
-{
-  "data": [
-    {"enrollmentId": "enr_001", "contactId": "cont_abc", "status": "active", "enrolledAt": "2025-06-30T12:00:00Z"},
-    {"enrollmentId": "enr_002", "contactId": "cont_def", "status": "completed", "enrolledAt": "2025-06-30T12:05:00Z"}
-  ],
-  "pagination": {"hasMore": true, "nextCursor": "..."}
-}
-```
-
-**Status di iscrizione:**
-- `active` — Attualmente nel flusso
-- `completed` — Ha finito tutti gli step
-- `paused` — Temporaneamente in pausa (azione utente)
-- `exited` — Ha lasciato il flusso (es., annullato iscrizione)
-
 ## Elenca i Flussi
 
 Ottieni tutti i flussi.

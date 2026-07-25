@@ -53,8 +53,8 @@ curl -X POST https://api.tratto.email/v1/emails \
 ```json
 {
   "error": {
-    "code": "DOMAIN_NOT_VERIFIED",
-    "message": "The sending domain is not verified.",
+    "code": "FORBIDDEN",
+    "message": "Domain 'mail.acme.com' is not verified for this tenant.",
     "docs": "https://docs.tratto.email/en/domains",
     "suggestion": "Verify your domain first"
   }
