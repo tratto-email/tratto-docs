@@ -34,7 +34,7 @@ An **API key** is a bearer token that authenticates your requests. Tratto API ke
 Authorization: Bearer tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-See [Authentication](/docs/en/authentication) for managing keys.
+See [Authentication](/en/docs/authentication) for managing keys.
 
 ## Domain
 
@@ -51,7 +51,7 @@ The records prove to receiving mail servers that you control the domain and are 
 - `verified` — ready to send
 - `failed` — DNS verification failed (re-verify later)
 
-See [Domains](/docs/en/domains) for step-by-step setup.
+See [Domains](/en/docs/domains) for step-by-step setup.
 
 ## Email
 
@@ -85,7 +85,7 @@ The email then flows through the delivery pipeline.
 - `delivered` — Mail server confirmed delivery (bounce-free)
 - `failed` — Delivery failed (invalid domain, rate limit, etc.)
 
-See [Email Status & Lifecycle](/docs/en/email-status) for more.
+See [Email Status & Lifecycle](/en/docs/email-status) for more.
 
 ## Events
 
@@ -103,7 +103,7 @@ You get events via:
 - **Webhooks** — Real-time HTTP push notifications
 - **Email events API** — `GET /v1/emails/{id}/events`
 
-See [Webhooks](/docs/en/webhooks) for setup.
+See [Webhooks](/en/docs/webhooks) for setup.
 
 ## Webhook
 
@@ -125,7 +125,7 @@ A **webhook** is an HTTP endpoint you control that Tratto calls when an email ev
 - Always verify the signature before processing
 - Replay attacks: check the `occurredAt` timestamp
 
-See [Webhooks](/docs/en/webhooks) for signature verification code.
+See [Webhooks](/en/docs/webhooks) for signature verification code.
 
 ## Template
 
@@ -157,7 +157,7 @@ HTML:    <h1>Hello {{firstName}} {{lastName}}</h1>
 - You can restore previous versions
 - Campaigns and flows reference a template version
 
-See [Templates](/docs/en/templates) for full docs.
+See [Templates](/en/docs/templates) for full docs.
 
 ## Flow
 
@@ -184,7 +184,7 @@ Step 4 (e.g., branch on email_opened)
 - Enrolled contacts: track who is in the flow
 - Activate/deactivate flows without losing enrollment data
 
-See [Flows](/docs/en/flows) for detailed setup.
+See [Flows](/en/docs/flows) for detailed setup.
 
 ## Campaign
 
@@ -207,7 +207,7 @@ draft → (optional test send) → send → scheduled → sending → sent
 - View individual email events
 - Cannot be re-sent (create a new campaign instead)
 
-See [Campaigns](/docs/en/campaigns) for details.
+See [Campaigns](/en/docs/campaigns) for details.
 
 ## Audience
 
@@ -227,18 +227,18 @@ An **audience** is a group of contacts, created via rule-based filters or manual
 - Campaigns: send to an audience
 - Flows: trigger when contact joins audience
 
-See [Audiences](/docs/en/audiences) for setup.
+See [Audiences](/en/docs/audiences) for setup.
 
 ---
 
 ## Next Steps
 
-- **Authentication?** Start with [API Keys & Auth](/docs/en/authentication)
-- **Ready to send?** Go to [Quickstart](/docs/en/quickstart)
+- **Authentication?** Start with [API Keys & Auth](/en/docs/authentication)
+- **Ready to send?** Go to [Quickstart](/en/docs/quickstart)
 - **Deep dive?** Explore individual concepts:
-  - [Domains](/docs/en/domains)
-  - [Templates](/docs/en/templates)
-  - [Contacts](/docs/en/contacts)
-  - [Campaigns](/docs/en/campaigns)
-  - [Webhooks](/docs/en/webhooks)
-  - [Flows](/docs/en/flows)
+  - [Domains](/en/docs/domains)
+  - [Templates](/en/docs/templates)
+  - [Contacts](/en/docs/contacts)
+  - [Campaigns](/en/docs/campaigns)
+  - [Webhooks](/en/docs/webhooks)
+  - [Flows](/en/docs/flows)

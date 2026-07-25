@@ -38,3 +38,11 @@ yarn-error.log*
 
 # Generated files
 public/openapi.json
+.source
+.next
+node_modules
+.lighthouseci
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts

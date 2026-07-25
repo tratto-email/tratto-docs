@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "siteName": "Tratto Docs",
+    "titleTemplate": "{title} — Tratto Docs",
+    "defaultDescription": "Documentazione dell'API Tratto Email: email transazionali, campagne, flow, domini e webhook."
+  },
+  "nav": {
+    "home": "Home",
+    "docs": "Documentazione",
+    "pricing": "Prezzi",
+    "blog": "Blog",
+    "status": "Stato",
+    "getStarted": "Inizia ora",
+    "search": "Cerca",
+    "searchPlaceholder": "Cerca nella documentazione…",
+    "toggleMenu": "Apri il menu di navigazione",
+    "switchLanguage": "Cambia lingua"
+  },
+  "page": {
+    "onThisPage": "In questa pagina",
+    "editOnGithub": "Modifica questa pagina su GitHub",
+    "lastUpdated": "Ultimo aggiornamento",
+    "breadcrumb": "Percorso"
+  },
+  "home": {
+    "eyebrow": "Documentazione",
+    "title": "Sviluppa con Tratto",
+    "subtitle": "Email transazionali e marketing per startup e no-profit. API REST, SDK e guide.",
+    "ctaPrimary": "Quickstart",
+    "ctaSecondary": "API Reference"
+  }
+}

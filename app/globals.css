@@ -1,13 +1,175 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+@source '../app/**/*.{ts,tsx}';
+@source '../components/**/*.{ts,tsx}';
+@source '../content/**/*.mdx';
+@source '../node_modules/fumadocs-ui/dist/**/*.js';
+
+/* ---------------------------------------------------------------------------
+   Tratto design tokens — kept identical to the marketing site (tratto.email)
+   so docs.tratto.email shows no visual drift.
+   --------------------------------------------------------------------------- */
+@theme {
+  --color-ink: #0d0d0d;
+  --color-ink-80: #3d3d3d;
+  --color-ink-60: #6b6b6b;
+  --color-ink-40: #9a9a9a;
+  --color-ink-20: #c9c9c9;
+  --color-ink-10: #e4e4e4;
+
+  --color-score: #c8382a;
+  --color-score-80: #d35f53;
+  --color-score-20: #f1cdc9;
+  --color-score-10: #f8e6e4;
+
+  --color-paper: #f7f4ef;
+  --color-white: #ffffff;
+
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --tracking-eyebrow: 0.08em;
+
+  /* Layout metrics referenced by the docs shell */
+  --topbar-height: 52px;
+  --sidebar-width: 200px;
+  --content-max-width: 1060px;
+
+  /* Tratto uses square corners everywhere. */
+  --radius: 0px;
+}
+
+/* Map the Fumadocs theme surface onto Tratto's palette. */
+:root {
+  --color-fd-background: #ffffff;
+  --color-fd-foreground: #0d0d0d;
+  --color-fd-muted: #f7f4ef;
+  --color-fd-muted-foreground: #6b6b6b;
+  --color-fd-popover: #ffffff;
+  --color-fd-popover-foreground: #0d0d0d;
+  --color-fd-card: #f7f4ef;
+  --color-fd-card-foreground: #0d0d0d;
+  --color-fd-border: #e4e4e4;
+  --color-fd-primary: #c8382a;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-secondary: #f7f4ef;
+  --color-fd-secondary-foreground: #0d0d0d;
+  --color-fd-accent: #f8e6e4;
+  --color-fd-accent-foreground: #0d0d0d;
+  --color-fd-ring: #c8382a;
+
+  --fd-layout-width: 1060px;
+  --fd-nav-height: 52px;
+}
+
+.dark {
+  --color-fd-background: #0d0d0d;
+  --color-fd-foreground: #f2efe9;
+  --color-fd-muted: #1a1a1a;
+  --color-fd-muted-foreground: #9a9a9a;
+  --color-fd-popover: #141414;
+  --color-fd-popover-foreground: #f2efe9;
+  --color-fd-card: #141414;
+  --color-fd-card-foreground: #f2efe9;
+  --color-fd-border: #2a2a2a;
+  --color-fd-primary: #d35f53;
+  --color-fd-primary-foreground: #0d0d0d;
+  --color-fd-secondary: #1a1a1a;
+  --color-fd-secondary-foreground: #f2efe9;
+  --color-fd-accent: #2a1a18;
+  --color-fd-accent-foreground: #f2efe9;
+  --color-fd-ring: #d35f53;
+}
 
 @layer base {
   html {
-    @apply scroll-smooth;
+    scroll-behavior: smooth;
+    /* Offset anchor jumps by the sticky topbar. */
+    scroll-padding-top: calc(var(--topbar-height) + 16px);
   }
 
   body {
-    @apply bg-white text-slate-900 antialiased;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
   }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Tratto has no rounded UI. Fumadocs ships `rounded-*` utilities throughout its
+   navbar, sidebar and search dialog, so square them off at the source.
+   --------------------------------------------------------------------------- */
+#nd-nav,
+#nd-sidebar,
+#nd-subnav,
+#nd-toc,
+#nd-docs-layout {
+  --radius: 0px;
+}
+
+#nd-nav :where(a, button, input, kbd, div),
+#nd-sidebar :where(a, button, input, kbd),
+#nd-toc :where(a, button) {
+  border-radius: 0;
+}
+
+/* Active sidebar entry: vermiglio wash plus the 2px left accent (issue #9). */
+#nd-sidebar a[data-active='true'] {
+  background: var(--color-score-10);
+  color: var(--color-score);
+  border-left: 2px solid var(--color-score);
+  font-weight: 500;
+}
+
+.dark #nd-sidebar a[data-active='true'] {
+  background: color-mix(in srgb, var(--color-score) 18%, transparent);
+  color: var(--color-score-80);
+  border-left-color: var(--color-score-80);
+}
+
+/* Long cURL commands and JSON payloads must scroll inside their own block —
+   never widen the page or push the layout around. */
+.fd-codeblock,
+figure[data-rehype-pretty-code-figure],
+pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+pre code {
+  display: block;
+  min-width: 0;
+}
+
+/* Wide tables (error-code and event references) scroll independently too. */
+.prose table,
+#nd-page table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Eyebrow style used for "On this page" and section labels. */
+.tratto-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--color-ink-40);
 }

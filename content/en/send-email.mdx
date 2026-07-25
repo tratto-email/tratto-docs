@@ -9,7 +9,7 @@ description: The core endpoint for sending emails via Tratto
 
 ## Prerequisites
 
-Before you can send emails, you need a **verified sending domain**. See [Domains](/docs/en/domains) for setup.
+Before you can send emails, you need a **verified sending domain**. See [Domains](/en/docs/domains) for setup.
 
 ## Minimal Send
 
@@ -106,7 +106,7 @@ Email clients show `html` if supported; fall back to `text` otherwise.
 
 Instead of composing HTML in code, use a template with variable substitution.
 
-**Step 1: Create a template (see [Templates](/docs/en/templates))**
+**Step 1: Create a template (see [Templates](/en/docs/templates))**
 
 ```json
 {
@@ -275,23 +275,23 @@ Later, filter emails by tags or use them in webhooks.
 
 **Cause:** The `from` domain hasn't been verified yet.
 
-**Fix:** Complete the [domain verification process](/docs/en/domains).
+**Fix:** Complete the [domain verification process](/en/docs/domains).
 
 ### RATE_LIMIT_EXCEEDED
 
 **Cause:** You've exceeded your tenant's rate limit (500 requests/minute).
 
-**Fix:** Implement exponential backoff and retry later. See [Rate Limits](/docs/en/rate-limits).
+**Fix:** Implement exponential backoff and retry later. See [Rate Limits](/en/docs/rate-limits).
 
 ### VALIDATION_ERROR
 
 **Cause:** Invalid request (missing required field, malformed JSON, etc.).
 
-**Fix:** Check the error message and refer to the [Error Codes](/docs/en/error-codes) reference.
+**Fix:** Check the error message and refer to the [Error Codes](/en/docs/error-codes) reference.
 
 ## Next Steps
 
-- **Track email events?** Set up [Webhooks](/docs/en/webhooks)
-- **Check email status?** See [Email Status & Lifecycle](/docs/en/email-status)
-- **Create templates?** Go to [Templates](/docs/en/templates)
-- **Manage domains?** Read [Domains](/docs/en/domains)
+- **Track email events?** Set up [Webhooks](/en/docs/webhooks)
+- **Check email status?** See [Email Status & Lifecycle](/en/docs/email-status)
+- **Create templates?** Go to [Templates](/en/docs/templates)
+- **Manage domains?** Read [Domains](/en/docs/domains)
