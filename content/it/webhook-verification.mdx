@@ -1,0 +1,182 @@
+---
+title: Verifica della Firma dei Webhook
+description: Verifica in sicurezza gli header x-tratto-signature
+---
+
+# Verifica della Firma dei Webhook
+
+Ogni webhook inviato da Tratto è firmato con HMAC-SHA256. **Verifica sempre la firma** per assicurarti che il webhook arrivi davvero da Tratto e non da un attaccante.
+
+## Header della Firma
+
+Ogni webhook include:
+
+```http
+x-tratto-signature: a1b2c3d4e5f6...
+```
+
+Il valore è un hash HMAC-SHA256 codificato in esadecimale.
+
+## Algoritmo di Verifica
+
+1. Recupera il secret del webhook (ottenuto in fase di registrazione)
+2. Prendi il corpo grezzo della richiesta (non il JSON già parsato)
+3. Calcola HMAC-SHA256(body, secret)
+4. Confrontalo con l'header `x-tratto-signature`
+
+## Node.js
+
+```javascript
+const crypto = require('crypto');
+
+function verifyWebhook(rawBody, signature, secret) {
+  const computed = crypto
+    .createHmac('sha256', secret)
+    .update(rawBody)
+    .digest('hex');
+
+  return crypto.timingSafeEqual(computed, signature);
+}
+
+app.post('/webhooks/tratto', (req, res) => {
+  const signature = req.headers['x-tratto-signature'];
+  const secret = process.env.TRATTO_WEBHOOK_SECRET;
+
+  try {
+    const valid = verifyWebhook(req.rawBody, signature, secret);
+    if (!valid) {
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+  } catch (error) {
+    return res.status(401).json({ error: 'Signature verification failed' });
+  }
+
+  // Elabora l'evento
+  const event = JSON.parse(req.rawBody);
+  console.log(`Event: ${event.type}`);
+
+  res.json({ ok: true });
+});
+```
+
+**Importante:** usa `timingSafeEqual` per prevenire i timing attack.
+
+## Python
+
+```python
+import hmac
+import hashlib
+
+def verify_webhook(raw_body, signature, secret):
+    computed = hmac.new(
+        secret.encode(),
+        raw_body,
+        hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(computed, signature)
+
+@app.route('/webhooks/tratto', methods=['POST'])
+def tratto_webhook():
+    signature = request.headers.get('x-tratto-signature')
+    secret = os.getenv('TRATTO_WEBHOOK_SECRET')
+    raw_body = request.get_data()
+
+    if not verify_webhook(raw_body, signature, secret):
+        return {'error': 'Invalid signature'}, 401
+
+    event = json.loads(raw_body)
+    print(f"Event: {event['type']}")
+
+    return {'ok': True}, 200
+```
+
+## PHP
+
+```php
+function verify_webhook($raw_body, $signature, $secret) {
+    $computed = hash_hmac('sha256', $raw_body, $secret);
+    return hash_equals($computed, $signature);
+}
+
+$signature = $_SERVER['HTTP_X_TRATTO_SIGNATURE'] ?? '';
+$secret = getenv('TRATTO_WEBHOOK_SECRET');
+$raw_body = file_get_contents('php://input');
+
+if (!verify_webhook($raw_body, $signature, $secret)) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Invalid signature']);
+    exit;
+}
+
+$event = json_decode($raw_body, true);
+echo json_encode(['ok' => true]);
+```
+
+## Errori Comuni
+
+### ❌ Sbagliato: firmare il JSON già parsato
+
+```javascript
+// SBAGLIATO - la firma non corrisponderà
+const body = JSON.parse(req.body);
+const sig = hmac('sha256', JSON.stringify(body), secret);
+```
+
+Il parsing e la ri-serializzazione alterano gli spazi bianchi e invalidano la firma.
+
+### ✅ Corretto: firmare il corpo grezzo
+
+```javascript
+// CORRETTO - usa il corpo grezzo della richiesta
+const sig = hmac('sha256', req.rawBody, secret);
+```
+
+### ❌ Sbagliato: confronto semplice fra stringhe
+
+```javascript
+// SBAGLIATO - vulnerabile ai timing attack
+if (computed === signature) { ... }
+```
+
+### ✅ Corretto: confronto a tempo costante
+
+```javascript
+// CORRETTO - confronto a tempo costante
+crypto.timingSafeEqual(computed, signature);
+```
+
+## Prevenzione dei Replay Attack
+
+Controlla il timestamp `occurredAt` per prevenire i replay attack:
+
+```javascript
+const eventTime = new Date(event.occurredAt).getTime();
+const now = Date.now();
+
+// Rifiuta gli eventi più vecchi di 5 minuti
+if (now - eventTime > 5 * 60 * 1000) {
+  return res.status(400).json({ error: 'Event too old' });
+}
+```
+
+## Rotazione del Secret
+
+Quando ruoti il secret del webhook:
+1. Tratto genera un nuovo secret
+2. Vecchio e nuovo secret restano validi entrambi per **24 ore**
+3. Aggiorni la tua applicazione al nuovo secret
+4. Dopo 24 ore il vecchio secret scade
+
+Questo consente una migrazione graduale senza interruzioni.
+
+```bash
+curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/rotate-secret \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+La risposta contiene il nuovo secret.
+
+---
+
+Vedi [Webhook](/it/docs/webhooks) per la guida completa alla configurazione.

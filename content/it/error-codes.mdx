@@ -1,0 +1,104 @@
+---
+title: Riferimento Codici di Errore
+description: Tutti i codici di errore dell'API con spiegazioni e soluzioni
+---
+
+# Riferimento Codici di Errore
+
+## Formato degli Errori
+
+Tutti gli errori seguono questa struttura:
+
+```json
+{
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human-readable message",
+    "docs": "https://docs.tratto.email/...",
+    "suggestion": "How to fix it"
+  }
+}
+```
+
+## Errori di Autenticazione
+
+| Codice | Significato | Come risolvere |
+|------|---------|-----|
+| `UNAUTHORIZED` | Chiave API mancante o non valida | Controlla l'header `Authorization: Bearer` |
+| `FORBIDDEN` | Permessi insufficienti per questa azione | Usa una chiave API con i permessi corretti |
+
+## Errori di Validazione
+
+| Codice | Significato | Come risolvere |
+|------|---------|-----|
+| `VALIDATION_ERROR` | Corpo della richiesta non valido | Verifica campi obbligatori e tipi di dato |
+| `INVALID_EMAIL` | Indirizzo email non valido | Usa un formato conforme a RFC 5322 |
+| `MISSING_FIELD` | Campo obbligatorio mancante | Consulta la documentazione dei campi richiesti |
+
+## Errori sui Domini
+
+| Codice | Significato | Come risolvere |
+|------|---------|-----|
+| `DOMAIN_NOT_VERIFIED` | Dominio non ancora verificato | Aggiungi i record DNS e verifica |
+| `DOMAIN_ALREADY_EXISTS` | Dominio già in uso | Usa un dominio diverso |
+
+## Errori sui Template
+
+| Codice | Significato | Come risolvere |
+|------|---------|-----|
+| `TEMPLATE_NOT_FOUND` | Il template non esiste | Controlla l'ID del template |
+| `TEMPLATE_NOT_PUBLISHED` | Il template è in bozza, non pubblicato | Pubblicalo prima di usarlo |
+
+## Errori sulle Campagne
+
+| Codice | Significato | Come risolvere |
+|------|---------|-----|
+| `CAMPAIGN_NOT_FOUND` | La campagna non esiste | Controlla l'ID della campagna |
+| `CAMPAIGN_ALREADY_SENT` | Campagna già inviata | Crea una nuova campagna |
+| `CAMPAIGN_INVALID_STATE` | Azione non consentita nello stato attuale | Verifica lo stato della campagna |
+
+## Errori sui Contatti
+
+| Codice | Significato | Come risolvere |
+|------|---------|-----|
+| `CONTACT_NOT_FOUND` | Il contatto non esiste | Controlla l'ID del contatto |
+| `CONTACT_ALREADY_EXISTS` | Contatto già presente | Aggiorna invece di creare |
+
+## Errori sulle Audience
+
+| Codice | Significato | Come risolvere |
+|------|---------|-----|
+| `AUDIENCE_NOT_FOUND` | L'audience non esiste | Controlla l'ID dell'audience |
+| `INVALID_AUDIENCE_RULES` | Sintassi delle regole non valida | Verifica il formato delle regole |
+
+## Errori di Importazione
+
+| Codice | Significato | Come risolvere |
+|------|---------|-----|
+| `IMPORT_IN_PROGRESS` | Un'altra importazione è in corso | Attendi il completamento della precedente |
+| `INVALID_CSV_FORMAT` | Formato CSV non valido | Controlla intestazioni e formato |
+| `CSV_FILE_TOO_LARGE` | Il file supera il limite di dimensione | Suddividilo in file più piccoli |
+
+## Errori di Rate Limit e Quota
+
+| Codice | Significato | Come risolvere |
+|------|---------|-----|
+| `RATE_LIMIT_EXCEEDED` | Raggiunto il limite di 500 req/min | Implementa un backoff esponenziale |
+| `PLAN_LIMIT_EXCEEDED` | Quota di volume email esaurita | Passa a un piano superiore o attendi il reset |
+
+## Errori di Idempotenza
+
+| Codice | Significato | Come risolvere |
+|------|---------|-----|
+| `IDEMPOTENCY_CONFLICT` | Stessa chiave, richiesta diversa | Usa un corpo della richiesta coerente |
+
+## Errori del Server
+
+| Codice | Significato | Come risolvere |
+|------|---------|-----|
+| `INTERNAL_SERVER_ERROR` | Errore dalla nostra parte | Riprova con backoff, contatta il supporto |
+| `SERVICE_UNAVAILABLE` | Servizio temporaneamente non disponibile | Riprova più tardi |
+
+---
+
+Serve aiuto? Consulta le [Guide](/it/docs/guides).
