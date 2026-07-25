@@ -22,7 +22,7 @@ X-Tratto-Webhook-Id: wh_abc123
 | Campo | Significato |
 |---|---|
 | `t` | Timestamp Unix in **millisecondi**, preso al momento della firma |
-| `v1` | HMAC-SHA256 in esadecimale, versione 1 dello schema |
+| `v1` | HMAC-SHA256 in esadecimale, versione 1 dello schema. Può comparire più volte |
 
 ## Cosa viene firmato
 
@@ -37,11 +37,11 @@ firmato, ed è questo a renderlo affidabile per la protezione dai replay.
 
 ## Algoritmo di verifica
 
-1. Estrai `t` e `v1` dall'header
+1. Estrai `t` e **tutte** le `v1` dall'header
 2. Rifiuta la richiesta se `t` è fuori dalla tua finestra di tolleranza (5 minuti
    è un valore ragionevole)
 3. Calcola `HMAC-SHA256("{t}.{rawBody}", secret)` sui byte **grezzi** del corpo
-4. Confronta con `v1` a tempo costante
+4. Confronta con ciascuna `v1` a tempo costante, accettando se una corrisponde
 
 Il secret viene mostrato una sola volta alla creazione del webhook, nella forma
 `whsec_` seguito da 48 caratteri esadecimali.
@@ -51,35 +51,44 @@ Il secret viene mostrato una sola volta alla creazione del webhook, nella forma
 ```javascript
 const crypto = require('crypto');
 
+// Durante una rotazione l'header può contenere più di una `v1`: raccoglile
+// tutte invece di tenere solo l'ultima.
 function parseSignature(header) {
-  const parts = Object.fromEntries(
-    String(header ?? '')
-      .split(',')
-      .map((part) => part.split('=').map((s) => s.trim())),
-  );
-  return { timestamp: Number(parts.t), signature: parts.v1 ?? '' };
+  let timestamp = NaN;
+  const signatures = [];
+
+  for (const part of String(header ?? '').split(',')) {
+    const [key, value] = part.split('=').map((s) => s.trim());
+    if (key === 't') timestamp = Number(value);
+    else if (key === 'v1' && value) signatures.push(value);
+  }
+
+  return { timestamp, signatures };
 }
 
 function verifyWebhook(rawBody, header, secret, toleranceMs = 5 * 60_000) {
-  const { timestamp, signature } = parseSignature(header);
+  const { timestamp, signatures } = parseSignature(header);
   if (!Number.isFinite(timestamp)) return false;
 
   // Rifiuta i replay prima di fare qualsiasi operazione crittografica.
   if (Math.abs(Date.now() - timestamp) > toleranceMs) return false;
 
-  const expected = crypto
-    .createHmac('sha256', secret)
-    .update(`${timestamp}.${rawBody}`)
-    .digest('hex');
+  const expected = Buffer.from(
+    crypto
+      .createHmac('sha256', secret)
+      .update(`${timestamp}.${rawBody}`)
+      .digest('hex'),
+    'hex',
+  );
 
-  const a = Buffer.from(expected, 'hex');
-  const b = Buffer.from(signature, 'hex');
-
-  // timingSafeEqual accetta buffer, non stringhe, e lancia un'eccezione se le
-  // lunghezze differiscono: confronta prima le lunghezze.
-  if (a.length !== b.length) return false;
-
-  return crypto.timingSafeEqual(a, b);
+  // Accetta la consegna se una qualsiasi delle firme corrisponde.
+  return signatures.some((candidate) => {
+    const actual = Buffer.from(candidate, 'hex');
+    // timingSafeEqual accetta buffer, non stringhe, e lancia su lunghezze
+    // diverse: confronta prima le lunghezze.
+    if (actual.length !== expected.length) return false;
+    return crypto.timingSafeEqual(expected, actual);
+  });
 }
 ```
 
@@ -121,10 +130,16 @@ compreso, quindi questa versione è portabile:
 
 ```ts
 function parseSignature(header: string | null) {
-  const parts = Object.fromEntries(
-    (header ?? '').split(',').map((part) => part.split('=').map((s) => s.trim())),
-  );
-  return { timestamp: Number(parts.t), signature: parts.v1 ?? '' };
+  let timestamp = NaN;
+  const signatures: string[] = [];
+
+  for (const part of (header ?? '').split(',')) {
+    const [key, value] = part.split('=').map((s) => s.trim());
+    if (key === 't') timestamp = Number(value);
+    else if (key === 'v1' && value) signatures.push(value);
+  }
+
+  return { timestamp, signatures };
 }
 
 async function verifyWebhook(
@@ -133,7 +148,7 @@ async function verifyWebhook(
   secret: string,
   toleranceMs = 5 * 60_000,
 ): Promise<boolean> {
-  const { timestamp, signature } = parseSignature(header);
+  const { timestamp, signatures } = parseSignature(header);
   if (!Number.isFinite(timestamp)) return false;
   if (Math.abs(Date.now() - timestamp) > toleranceMs) return false;
 
@@ -156,14 +171,15 @@ async function verifyWebhook(
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
 
-  if (expected.length !== signature.length) return false;
-
-  // Confronto a tempo costante.
-  let diff = 0;
-  for (let i = 0; i < expected.length; i++) {
-    diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
-  }
-  return diff === 0;
+  // Accetta se una qualsiasi firma corrisponde, confrontando a tempo costante.
+  return signatures.some((candidate) => {
+    if (candidate.length !== expected.length) return false;
+    let diff = 0;
+    for (let i = 0; i < expected.length; i++) {
+      diff |= expected.charCodeAt(i) ^ candidate.charCodeAt(i);
+    }
+    return diff === 0;
+  });
 }
 
 export async function POST(request: Request) {
@@ -191,11 +207,18 @@ import hashlib
 import time
 
 def verify_webhook(raw_body: bytes, header: str, secret: str, tolerance_s: int = 300) -> bool:
+    timestamp, signatures = None, []
+    for part in (header or '').split(','):
+        key, _, value = part.partition('=')
+        key, value = key.strip(), value.strip()
+        if key == 't':
+            timestamp = value
+        elif key == 'v1' and value:
+            signatures.append(value)
+
     try:
-        parts = dict(p.split('=', 1) for p in header.split(','))
-        timestamp = int(parts['t'])
-        signature = parts['v1']
-    except (ValueError, KeyError, AttributeError):
+        timestamp = int(timestamp)
+    except (TypeError, ValueError):
         return False
 
     # `t` è in millisecondi.
@@ -205,7 +228,7 @@ def verify_webhook(raw_body: bytes, header: str, secret: str, tolerance_s: int =
     signed = f"{timestamp}.".encode() + raw_body
     expected = hmac.new(secret.encode(), signed, hashlib.sha256).hexdigest()
 
-    return hmac.compare_digest(expected, signature)
+    return any(hmac.compare_digest(expected, s) for s in signatures)
 
 
 @app.route('/webhooks/tratto', methods=['POST'])
@@ -224,20 +247,25 @@ def tratto_webhook():
 
 ```php
 function verify_webhook(string $raw_body, string $header, string $secret, int $tolerance_s = 300): bool {
-    $parts = [];
+    $timestamp = null;
+    $signatures = [];
     foreach (explode(',', $header) as $piece) {
         $kv = explode('=', $piece, 2);
-        if (count($kv) === 2) $parts[trim($kv[0])] = trim($kv[1]);
+        if (count($kv) !== 2) continue;
+        [$key, $value] = [trim($kv[0]), trim($kv[1])];
+        if ($key === 't') $timestamp = (int) $value;
+        elseif ($key === 'v1' && $value !== '') $signatures[] = $value;
     }
 
-    if (!isset($parts['t'], $parts['v1'])) return false;
-
-    $timestamp = (int) $parts['t'];
+    if ($timestamp === null || !$signatures) return false;
     if (abs(round(microtime(true) * 1000) - $timestamp) > $tolerance_s * 1000) return false;
 
     $expected = hash_hmac('sha256', $timestamp . '.' . $raw_body, $secret);
 
-    return hash_equals($expected, $parts['v1']);
+    foreach ($signatures as $signature) {
+        if (hash_equals($expected, $signature)) return true;
+    }
+    return false;
 }
 
 $raw_body = file_get_contents('php://input');
