@@ -1,0 +1,335 @@
+---
+title: Deployment — Firebase, Vercel, Cloudflare
+description: Where the API key lives on each platform, and how to receive webhooks there.
+---
+
+# Deployment
+
+`@tratto/email` has **no dependencies and uses only the global `fetch`** — no
+`Buffer`, no `crypto`, no `node:` imports. It runs unchanged on Node, on
+Firebase Functions, on Vercel's Node and Edge runtimes, on Cloudflare Workers and
+on Deno.
+
+That makes the interesting part of deployment not *whether the SDK runs*, but two
+things that differ on every platform:
+
+1. **Where the API key lives**, so it stays out of the client bundle and out of git.
+2. **How to read the raw request body**, which webhook signature verification
+   depends on.
+
+## Where the key goes
+
+| Platform | Store it in | The mistake to avoid |
+|---|---|---|
+| Firebase Functions | Secret Manager via `defineSecret()` | `functions.config()` is removed in Gen2 |
+| Vercel | Project Environment Variables | Any `NEXT_PUBLIC_` prefix publishes it |
+| Cloudflare Workers | `wrangler secret put` | `vars` in `wrangler.toml` is committed to git |
+| Netlify | Environment variables | Build logs echo build-time variables |
+| Cloud Run / containers | Secret Manager, mounted as env | Baking it into the image layer |
+
+The rule underneath all of them: the key is read at **runtime** from the
+environment, never inlined at build time.
+
+## Firebase Functions (Gen2)
+
+Store the key in Secret Manager and declare it on the function. Firebase injects
+it as an environment variable at runtime and never writes it into your source.
+
+```bash
+firebase functions:secrets:set TRATTO_API_KEY
+```
+
+```ts
+// functions/src/sendWelcome.ts
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { defineSecret } from 'firebase-functions/params';
+import { Tratto } from '@tratto/email';
+
+const trattoApiKey = defineSecret('TRATTO_API_KEY');
+
+export const sendWelcome = onCall(
+  { secrets: [trattoApiKey], region: 'europe-west1' },
+  async (request) => {
+    // Callable functions carry the Firebase Auth context — use it.
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Sign in first');
+    }
+
+    const email = request.auth.token.email;
+    if (!email) {
+      throw new HttpsError('failed-precondition', 'No email on account');
+    }
+
+    const tratto = new Tratto(trattoApiKey.value());
+
+    const result = await tratto.emails.send({
+      from: 'Acme <hello@mail.acme.com>',
+      to: email,
+      subject: 'Welcome to Acme',
+      templateId: 'tpl_welcome',
+      variables: { name: request.auth.token.name ?? 'there' },
+    });
+
+    return { id: result.id };
+  },
+);
+```
+
+<Callout type="warn">
+`functions.config()` does not exist in Gen2. If you are migrating from Gen1,
+every `functions.config().tratto.key` has to become a declared secret — the old
+values are not carried over.
+</Callout>
+
+Construct the client **inside** the handler, not at module scope:
+`trattoApiKey.value()` is only populated once the function has started with the
+secret bound.
+
+### Firestore trigger
+
+The same applies to background functions:
+
+```ts
+import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { defineSecret } from 'firebase-functions/params';
+import { Tratto } from '@tratto/email';
+
+const trattoApiKey = defineSecret('TRATTO_API_KEY');
+
+export const onSignup = onDocumentCreated(
+  { document: 'users/{userId}', secrets: [trattoApiKey] },
+  async (event) => {
+    const user = event.data?.data();
+    if (!user?.email) return;
+
+    const tratto = new Tratto(trattoApiKey.value());
+
+    await tratto.emails.send({
+      from: 'Acme <hello@mail.acme.com>',
+      to: user.email,
+      subject: 'Welcome to Acme',
+      templateId: 'tpl_welcome',
+      // The document id makes retries idempotent: a re-fired trigger will not
+      // send a second copy.
+      variables: { name: user.name ?? 'there' },
+    }, event.params.userId);
+  },
+);
+```
+
+Passing the document id as the idempotency key matters here. Firestore triggers
+are **at-least-once**: the same event can fire twice, and without a key that is
+two emails. See [Idempotency](/en/docs/idempotency).
+
+## Vercel
+
+Add `TRATTO_API_KEY` under Project Settings → Environment Variables. Do not
+prefix it with `NEXT_PUBLIC_`.
+
+```ts
+// app/api/send/route.ts
+import { NextResponse } from 'next/server';
+import { Tratto } from '@tratto/email';
+
+const tratto = new Tratto(process.env.TRATTO_API_KEY!);
+
+export async function POST(request: Request) {
+  const body = await request.json().catch(() => null);
+
+  if (!body || typeof body.email !== 'string') {
+    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+  }
+
+  const result = await tratto.emails.send({
+    from: 'Acme <hello@mail.acme.com>',
+    to: body.email,
+    subject: 'Welcome to Acme',
+    templateId: 'tpl_welcome',
+  });
+
+  return NextResponse.json({ id: result.id });
+}
+```
+
+Because the SDK is `fetch`-only, the same file works on the Edge runtime:
+
+```ts
+export const runtime = 'edge';
+```
+
+For Server Actions and Server Components, see [React](/en/docs/sdk-react).
+
+<Callout type="warn">
+Vercel functions are short-lived. Do not fire an email and return before the
+promise settles — the runtime may freeze the instance first. Always `await` the
+send.
+</Callout>
+
+## Cloudflare Workers
+
+Secrets are set through Wrangler, not through `wrangler.toml`. Anything under
+`[vars]` is committed to your repository.
+
+```bash
+npx wrangler secret put TRATTO_API_KEY
+```
+
+In Workers the key arrives on `env`, not on `process.env`, so the client is
+constructed per request:
+
+```ts
+// src/index.ts
+import { Tratto } from '@tratto/email';
+
+export interface Env {
+  TRATTO_API_KEY: string;
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405 });
+    }
+
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body.email !== 'string') {
+      return Response.json({ error: 'Invalid payload' }, { status: 400 });
+    }
+
+    const tratto = new Tratto(env.TRATTO_API_KEY);
+
+    const result = await tratto.emails.send({
+      from: 'Acme <hello@mail.acme.com>',
+      to: body.email,
+      subject: 'Welcome to Acme',
+      templateId: 'tpl_welcome',
+    });
+
+    return Response.json({ id: result.id });
+  },
+};
+```
+
+## Receiving webhooks
+
+Signature verification hashes the **raw** body. Parsing and re-serialising JSON
+changes whitespace and breaks the signature, so every platform needs its own way
+of getting at the bytes before anything touches them.
+
+### Express and Firebase Functions
+
+Firebase's `onRequest` populates `req.rawBody` for you. Under plain Express you
+have to ask for it:
+
+```ts
+import express from 'express';
+import crypto from 'node:crypto';
+
+const app = express();
+
+// Keep the raw bytes alongside the parsed body.
+app.use(express.json({ verify: (req, _res, buf) => { (req as any).rawBody = buf; } }));
+
+function verify(rawBody: Buffer, signature: string, secret: string): boolean {
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+  const a = Buffer.from(expected, 'hex');
+  const b = Buffer.from(signature ?? '', 'hex');
+  // timingSafeEqual throws on length mismatch, so check length first.
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+app.post('/webhooks/tratto', (req, res) => {
+  const signature = req.header('x-tratto-signature') ?? '';
+
+  if (!verify((req as any).rawBody, signature, process.env.TRATTO_WEBHOOK_SECRET!)) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  // Acknowledge immediately, process afterwards — Tratto retries on timeout.
+  res.json({ ok: true });
+});
+```
+
+### Vercel and Cloudflare Workers
+
+Edge runtimes have no `node:crypto`. Use WebCrypto, which is available on all of
+them — and on Node 18+ too, so this version is portable:
+
+```ts
+async function verify(
+  rawBody: string,
+  signature: string,
+  secret: string,
+): Promise<boolean> {
+  const encoder = new TextEncoder();
+
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+
+  const mac = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
+  const expected = [...new Uint8Array(mac)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+
+  if (expected.length !== signature.length) return false;
+
+  // Constant-time comparison — never use === on a signature.
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) {
+    diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+export async function POST(request: Request) {
+  // Read the body as text, once, before parsing it.
+  const rawBody = await request.text();
+  const signature = request.headers.get('x-tratto-signature') ?? '';
+
+  if (!(await verify(rawBody, signature, process.env.TRATTO_WEBHOOK_SECRET!))) {
+    return new Response('Invalid signature', { status: 401 });
+  }
+
+  const event = JSON.parse(rawBody);
+  // …handle event
+
+  return Response.json({ ok: true });
+}
+```
+
+`request.text()` can only be called once per request. Read it first, verify, then
+`JSON.parse` the same string — never call `request.json()` as well.
+
+See [Webhook Verification](/en/docs/webhook-verification) for the full algorithm,
+replay protection and secret rotation.
+
+## Cold starts and connection reuse
+
+The SDK holds no sockets and no connection pool, so there is nothing to warm up.
+Construct it wherever the key is available:
+
+- **Vercel, Cloudflare, Node servers** — module scope is fine and avoids
+  re-allocating per request.
+- **Firebase Functions** — inside the handler, because `defineSecret().value()`
+  is only resolved once the function has started.
+
+## Checklist
+
+- [ ] The key is read from the environment at runtime, never inlined at build time
+- [ ] No variable holding it carries a client-exposed prefix such as `NEXT_PUBLIC_`
+- [ ] Cloudflare secrets are set with `wrangler secret put`, not `[vars]`
+- [ ] Firebase Gen2 functions declare `secrets: [...]` on every function that sends
+- [ ] Background triggers pass an idempotency key — they fire at least once
+- [ ] Webhook handlers verify against the raw body, before parsing
+- [ ] Signature comparison is constant-time and length-checked
+- [ ] Public endpoints validate input and are rate-limited
+
+---
+
+Related: [Node.js SDK](/en/docs/sdk-nodejs) · [React](/en/docs/sdk-react) · [Angular](/en/docs/sdk-angular) · [Webhook Verification](/en/docs/webhook-verification)

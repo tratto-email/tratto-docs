@@ -30,12 +30,20 @@ Il valore è un hash HMAC-SHA256 codificato in esadecimale.
 const crypto = require('crypto');
 
 function verifyWebhook(rawBody, signature, secret) {
-  const computed = crypto
+  const expected = crypto
     .createHmac('sha256', secret)
     .update(rawBody)
     .digest('hex');
 
-  return crypto.timingSafeEqual(computed, signature);
+  const a = Buffer.from(expected, 'hex');
+  const b = Buffer.from(signature ?? '', 'hex');
+
+  // timingSafeEqual richiede buffer della stessa lunghezza e altrimenti lancia
+  // un'eccezione: confronta prima le lunghezze, una lunghezza diversa è già
+  // una firma non valida.
+  if (a.length !== b.length) return false;
+
+  return crypto.timingSafeEqual(a, b);
 }
 
 app.post('/webhooks/tratto', (req, res) => {
@@ -142,9 +150,14 @@ if (computed === signature) { ... }
 ### ✅ Corretto: confronto a tempo costante
 
 ```javascript
-// CORRETTO - confronto a tempo costante
-crypto.timingSafeEqual(computed, signature);
+// CORRETTO - confronto a tempo costante su buffer di pari lunghezza
+const a = Buffer.from(computed, 'hex');
+const b = Buffer.from(signature, 'hex');
+a.length === b.length && crypto.timingSafeEqual(a, b);
 ```
+
+`timingSafeEqual` accetta buffer, non stringhe, e lancia un'eccezione quando le
+lunghezze differiscono: il controllo sulla lunghezza deve venire prima.
 
 ## Prevenzione dei Replay Attack
 

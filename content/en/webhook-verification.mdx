@@ -30,12 +30,19 @@ The value is a hex-encoded HMAC-SHA256 hash.
 const crypto = require('crypto');
 
 function verifyWebhook(rawBody, signature, secret) {
-  const computed = crypto
+  const expected = crypto
     .createHmac('sha256', secret)
     .update(rawBody)
     .digest('hex');
-  
-  return crypto.timingSafeEqual(computed, signature);
+
+  const a = Buffer.from(expected, 'hex');
+  const b = Buffer.from(signature ?? '', 'hex');
+
+  // timingSafeEqual requires buffers of equal length and throws otherwise,
+  // so compare lengths first — a wrong length is already a failed match.
+  if (a.length !== b.length) return false;
+
+  return crypto.timingSafeEqual(a, b);
 }
 
 app.post('/webhooks/tratto', (req, res) => {
@@ -142,9 +149,14 @@ if (computed === signature) { ... }
 ### ✅ Right: Timing-Safe Comparison
 
 ```javascript
-// RIGHT - constant-time comparison
-crypto.timingSafeEqual(computed, signature);
+// RIGHT - constant-time comparison over equal-length buffers
+const a = Buffer.from(computed, 'hex');
+const b = Buffer.from(signature, 'hex');
+a.length === b.length && crypto.timingSafeEqual(a, b);
 ```
+
+`timingSafeEqual` accepts buffers, not strings, and throws when the lengths
+differ — so the length check has to come first.
 
 ## Replay Attack Prevention
 
