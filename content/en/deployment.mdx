@@ -230,19 +230,31 @@ const app = express();
 // Keep the raw bytes alongside the parsed body.
 app.use(express.json({ verify: (req, _res, buf) => { (req as any).rawBody = buf; } }));
 
-function verify(rawBody: Buffer, signature: string, secret: string): boolean {
-  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+// The header is `t=<ms>,v1=<hex>`, and the signed string is `{t}.{rawBody}`.
+function verify(rawBody: Buffer, header: string, secret: string): boolean {
+  const parts = Object.fromEntries(
+    header.split(',').map((part) => part.split('=').map((s) => s.trim())),
+  );
+  const timestamp = Number(parts.t);
+  if (!Number.isFinite(timestamp)) return false;
+  if (Math.abs(Date.now() - timestamp) > 5 * 60_000) return false;
+
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(`${timestamp}.${rawBody}`)
+    .digest('hex');
+
   const a = Buffer.from(expected, 'hex');
-  const b = Buffer.from(signature ?? '', 'hex');
+  const b = Buffer.from(parts.v1 ?? '', 'hex');
   // timingSafeEqual throws on length mismatch, so check length first.
   if (a.length !== b.length) return false;
   return crypto.timingSafeEqual(a, b);
 }
 
 app.post('/webhooks/tratto', (req, res) => {
-  const signature = req.header('x-tratto-signature') ?? '';
+  const header = req.header('x-tratto-signature') ?? '';
 
-  if (!verify((req as any).rawBody, signature, process.env.TRATTO_WEBHOOK_SECRET!)) {
+  if (!verify((req as any).rawBody, header, process.env.TRATTO_WEBHOOK_SECRET!)) {
     return res.status(401).json({ error: 'Invalid signature' });
   }
 
@@ -259,9 +271,17 @@ them — and on Node 18+ too, so this version is portable:
 ```ts
 async function verify(
   rawBody: string,
-  signature: string,
+  header: string,
   secret: string,
 ): Promise<boolean> {
+  const parts = Object.fromEntries(
+    header.split(',').map((part) => part.split('=').map((s) => s.trim())),
+  );
+  const timestamp = Number(parts.t);
+  const signature = parts.v1 ?? '';
+  if (!Number.isFinite(timestamp)) return false;
+  if (Math.abs(Date.now() - timestamp) > 5 * 60_000) return false;
+
   const encoder = new TextEncoder();
 
   const key = await crypto.subtle.importKey(
@@ -272,7 +292,11 @@ async function verify(
     ['sign'],
   );
 
-  const mac = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
+  const mac = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(`${timestamp}.${rawBody}`),
+  );
   const expected = [...new Uint8Array(mac)]
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
@@ -290,9 +314,9 @@ async function verify(
 export async function POST(request: Request) {
   // Read the body as text, once, before parsing it.
   const rawBody = await request.text();
-  const signature = request.headers.get('x-tratto-signature') ?? '';
+  const header = request.headers.get('x-tratto-signature') ?? '';
 
-  if (!(await verify(rawBody, signature, process.env.TRATTO_WEBHOOK_SECRET!))) {
+  if (!(await verify(rawBody, header, process.env.TRATTO_WEBHOOK_SECRET!))) {
     return new Response('Invalid signature', { status: 401 });
   }
 
@@ -326,6 +350,7 @@ Construct it wherever the key is available:
 - [ ] Cloudflare secrets are set with `wrangler secret put`, not `[vars]`
 - [ ] Firebase Gen2 functions declare `secrets: [...]` on every function that sends
 - [ ] Background triggers pass an idempotency key — they fire at least once
+- [ ] Webhook handlers parse `t` and `v1` and sign `{t}.{rawBody}`, not the body alone
 - [ ] Webhook handlers verify against the raw body, before parsing
 - [ ] Signature comparison is constant-time and length-checked
 - [ ] Public endpoints validate input and are rate-limited

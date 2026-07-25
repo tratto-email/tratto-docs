@@ -60,108 +60,47 @@ Tratto sends `POST` requests to your URL when these events occur:
   "type": "delivered",
   "emailId": "email_xyz789",
   "recipient": "user@example.com",
-  "occurredAt": "2025-06-30T12:00:10Z"
+  "occurredAt": "2025-06-30T12:00:10Z",
+  "data": {}
 }
 ```
 
 ## Verify Webhook Signature
 
-Every webhook is signed with HMAC-SHA256 in the `x-tratto-signature` header.
+Every delivery carries an `X-Tratto-Signature` header. It is **not** a bare hash
+— it holds a timestamp and the signature:
 
-**Always verify signatures** to ensure the webhook comes from Tratto.
-
-### Node.js
-
-```javascript
-const crypto = require('crypto');
-
-app.post('/webhooks/tratto', (req, res) => {
-  const signature = req.headers['x-tratto-signature'];
-  const secret = process.env.TRATTO_WEBHOOK_SECRET;
-  
-  // Compute HMAC-SHA256 of raw body
-  const computed = crypto
-    .createHmac('sha256', secret)
-    .update(JSON.stringify(req.body))
-    .digest('hex');
-  
-  // Compare signatures
-  if (computed !== signature) {
-    return res.status(401).json({ error: 'Invalid signature' });
-  }
-  
-  // Process event
-  const event = req.body;
-  console.log(`Email ${event.emailId} was ${event.type}`);
-  
-  res.status(200).json({ ok: true });
-});
+```http
+X-Tratto-Signature: t=1784977714054,v1=0b37dd97144dcdf176572a1b...
 ```
 
-### Python
+The signed string is the timestamp and the raw body joined by a full stop:
 
-```python
-import hmac
-import hashlib
-from flask import Flask, request
-
-app = Flask(__name__)
-
-@app.route('/webhooks/tratto', methods=['POST'])
-def tratto_webhook():
-    signature = request.headers.get('x-tratto-signature')
-    secret = os.getenv('TRATTO_WEBHOOK_SECRET')
-    
-    # Compute HMAC-SHA256 of raw body
-    computed = hmac.new(
-        secret.encode(),
-        request.get_data(),
-        hashlib.sha256
-    ).hexdigest()
-    
-    # Compare signatures
-    if not hmac.compare_digest(computed, signature):
-        return {'error': 'Invalid signature'}, 401
-    
-    # Process event
-    event = request.get_json()
-    print(f"Email {event['emailId']} was {event['type']}")
-    
-    return {'ok': True}, 200
+```
+{timestamp}.{rawBody}
 ```
 
-### PHP
+Verification therefore has four steps: parse `t` and `v1`, reject timestamps
+outside a tolerance window, recompute the HMAC over `{t}.{rawBody}`, and compare
+with `v1` in constant time.
 
-```php
-$signature = $_SERVER['HTTP_X_TRATTO_SIGNATURE'] ?? '';
-$secret = getenv('TRATTO_WEBHOOK_SECRET');
-$body = file_get_contents('php://input');
+**[Webhook Signature Verification](/en/docs/webhook-verification)** has working
+implementations for Node, edge runtimes, Python and PHP, plus the delivery and
+retry behaviour you should design around.
 
-$computed = hash_hmac('sha256', $body, $secret);
-
-if (!hash_equals($computed, $signature)) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Invalid signature']);
-    exit;
-}
-
-$event = json_decode($body, true);
-echo json_encode(['ok' => true]);
-```
+<Callout type="warn">
+Signing the body on its own, or comparing the header directly against a digest,
+will never match. Both are the mistakes we see most often.
+</Callout>
 
 ## Prevent Replay Attacks
 
-Check the `occurredAt` timestamp to prevent replay attacks.
+Use the `t` field from the signature header, not `occurredAt` from the payload.
+`t` is covered by the signature and records when the delivery was signed;
+`occurredAt` records when the event happened, and the two differ on retries.
 
-```javascript
-const now = Date.now() / 1000;
-const eventTime = new Date(event.occurredAt).getTime() / 1000;
-
-// Reject events older than 5 minutes
-if (now - eventTime > 300) {
-  return res.status(400).json({ error: 'Event too old' });
-}
-```
+The tolerance check is already part of the implementations in
+[Webhook Signature Verification](/en/docs/webhook-verification).
 
 ## Rotate Webhook Secret
 
@@ -177,15 +116,21 @@ curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/rotate-secret \
 ```json
 {
   "data": {
-    "id": "wh_abc123",
-    "secret": "whsec_new...",
-    "oldSecret": "whsec_old...",
-    "rotatedAt": "2025-06-30T12:05:00Z"
+    "secret": "whsec_new..."
   }
 }
 ```
 
-Both old and new secrets work for 24 hours during rotation. Update your app to use the new secret, then the old one expires.
+<Callout type="warn">
+Rotation takes effect **immediately** — there is no overlap window, and the
+previous secret stops working as soon as the new one is issued. To rotate without
+dropping deliveries, deploy an endpoint that accepts either secret first, then
+rotate, then remove the old one. See
+[Secret rotation](/en/docs/webhook-verification).
+</Callout>
+
+Rotation also resets the failure counter and re-enables a webhook that had been
+disabled after repeated failures.
 
 ## Test Event
 

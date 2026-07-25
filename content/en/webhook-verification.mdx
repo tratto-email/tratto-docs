@@ -1,194 +1,355 @@
 ---
 title: Webhook Signature Verification
-description: Securely verify x-tratto-signature headers
+description: Verify the X-Tratto-Signature header, which signs a timestamp together with the body.
 ---
 
 # Webhook Signature Verification
 
-Every webhook from Tratto is signed with HMAC-SHA256. **Always verify signatures** to ensure webhooks come from Tratto, not attackers.
+Every webhook Tratto sends is signed with HMAC-SHA256. **Always verify the
+signature** — an unverified endpoint accepts anything anyone posts to it.
 
-## Signature Header
+## The signature header
 
-Every webhook includes:
+Each delivery carries two headers:
 
 ```http
-x-tratto-signature: a1b2c3d4e5f6...
+X-Tratto-Signature: t=1784977714054,v1=0b37dd97144dcdf176572a1b...
+X-Tratto-Webhook-Id: wh_abc123
 ```
 
-The value is a hex-encoded HMAC-SHA256 hash.
+`X-Tratto-Signature` is **not** a bare hash. It has two fields:
 
-## Verification Algorithm
+| Field | Meaning |
+|---|---|
+| `t` | Unix timestamp in **milliseconds**, taken when the delivery was signed |
+| `v1` | Hex-encoded HMAC-SHA256, version 1 of the scheme |
 
-1. Get your webhook secret (from registration)
-2. Get the raw request body (not parsed JSON)
-3. Compute HMAC-SHA256(body, secret)
-4. Compare with `x-tratto-signature` header
+## What is signed
+
+The signed string is the timestamp and the raw body joined by a **full stop**:
+
+```
+{timestamp}.{rawBody}
+```
+
+Signing the body alone will never match. The timestamp is part of the signed
+material, which is what makes it trustworthy for replay protection.
+
+## Verification algorithm
+
+1. Parse `t` and `v1` out of the header
+2. Reject the request if `t` is outside your tolerance window (5 minutes is a
+   reasonable default)
+3. Compute `HMAC-SHA256("{t}.{rawBody}", secret)` using the **raw** body bytes
+4. Compare with `v1` in constant time
+
+Your secret is shown once when the webhook is created, in the form
+`whsec_` followed by 48 hex characters.
 
 ## Node.js
 
 ```javascript
 const crypto = require('crypto');
 
-function verifyWebhook(rawBody, signature, secret) {
+function parseSignature(header) {
+  const parts = Object.fromEntries(
+    String(header ?? '')
+      .split(',')
+      .map((part) => part.split('=').map((s) => s.trim())),
+  );
+  return { timestamp: Number(parts.t), signature: parts.v1 ?? '' };
+}
+
+function verifyWebhook(rawBody, header, secret, toleranceMs = 5 * 60_000) {
+  const { timestamp, signature } = parseSignature(header);
+  if (!Number.isFinite(timestamp)) return false;
+
+  // Reject replays before doing any crypto.
+  if (Math.abs(Date.now() - timestamp) > toleranceMs) return false;
+
   const expected = crypto
     .createHmac('sha256', secret)
-    .update(rawBody)
+    .update(`${timestamp}.${rawBody}`)
     .digest('hex');
 
   const a = Buffer.from(expected, 'hex');
-  const b = Buffer.from(signature ?? '', 'hex');
+  const b = Buffer.from(signature, 'hex');
 
-  // timingSafeEqual requires buffers of equal length and throws otherwise,
-  // so compare lengths first — a wrong length is already a failed match.
+  // timingSafeEqual takes buffers, not strings, and throws when the lengths
+  // differ — so compare lengths first.
   if (a.length !== b.length) return false;
 
   return crypto.timingSafeEqual(a, b);
 }
+```
+
+Wire it up with the raw body preserved. `express.json()` discards it by default:
+
+```javascript
+const express = require('express');
+const app = express();
+
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+);
 
 app.post('/webhooks/tratto', (req, res) => {
-  const signature = req.headers['x-tratto-signature'];
-  const secret = process.env.TRATTO_WEBHOOK_SECRET;
-  
-  try {
-    const valid = verifyWebhook(req.rawBody, signature, secret);
-    if (!valid) {
-      return res.status(401).json({ error: 'Invalid signature' });
-    }
-  } catch (error) {
-    return res.status(401).json({ error: 'Signature verification failed' });
-  }
-  
-  // Process event
-  const event = JSON.parse(req.rawBody);
-  console.log(`Event: ${event.type}`);
-  
+  const ok = verifyWebhook(
+    req.rawBody,
+    req.header('x-tratto-signature'),
+    process.env.TRATTO_WEBHOOK_SECRET,
+  );
+
+  if (!ok) return res.status(401).json({ error: 'Invalid signature' });
+
+  // Acknowledge fast, then process — Tratto retries if you time out.
   res.json({ ok: true });
+
+  const event = JSON.parse(req.rawBody);
+  console.log(event.type, event.emailId);
 });
 ```
 
-**Important:** Use `timingSafeEqual` to prevent timing attacks.
+## Edge runtimes (Vercel Edge, Cloudflare Workers)
+
+Edge runtimes have no `node:crypto`. WebCrypto is available everywhere,
+including Node 18+, so this version is portable:
+
+```ts
+function parseSignature(header: string | null) {
+  const parts = Object.fromEntries(
+    (header ?? '').split(',').map((part) => part.split('=').map((s) => s.trim())),
+  );
+  return { timestamp: Number(parts.t), signature: parts.v1 ?? '' };
+}
+
+async function verifyWebhook(
+  rawBody: string,
+  header: string | null,
+  secret: string,
+  toleranceMs = 5 * 60_000,
+): Promise<boolean> {
+  const { timestamp, signature } = parseSignature(header);
+  if (!Number.isFinite(timestamp)) return false;
+  if (Math.abs(Date.now() - timestamp) > toleranceMs) return false;
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+
+  const mac = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(`${timestamp}.${rawBody}`),
+  );
+
+  const expected = [...new Uint8Array(mac)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+
+  if (expected.length !== signature.length) return false;
+
+  // Constant-time comparison.
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) {
+    diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+export async function POST(request: Request) {
+  // Read the body once, as text, before parsing it.
+  const rawBody = await request.text();
+
+  const ok = await verifyWebhook(
+    rawBody,
+    request.headers.get('x-tratto-signature'),
+    process.env.TRATTO_WEBHOOK_SECRET!,
+  );
+
+  if (!ok) return new Response('Invalid signature', { status: 401 });
+
+  const event = JSON.parse(rawBody);
+  return Response.json({ ok: true });
+}
+```
 
 ## Python
 
 ```python
 import hmac
 import hashlib
+import time
 
-def verify_webhook(raw_body, signature, secret):
-    computed = hmac.new(
-        secret.encode(),
-        raw_body,
-        hashlib.sha256
-    ).hexdigest()
-    
-    return hmac.compare_digest(computed, signature)
+def verify_webhook(raw_body: bytes, header: str, secret: str, tolerance_s: int = 300) -> bool:
+    try:
+        parts = dict(p.split('=', 1) for p in header.split(','))
+        timestamp = int(parts['t'])
+        signature = parts['v1']
+    except (ValueError, KeyError, AttributeError):
+        return False
+
+    # `t` is in milliseconds.
+    if abs(time.time() * 1000 - timestamp) > tolerance_s * 1000:
+        return False
+
+    signed = f"{timestamp}.".encode() + raw_body
+    expected = hmac.new(secret.encode(), signed, hashlib.sha256).hexdigest()
+
+    return hmac.compare_digest(expected, signature)
+
 
 @app.route('/webhooks/tratto', methods=['POST'])
 def tratto_webhook():
-    signature = request.headers.get('x-tratto-signature')
-    secret = os.getenv('TRATTO_WEBHOOK_SECRET')
-    raw_body = request.get_data()
-    
-    if not verify_webhook(raw_body, signature, secret):
+    raw_body = request.get_data()  # bytes, before any parsing
+    header = request.headers.get('X-Tratto-Signature', '')
+
+    if not verify_webhook(raw_body, header, os.environ['TRATTO_WEBHOOK_SECRET']):
         return {'error': 'Invalid signature'}, 401
-    
+
     event = json.loads(raw_body)
-    print(f"Event: {event['type']}")
-    
     return {'ok': True}, 200
 ```
 
 ## PHP
 
 ```php
-function verify_webhook($raw_body, $signature, $secret) {
-    $computed = hash_hmac('sha256', $raw_body, $secret);
-    return hash_equals($computed, $signature);
+function verify_webhook(string $raw_body, string $header, string $secret, int $tolerance_s = 300): bool {
+    $parts = [];
+    foreach (explode(',', $header) as $piece) {
+        $kv = explode('=', $piece, 2);
+        if (count($kv) === 2) $parts[trim($kv[0])] = trim($kv[1]);
+    }
+
+    if (!isset($parts['t'], $parts['v1'])) return false;
+
+    $timestamp = (int) $parts['t'];
+    if (abs(round(microtime(true) * 1000) - $timestamp) > $tolerance_s * 1000) return false;
+
+    $expected = hash_hmac('sha256', $timestamp . '.' . $raw_body, $secret);
+
+    return hash_equals($expected, $parts['v1']);
 }
 
-$signature = $_SERVER['HTTP_X_TRATTO_SIGNATURE'] ?? '';
-$secret = getenv('TRATTO_WEBHOOK_SECRET');
 $raw_body = file_get_contents('php://input');
+$header = $_SERVER['HTTP_X_TRATTO_SIGNATURE'] ?? '';
 
-if (!verify_webhook($raw_body, $signature, $secret)) {
+if (!verify_webhook($raw_body, $header, getenv('TRATTO_WEBHOOK_SECRET'))) {
     http_response_code(401);
-    echo json_encode(['error' => 'Invalid signature']);
     exit;
 }
-
-$event = json_decode($raw_body, true);
-echo json_encode(['ok' => true]);
 ```
 
-## Common Mistakes
+## Common mistakes
 
-### ❌ Wrong: Signing Parsed JSON
+### ❌ Signing the body alone
 
 ```javascript
-// WRONG - signature won't match
-const body = JSON.parse(req.body);
-const sig = hmac('sha256', JSON.stringify(body), secret);
+// WRONG — the timestamp is part of the signed string
+const sig = hmac('sha256', rawBody, secret);
 ```
-
-Parsing and re-serializing changes whitespace, breaking the signature.
-
-### ✅ Right: Signing Raw Body
 
 ```javascript
-// RIGHT - use raw request body
-const sig = hmac('sha256', req.rawBody, secret);
+// RIGHT
+const sig = hmac('sha256', `${timestamp}.${rawBody}`, secret);
 ```
 
-### ❌ Wrong: Simple String Comparison
+### ❌ Treating the header as a bare hash
 
 ```javascript
-// WRONG - vulnerable to timing attacks
-if (computed === signature) { ... }
+// WRONG — the header is `t=…,v1=…`, not a hex digest
+crypto.timingSafeEqual(computed, req.header('x-tratto-signature'));
 ```
 
-### ✅ Right: Timing-Safe Comparison
+Parse out `v1` first.
+
+### ❌ Signing parsed JSON
 
 ```javascript
-// RIGHT - constant-time comparison over equal-length buffers
-const a = Buffer.from(computed, 'hex');
-const b = Buffer.from(signature, 'hex');
-a.length === b.length && crypto.timingSafeEqual(a, b);
+// WRONG — re-serialising changes whitespace and key order
+const sig = hmac('sha256', JSON.stringify(JSON.parse(body)), secret);
 ```
 
-`timingSafeEqual` accepts buffers, not strings, and throws when the lengths
-differ — so the length check has to come first.
+Use the raw bytes exactly as received.
 
-## Replay Attack Prevention
-
-Check the `occurredAt` timestamp to prevent replay attacks:
+### ❌ Comparing with `===`
 
 ```javascript
-const eventTime = new Date(event.occurredAt).getTime();
-const now = Date.now();
-
-// Reject events older than 5 minutes
-if (now - eventTime > 5 * 60 * 1000) {
-  return res.status(400).json({ error: 'Event too old' });
-}
+// WRONG — leaks information through timing
+if (computed === signature) { /* … */ }
 ```
 
-## Secret Rotation
+Use `crypto.timingSafeEqual` on equal-length buffers, or the constant-time loop
+shown in the edge example.
 
-When you rotate your webhook secret:
-1. Tratto generates a new secret
-2. Both old and new secrets work for **24 hours**
-3. Update your app to use the new secret
-4. After 24 hours, old secret expires
+## Replay protection
 
-This allows graceful migration without downtime.
+The `t` field is covered by the signature, so it cannot be altered without
+invalidating `v1`. Rejecting timestamps outside a tolerance window is therefore
+sufficient — and it is already built into every example above.
+
+Do not use `occurredAt` from the payload for this. It is when the *event*
+happened, not when the delivery was signed, and the two differ on retries.
+
+## Delivery behaviour
+
+Knowing how Tratto retries shapes how your handler should behave:
+
+| | |
+|---|---|
+| Request timeout | 10 seconds |
+| Retries | up to 5 |
+| Backoff | 5s, 30s, 5min, 30min, 2h |
+| Success | any 2xx response |
+| Auto-disable | after 10 consecutive failures |
+
+Two consequences worth designing for:
+
+- **Acknowledge before you process.** Anything slower than 10 seconds counts as a
+  failure and will be retried.
+- **Handle duplicates.** Retries mean the same event can arrive more than once.
+  Deduplicate on the event `id` field.
+
+## Secret rotation
+
+<Callout type="warn">
+Rotation takes effect **immediately**. There is no grace period and the previous
+secret stops working the moment the new one is issued — any delivery signed
+afterwards will fail verification until your endpoint has the new value.
+</Callout>
 
 ```bash
 curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/rotate-secret \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
-Response includes new secret.
+The response contains the new secret, shown once.
+
+To rotate without dropping events, deploy an endpoint that accepts **either**
+secret first, then rotate, then remove the old one:
+
+```javascript
+const secrets = [
+  process.env.TRATTO_WEBHOOK_SECRET,
+  process.env.TRATTO_WEBHOOK_SECRET_PREVIOUS,
+].filter(Boolean);
+
+const ok = secrets.some((secret) => verifyWebhook(req.rawBody, header, secret));
+```
+
+Rotation also resets the failure counter and re-enables a webhook that had been
+disabled.
 
 ---
 
-See [Webhooks](/en/docs/webhooks) for full setup guide.
+See [Webhooks](/en/docs/webhooks) for registration and event types, and
+[Deployment](/en/docs/deployment) for reading the raw body on each platform.
