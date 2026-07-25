@@ -2,6 +2,7 @@ import { ImageResponse } from 'next/og';
 
 import { source } from '@/lib/source';
 import { toLocale } from '@/lib/i18n';
+import { trattoMarkDataUri } from '@/lib/brand';
 
 export const runtime = 'nodejs';
 
@@ -44,8 +45,11 @@ export function GET(request: Request) {
           fontFamily: 'Georgia, serif',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '28px', height: '4px', background: '#c8382a' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {/* next/image cannot run inside ImageResponse — Satori renders raw
+              <img>, and this one is an inlined data URI. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={trattoMarkDataUri('dark')} width={51} height={36} alt="" />
           <div style={{ fontSize: 30, fontWeight: 600 }}>Tratto</div>
           <div style={{ fontSize: 26, color: '#9a9a9a' }}>Docs</div>
         </div>

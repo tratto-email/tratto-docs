@@ -1,22 +1,26 @@
+import { TrattoMark } from './tratto-mark';
+
 /**
- * Tratto wordmark — mirrors the `TrattoWordmark` component on tratto.email.
- * The "score" (the vermiglio underline) is the brand's signature mark.
+ * Topbar lockup: the Tratto mark, the name, and the section label.
+ *
+ * The mark is the real brand artwork. The lettering uses --font-display at the
+ * brand's own scale; if a locked-up wordmark exists it should replace the text
+ * span here.
  */
 export function TrattoWordmark({ label = 'Docs' }: { label?: string }) {
   return (
-    <span className="inline-flex items-baseline gap-1.5">
+    <span className="inline-flex items-center gap-2">
+      <TrattoMark height={18} />
       <span
-        className="text-[15px] font-semibold tracking-tight"
-        style={{ fontFamily: 'var(--font-display)' }}
+        className="text-[15px] leading-none"
+        style={{
+          fontFamily: 'var(--font-display)',
+          letterSpacing: 'var(--tracking-tight)',
+        }}
       >
         Tratto
       </span>
-      <span
-        aria-hidden
-        className="h-[2px] w-3 self-center"
-        style={{ background: 'var(--color-score)' }}
-      />
-      <span className="text-[13px] font-medium text-fd-muted-foreground">
+      <span className="text-[13px] leading-none text-fd-muted-foreground">
         {label}
       </span>
     </span>

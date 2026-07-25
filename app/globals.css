@@ -16,7 +16,20 @@
    this block an explicit choice loses to the OS setting in both directions.
    Class selectors outrank the bare `:root` inside the media query.
    --------------------------------------------------------------------------- */
+/* Ghost stroke of the Tratto mark — 0.30 on light, 0.35 on dark, as in the
+   two source SVGs. */
+:root {
+  --tratto-mark-ghost: 0.3;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tratto-mark-ghost: 0.35;
+  }
+}
+
 :root.light {
+  --tratto-mark-ghost: 0.3;
   --color-paper: #f7f4ef;
   --color-paper-warm: #ede8e0;
   --color-paper-deep: #e2ddd5;
@@ -29,6 +42,7 @@
 }
 
 :root.dark {
+  --tratto-mark-ghost: 0.35;
   --color-paper: #111111;
   --color-paper-warm: #1a1a1a;
   --color-paper-deep: #222222;
@@ -133,25 +147,37 @@
    4. Docs chrome
    --------------------------------------------------------------------------- */
 
-/* Flat is the brand — Fumadocs ships rounded, shadowed chrome by default. */
+/* Flat is the brand — Fumadocs ships rounded, shadowed chrome by default.
+   The notebook layout renders its topbar as #nd-subnav; #nd-nav is kept so the
+   rules survive a switch back to the standard docs layout. */
 #nd-nav,
-#nd-sidebar,
 #nd-subnav,
+#nd-sidebar,
 #nd-toc,
+#nd-tocnav,
 #nd-docs-layout {
   --radius: var(--radius-none);
 }
 
 #nd-nav :where(a, button, input, kbd, div),
+#nd-subnav :where(a, button, input, kbd, div),
 #nd-sidebar :where(a, button, input, kbd),
+#nd-tocnav :where(a, button),
 #nd-toc :where(a, button) {
   border-radius: var(--radius-none);
   box-shadow: none;
 }
 
-#nd-nav {
+#nd-nav,
+#nd-subnav {
   background: var(--color-paper);
   border-bottom: 1px solid var(--color-border);
+}
+
+/* The ⌘K dialog and its input, likewise. */
+[role='dialog'],
+[role='dialog'] :where(input, button, kbd, li, div) {
+  border-radius: var(--radius-none);
 }
 
 #nd-sidebar {
