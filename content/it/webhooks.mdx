@@ -5,11 +5,11 @@ description: Ricevi gli eventi email in tempo reale tramite webhook
 
 # Webhook: Setup, Eventi e Verifica Firma
 
-I **webhook** sono callback HTTP che notificano la tua app quando si verificano eventi (email consegnata, aperta, rimbalzata, ecc.). Invece di eseguire il polling dell'API, Tratto ti spinge gli eventi in tempo reale.
+I **webhook** sono callback HTTP che avvisano la tua applicazione quando accade
+qualcosa (email consegnata, aperta, respinta, e così via). Invece di interrogare
+l'API, è Tratto a inviarti gli eventi.
 
-## Registra un Webhook
-
-Crea un endpoint webhook.
+## Registrare un Webhook
 
 **cURL**
 ```bash
@@ -17,43 +17,44 @@ curl -X POST https://api.tratto.email/v1/webhooks \
   -H "Authorization: Bearer tratto_live_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "url":"https://tuoapi.com/webhooks/tratto",
+    "url":"https://yourapi.com/webhooks/tratto",
     "events":["sent","delivered","opened","clicked","bounced","complained","unsubscribed"]
   }'
 ```
 
-**Risposta:**
+**Risposta** — `201 Created`:
 ```json
 {
   "data": {
     "id": "wh_abc123",
-    "url": "https://tuoapi.com/webhooks/tratto",
-    "events": ["sent", "delivered", "opened", "clicked", "bounced", "complained", "unsubscribed"],
-    "secret": "whsec_xyz789...",
-    "createdAt": "2025-06-30T12:00:00Z"
+    "secret": "whsec_5f3a9c1e8b2d..."
   }
 }
 ```
 
-**Salva il `secret`** — lo userai per verificare le firme.
+**Conserva il `secret`.** Viene restituito solo qui e alla rotazione: non esiste
+un endpoint che te lo ridia. L'elenco dei webhook restituisce un `secretPrefix`
+troncato per identificarli, non il valore completo.
 
 ## Eventi Webhook
 
 Tratto invia richieste `POST` al tuo URL quando si verificano questi eventi:
 
-| Evento | Payload |
-|--------|---------|
-| `sent` | Email accettata dal server di posta |
-| `delivered` | Server di posta ha confermato consegna |
-| `opened` | Destinatario ha aperto l'email (pixel tracciato) |
-| `clicked` | Destinatario ha cliccato un link |
-| `bounced` | Server di posta ha rifiutato consegna |
-| `complained` | Destinatario ha segnalato come spam |
-| `unsubscribed` | Destinatario ha cliccato annulla iscrizione |
+| Evento | Significato |
+|-------|---------|
+| `sent` | Email accettata dal server di posta destinatario |
+| `delivered` | Il server di posta ha confermato la consegna |
+| `opened` | Il destinatario ha aperto l'email (tracciamento pixel) |
+| `clicked` | Il destinatario ha cliccato un link |
+| `bounced` | Il server di posta ha rifiutato la consegna |
+| `complained` | Il destinatario ha segnalato il messaggio come spam |
+| `unsubscribed` | Il destinatario ha cliccato per disiscriversi |
 
-## Payload Webhook
+Sottoscrivere un evento fuori da questa lista viene rifiutato in fase di
+registrazione.
 
-**Esempio:**
+## Payload del Webhook
+
 ```json
 {
   "id": "evt_abc123",
@@ -65,6 +66,10 @@ Tratto invia richieste `POST` al tuo URL quando si verificano questi eventi:
 }
 ```
 
+`data` contiene i dettagli specifici dell'evento ed è un oggetto vuoto quando non
+ce ne sono. Usa `id` per deduplicare: i retry consegnano lo stesso evento più di
+una volta.
+
 ## Verifica Firma Webhook
 
 Ogni consegna porta un header `X-Tratto-Signature`. **Non** è un hash nudo:
@@ -72,6 +77,7 @@ contiene un timestamp e la firma.
 
 ```http
 X-Tratto-Signature: t=1784977714054,v1=0b37dd97144dcdf176572a1b...
+X-Tratto-Webhook-Id: wh_abc123
 ```
 
 La stringa firmata è il timestamp e il corpo grezzo uniti da un punto:
@@ -85,8 +91,7 @@ fuori dalla finestra di tolleranza, ricalcolare l'HMAC su `{t}.{rawBody}` e
 confrontare con `v1` a tempo costante.
 
 **[Verifica della Firma dei Webhook](/it/docs/webhook-verification)** contiene le
-implementazioni funzionanti per Node, runtime edge, Python e PHP, oltre al
-comportamento di consegna e retry da tenere presente.
+implementazioni funzionanti per Node, runtime edge, Python e PHP.
 
 <Callout type="warn">
 Firmare il solo corpo, o confrontare direttamente l'header con un digest, non
@@ -102,11 +107,27 @@ registra quando è avvenuto l'evento, e i due valori divergono nei retry.
 Il controllo di tolleranza è già incluso nelle implementazioni in
 [Verifica della Firma dei Webhook](/it/docs/webhook-verification).
 
-## Ruota il Segreto Webhook
+## Consegne e Retry
 
-Genera un nuovo segreto di firma.
+| | |
+|---|---|
+| Timeout della richiesta | 10 secondi |
+| Successo | qualsiasi risposta 2xx |
+| Tentativi | fino a 5 |
+| Backoff | 5s, 30s, 5min, 30min, 2h |
+| Disattivazione automatica | dopo 10 fallimenti consecutivi |
 
-**cURL**
+Due conseguenze da tenere presenti:
+
+- **Conferma prima di elaborare.** Tutto ciò che supera i 10 secondi conta come
+  fallimento e verrà ritentato.
+- **Gestisci i duplicati.** Deduplica sul campo `id` dell'evento.
+
+Un webhook disattivato per fallimenti ripetuti ha `status: "disabled"`. Ruotarne
+il secret azzera il contatore e lo riabilita.
+
+## Ruotare il Secret
+
 ```bash
 curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/rotate-secret \
   -H "Authorization: Bearer tratto_live_..."
@@ -129,38 +150,33 @@ secret, poi ruota, poi rimuovi il vecchio. Vedi
 [Rotazione del secret](/it/docs/webhook-verification).
 </Callout>
 
-La rotazione azzera anche il contatore dei fallimenti e riabilita un webhook che
-era stato disattivato dopo ripetuti errori.
-
 ## Evento di Test
 
-Invia un evento webhook di test per verificare la configurazione.
-
-**cURL**
 ```bash
 curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/test \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
-Un evento `sent` di test viene postato al tuo URL immediatamente.
-
-## Elenca i Webhook
-
-Ottieni tutti i webhook registrati.
-
-**cURL**
-```bash
-curl https://api.tratto.email/v1/webhooks \
-  -H "Authorization: Bearer tratto_live_..."
+**Risposta:**
+```json
+{
+  "data": {
+    "queued": true
+  }
+}
 ```
 
-## Consegne Webhook
+Il test viene **messo in coda**, non consegnato in modo sincrono: un `200` qui
+significa che è stato accettato per l'invio, non che il tuo endpoint ha risposto.
+Controlla le consegne per l'esito.
 
-Visualizza la cronologia delle consegne per un webhook.
+Il test invia un evento `delivered` il cui `data` è `{ "isTest": true }`, così il
+tuo handler può distinguerlo dal traffico reale.
 
-**cURL**
+## Elenco dei Webhook
+
 ```bash
-curl https://api.tratto.email/v1/webhooks/wh_abc123/deliveries \
+curl https://api.tratto.email/v1/webhooks \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
@@ -169,42 +185,79 @@ curl https://api.tratto.email/v1/webhooks/wh_abc123/deliveries \
 {
   "data": [
     {
-      "id": "del_001",
-      "webhookId": "wh_abc123",
-      "eventId": "evt_abc123",
-      "status": "success",
-      "statusCode": 200,
-      "deliveredAt": "2025-06-30T12:00:10Z"
-    },
-    {
-      "id": "del_002",
-      "webhookId": "wh_abc123",
-      "eventId": "evt_def456",
-      "status": "failed",
-      "statusCode": 500,
-      "retries": 3,
-      "nextRetryAt": "2025-06-30T12:10:00Z"
+      "id": "wh_abc123",
+      "url": "https://yourapi.com/webhooks/tratto",
+      "events": ["delivered", "bounced"],
+      "status": "active",
+      "secretPrefix": "whsec_5f3a9c…",
+      "failureCount": 0,
+      "createdAt": "2025-06-30T12:00:00Z"
     }
   ]
 }
 ```
 
-Tratto riprova le consegne fallite fino a 3 volte.
+`failureCount` conta i fallimenti *consecutivi*. Tienilo d'occhio: a 10 il webhook
+viene disattivato.
 
-## Elimina un Webhook
+## Consegne del Webhook
 
-Annulla la registrazione di un webhook.
+```bash
+curl "https://api.tratto.email/v1/webhooks/wh_abc123/deliveries?limit=50" \
+  -H "Authorization: Bearer tratto_live_..."
+```
 
-**cURL**
+Paginazione a cursore con `after` e `limit` (default 50, massimo 100).
+
+**Risposta:**
+```json
+{
+  "data": [
+    {
+      "id": "del_001",
+      "webhookId": "wh_abc123",
+      "eventType": "delivered",
+      "status": "success",
+      "httpStatus": 200,
+      "responseBody": "{\"ok\":true}",
+      "retryCount": 0,
+      "attemptedAt": "2025-06-30T12:00:10Z"
+    },
+    {
+      "id": "del_002",
+      "webhookId": "wh_abc123",
+      "eventType": "bounced",
+      "status": "scheduled",
+      "httpStatus": 500,
+      "responseBody": "Internal Server Error",
+      "retryCount": 2,
+      "attemptedAt": "2025-06-30T12:05:00Z"
+    }
+  ],
+  "pagination": { "hasMore": false, "nextCursor": null }
+}
+```
+
+`status` vale `success`, `failed` o `scheduled` — `scheduled` significa che un
+retry è ancora in attesa. `responseBody` è troncato ai primi 1000 caratteri della
+tua risposta, ed è il modo più rapido per capire perché una consegna è stata
+rifiutata.
+
+## Eliminare un Webhook
+
 ```bash
 curl -X DELETE https://api.tratto.email/v1/webhooks/wh_abc123 \
   -H "Authorization: Bearer tratto_live_..."
 ```
+
+Restituisce `204 No Content`. L'eliminazione è immediata e non reversibile; le
+consegne in coda per quel webhook si interrompono.
 
 ---
 
 ## Prossimi Passi
 
 - **Inviare email?** Vai a [Invia Email](/it/docs/send-email)
-- **Tracciare lo stato dell'email?** Vedi [Stato Email](/it/docs/email-status)
-- **Usare webhook nei flussi?** Vedi [Flussi](/it/docs/flows)
+- **Tracciare lo stato?** Vedi [Status Email](/it/docs/email-status)
+- **Ricevere webhook su Firebase, Vercel o Cloudflare?** Vedi [Deployment](/it/docs/deployment)
+- **Usare i webhook nei flow?** Vedi [Flow](/it/docs/flows)

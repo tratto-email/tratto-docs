@@ -5,11 +5,11 @@ description: Receive real-time email events via webhooks
 
 # Webhooks: Setup, Events & Signature Verification
 
-**Webhooks** are HTTP callbacks that notify your app when events happen (email delivered, opened, bounced, etc.). Instead of polling the API, Tratto pushes events to you in real-time.
+**Webhooks** are HTTP callbacks that notify your app when events happen (email
+delivered, opened, bounced, and so on). Instead of polling the API, Tratto pushes
+events to you.
 
 ## Register a Webhook
-
-Create a webhook endpoint.
 
 **cURL**
 ```bash
@@ -22,38 +22,38 @@ curl -X POST https://api.tratto.email/v1/webhooks \
   }'
 ```
 
-**Response:**
+**Response** — `201 Created`:
 ```json
 {
   "data": {
     "id": "wh_abc123",
-    "url": "https://yourapi.com/webhooks/tratto",
-    "events": ["sent", "delivered", "opened", "clicked", "bounced", "complained", "unsubscribed"],
-    "secret": "whsec_xyz789...",
-    "createdAt": "2025-06-30T12:00:00Z"
+    "secret": "whsec_5f3a9c1e8b2d..."
   }
 }
 ```
 
-**Save the `secret`** — you'll use it to verify signatures.
+**Save the `secret`.** It is returned only here and when you rotate it — there is
+no endpoint that gives it back. Listing webhooks returns a truncated
+`secretPrefix` for identification, not the full value.
 
 ## Webhook Events
 
 Tratto sends `POST` requests to your URL when these events occur:
 
-| Event | Payload |
+| Event | Meaning |
 |-------|---------|
-| `sent` | Email accepted by mail server |
+| `sent` | Email accepted by the receiving mail server |
 | `delivered` | Mail server confirmed delivery |
-| `opened` | Recipient opened email (pixel tracked) |
+| `opened` | Recipient opened the email (pixel tracked) |
 | `clicked` | Recipient clicked a link |
 | `bounced` | Mail server rejected delivery |
-| `complained` | Recipient marked as spam |
+| `complained` | Recipient marked the message as spam |
 | `unsubscribed` | Recipient clicked unsubscribe |
+
+Subscribing to an event not in this list is rejected at registration.
 
 ## Webhook Payload
 
-**Example:**
 ```json
 {
   "id": "evt_abc123",
@@ -65,6 +65,9 @@ Tratto sends `POST` requests to your URL when these events occur:
 }
 ```
 
+`data` carries event-specific detail and is an empty object when there is none.
+Use `id` to deduplicate: retries deliver the same event more than once.
+
 ## Verify Webhook Signature
 
 Every delivery carries an `X-Tratto-Signature` header. It is **not** a bare hash
@@ -72,6 +75,7 @@ Every delivery carries an `X-Tratto-Signature` header. It is **not** a bare hash
 
 ```http
 X-Tratto-Signature: t=1784977714054,v1=0b37dd97144dcdf176572a1b...
+X-Tratto-Webhook-Id: wh_abc123
 ```
 
 The signed string is the timestamp and the raw body joined by a full stop:
@@ -85,8 +89,7 @@ outside a tolerance window, recompute the HMAC over `{t}.{rawBody}`, and compare
 with `v1` in constant time.
 
 **[Webhook Signature Verification](/en/docs/webhook-verification)** has working
-implementations for Node, edge runtimes, Python and PHP, plus the delivery and
-retry behaviour you should design around.
+implementations for Node, edge runtimes, Python and PHP.
 
 <Callout type="warn">
 Signing the body on its own, or comparing the header directly against a digest,
@@ -102,11 +105,27 @@ Use the `t` field from the signature header, not `occurredAt` from the payload.
 The tolerance check is already part of the implementations in
 [Webhook Signature Verification](/en/docs/webhook-verification).
 
+## Delivery and Retries
+
+| | |
+|---|---|
+| Request timeout | 10 seconds |
+| Success | any 2xx response |
+| Retries | up to 5 |
+| Backoff | 5s, 30s, 5min, 30min, 2h |
+| Auto-disable | after 10 consecutive failures |
+
+Two consequences worth designing for:
+
+- **Acknowledge before you process.** Anything slower than 10 seconds counts as a
+  failure and will be retried.
+- **Handle duplicates.** Deduplicate on the event `id`.
+
+A webhook disabled by repeated failures has `status: "disabled"`. Rotating its
+secret resets the failure counter and re-enables it.
+
 ## Rotate Webhook Secret
 
-Generate a new signing secret.
-
-**cURL**
 ```bash
 curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/rotate-secret \
   -H "Authorization: Bearer tratto_live_..."
@@ -129,38 +148,33 @@ rotate, then remove the old one. See
 [Secret rotation](/en/docs/webhook-verification).
 </Callout>
 
-Rotation also resets the failure counter and re-enables a webhook that had been
-disabled after repeated failures.
-
 ## Test Event
 
-Send a test webhook event to verify setup.
-
-**cURL**
 ```bash
 curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/test \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
-A test `sent` event is posted to your URL immediately.
+**Response:**
+```json
+{
+  "data": {
+    "queued": true
+  }
+}
+```
+
+The test is **queued**, not delivered synchronously — a `200` here means it was
+accepted for dispatch, not that your endpoint answered. Check
+[Webhook Deliveries](#webhook-deliveries) for the outcome.
+
+The test sends a `delivered` event whose `data` is `{ "isTest": true }`, so your
+handler can tell it apart from real traffic.
 
 ## List Webhooks
 
-Get all registered webhooks.
-
-**cURL**
 ```bash
 curl https://api.tratto.email/v1/webhooks \
-  -H "Authorization: Bearer tratto_live_..."
-```
-
-## Webhook Deliveries
-
-View delivery history for a webhook.
-
-**cURL**
-```bash
-curl https://api.tratto.email/v1/webhooks/wh_abc123/deliveries \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
@@ -169,37 +183,72 @@ curl https://api.tratto.email/v1/webhooks/wh_abc123/deliveries \
 {
   "data": [
     {
-      "id": "del_001",
-      "webhookId": "wh_abc123",
-      "eventId": "evt_abc123",
-      "status": "success",
-      "statusCode": 200,
-      "deliveredAt": "2025-06-30T12:00:10Z"
-    },
-    {
-      "id": "del_002",
-      "webhookId": "wh_abc123",
-      "eventId": "evt_def456",
-      "status": "failed",
-      "statusCode": 500,
-      "retries": 3,
-      "nextRetryAt": "2025-06-30T12:10:00Z"
+      "id": "wh_abc123",
+      "url": "https://yourapi.com/webhooks/tratto",
+      "events": ["delivered", "bounced"],
+      "status": "active",
+      "secretPrefix": "whsec_5f3a9c…",
+      "failureCount": 0,
+      "createdAt": "2025-06-30T12:00:00Z"
     }
   ]
 }
 ```
 
-Tratto retries failed deliveries up to 3 times.
+`failureCount` is the count of *consecutive* failures. Watch it: at 10 the
+webhook is disabled.
+
+## Webhook Deliveries
+
+```bash
+curl "https://api.tratto.email/v1/webhooks/wh_abc123/deliveries?limit=50" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+Cursor-paginated with `after` and `limit` (default 50, max 100).
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "del_001",
+      "webhookId": "wh_abc123",
+      "eventType": "delivered",
+      "status": "success",
+      "httpStatus": 200,
+      "responseBody": "{\"ok\":true}",
+      "retryCount": 0,
+      "attemptedAt": "2025-06-30T12:00:10Z"
+    },
+    {
+      "id": "del_002",
+      "webhookId": "wh_abc123",
+      "eventType": "bounced",
+      "status": "scheduled",
+      "httpStatus": 500,
+      "responseBody": "Internal Server Error",
+      "retryCount": 2,
+      "attemptedAt": "2025-06-30T12:05:00Z"
+    }
+  ],
+  "pagination": { "hasMore": false, "nextCursor": null }
+}
+```
+
+`status` is `success`, `failed` or `scheduled` — `scheduled` means a retry is
+still pending. `responseBody` is truncated to the first 1000 characters of your
+reply, which makes it the fastest way to debug a rejected delivery.
 
 ## Delete a Webhook
 
-Unregister a webhook.
-
-**cURL**
 ```bash
 curl -X DELETE https://api.tratto.email/v1/webhooks/wh_abc123 \
   -H "Authorization: Bearer tratto_live_..."
 ```
+
+Returns `204 No Content`. Deletion is immediate and cannot be undone; queued
+deliveries for that webhook stop.
 
 ---
 
@@ -207,4 +256,5 @@ curl -X DELETE https://api.tratto.email/v1/webhooks/wh_abc123 \
 
 - **Send emails?** Go to [Send Email](/en/docs/send-email)
 - **Track email status?** See [Email Status](/en/docs/email-status)
+- **Receiving webhooks on Firebase, Vercel or Cloudflare?** See [Deployment](/en/docs/deployment)
 - **Use webhooks in flows?** See [Flows](/en/docs/flows)
