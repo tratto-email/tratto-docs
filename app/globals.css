@@ -20,6 +20,12 @@
    two source SVGs. */
 :root {
   --tratto-mark-ghost: 0.3;
+
+  /* CTA tracking, measured against the header on tratto.email. It sits between
+     --tracking-label (0.08em) and --tracking-eyebrow (0.18em), so it has no
+     token yet — this is a brand value shared with the marketing site and
+     belongs in design-tokens.css once that file is next updated. */
+  --tracking-cta: 0.12em;
 }
 
 @media (prefers-color-scheme: dark) {

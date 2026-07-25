@@ -47,7 +47,7 @@ export default async function Layout({
           className="whitespace-nowrap bg-[var(--color-score)] px-4 py-2 text-[12px] uppercase text-[#fff] transition-opacity hover:opacity-85"
           style={{
             fontWeight: 'var(--weight-semibold)',
-            letterSpacing: 'var(--tracking-label)',
+            letterSpacing: 'var(--tracking-cta)',
           }}
         >
           {t('getStarted')}
