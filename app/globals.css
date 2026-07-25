@@ -88,6 +88,8 @@
     scroll-padding-top: calc(var(--topbar-height) + var(--space-4));
   }
 
+  /* 14px is the base for UI chrome — nav, sidebar, TOC, controls. Long-form
+     prose steps up to --text-xl below. */
   body {
     background: var(--color-paper);
     color: var(--color-ink);
@@ -190,15 +192,48 @@ article h1 {
   font-size: var(--text-display-md);
 }
 
-/* Content surfaces sit on white above the paper page. */
+/* ---------------------------------------------------------------------------
+   Long-form prose
+
+   Docs pages are read end to end, so body copy steps up from the 14px UI base
+   to --text-xl. Chrome (sidebar, TOC) stays small, which keeps the hierarchy.
+   --------------------------------------------------------------------------- */
+/* Scoped to .prose (what DocsBody renders) so it never reaches the breadcrumb
+   or the page footer, which sit outside it in the same <article>. */
+.prose :where(p, li, blockquote, dd) {
+  font-size: var(--text-xl);
+  line-height: var(--leading-normal);
+}
+
+.prose :where(h2) {
+  font-size: var(--text-display-md);
+}
+
+.prose :where(h3) {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-medium);
+}
+
+/* Inline code should not tower over the prose around it. */
+.prose :where(p, li, td) code {
+  font-size: 0.85em;
+}
+
+/* Content surfaces sit on white above the paper page. Fumadocs ships the Shiki
+   container with rounded-xl and a shadow; flat and sharp is the brand. */
 .fd-codeblock,
 figure[data-rehype-pretty-code-figure],
+.prose .shiki,
 pre {
   max-width: 100%;
   overflow-x: auto;
-  border: 1px solid var(--color-border);
   border-radius: var(--radius-none);
-  font-size: var(--text-sm);
+  box-shadow: none;
+  font-size: var(--text-base);
+}
+
+.prose .shiki {
+  border: 1px solid var(--color-border);
 }
 
 pre code {
@@ -206,13 +241,17 @@ pre code {
   min-width: 0;
 }
 
-/* Wide tables (error codes, event references) scroll on their own. */
-.prose table,
-#nd-page table {
+/* Wide tables (error codes, event references) scroll on their own. Kept at the
+   14px base — these run to four columns and 18px would force a scrollbar. */
+.prose table {
   display: block;
   max-width: 100%;
   overflow-x: auto;
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
+}
+
+.prose table :where(p, li) {
+  font-size: inherit;
 }
 
 /* Eyebrow — "On this page" and section labels. */
