@@ -190,6 +190,27 @@ only the *key* stays server-side. Prefer Pattern 1 whenever the data does not
 have to be in the initial HTML.
 </Callout>
 
+## Typing data in the browser
+
+There is no separate types package, and you do not need one. `@tratto/email`
+exports every request and response type, and `import type` is erased at compile
+time, so nothing reaches the bundle:
+
+```ts
+import type { EmailEvent } from '@tratto/email';
+
+export interface DeliveryRow {
+  event: EmailEvent;
+}
+```
+
+Write `import type`, not `import`. Under `verbatimModuleSyntax` TypeScript emits
+a plain import verbatim, which pulls the whole SDK into the browser bundle.
+Enable `@typescript-eslint/consistent-type-imports` so the linter catches it.
+
+Prefer returning a narrowed object from your server and typing that — the
+browser has no reason to receive a full `EmailDetail` to render a status string.
+
 ## AnalogJS and Nitro
 
 [AnalogJS](https://analogjs.org) is the Angular meta-framework built on Nitro. Its

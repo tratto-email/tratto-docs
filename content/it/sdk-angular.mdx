@@ -191,6 +191,28 @@ browser — solo la *chiave* resta lato server. Preferisci il Pattern 1 ogni vol
 che il dato non deve stare nell'HTML iniziale.
 </Callout>
 
+## Tipizzare i dati nel browser
+
+Non esiste un pacchetto di tipi separato, e non serve. `@tratto/email` esporta
+tutti i tipi di richiesta e risposta, e `import type` viene cancellato in fase di
+compilazione: nel bundle non arriva nulla.
+
+```ts
+import type { EmailEvent } from '@tratto/email';
+
+export interface DeliveryRow {
+  event: EmailEvent;
+}
+```
+
+Scrivi `import type`, non `import`. Con `verbatimModuleSyntax` TypeScript emette
+l'import così com'è, trascinando l'intero SDK nel bundle browser. Attiva
+`@typescript-eslint/consistent-type-imports` per farlo verificare dal linter.
+
+È preferibile restituire dal server un oggetto ristretto e tipizzare quello: il
+browser non ha motivo di ricevere un `EmailDetail` completo per mostrare una
+stringa di stato.
+
 ## AnalogJS e Nitro
 
 [AnalogJS](https://analogjs.org) è il meta-framework Angular costruito su Nitro.

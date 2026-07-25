@@ -139,6 +139,35 @@ Pass only the values the page needs into Client Components. Anything you hand
 across that boundary is serialised into the HTML payload and is readable by the
 visitor — send `summary.delivered`, not the whole API response.
 
+## Typing data in Client Components
+
+There is no separate types package, and you do not need one. `@tratto/email`
+exports every request and response type, and `import type` is erased at compile
+time — nothing is bundled:
+
+```ts
+// components/status-badge.tsx
+'use client';
+
+import type { EmailEvent } from '@tratto/email';
+
+export function StatusBadge({ event }: { event: EmailEvent }) {
+  return <span>{event.type}</span>;
+}
+```
+
+<Callout type="warn">
+Write `import type`, not `import`. Under `verbatimModuleSyntax` TypeScript emits
+a plain import verbatim, which pulls the whole SDK — and its API key handling —
+into the client bundle. Enable
+`@typescript-eslint/consistent-type-imports` so the linter enforces it.
+</Callout>
+
+Reach for these types when your server forwards Tratto's own shapes, which is
+mostly webhook events. For everything else, prefer returning a narrowed object
+from the server and typing that: the browser has no reason to receive a full
+`EmailDetail` when it renders a status string.
+
 ## Route Handler
 
 Use a Route Handler when something other than a form calls you — a webhook

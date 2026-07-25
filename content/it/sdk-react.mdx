@@ -139,6 +139,35 @@ Passa ai Client Component solo i valori che servono. Tutto ciò che attraversa q
 confine viene serializzato nel payload HTML ed è leggibile dal visitatore: passa
 `summary.delivered`, non l'intera risposta dell'API.
 
+## Tipizzare i dati nei Client Component
+
+Non esiste un pacchetto di tipi separato, e non serve. `@tratto/email` esporta
+tutti i tipi di richiesta e risposta, e `import type` viene cancellato in fase di
+compilazione: nel bundle non finisce nulla.
+
+```ts
+// components/status-badge.tsx
+'use client';
+
+import type { EmailEvent } from '@tratto/email';
+
+export function StatusBadge({ event }: { event: EmailEvent }) {
+  return <span>{event.type}</span>;
+}
+```
+
+<Callout type="warn">
+Scrivi `import type`, non `import`. Con `verbatimModuleSyntax` TypeScript emette
+l'import così com'è, trascinando l'intero SDK — e la gestione della chiave API —
+dentro il bundle client. Attiva
+`@typescript-eslint/consistent-type-imports` per farlo verificare dal linter.
+</Callout>
+
+Usa questi tipi quando il tuo server inoltra le strutture di Tratto, cioè
+soprattutto per gli eventi webhook. Per tutto il resto è preferibile restituire
+dal server un oggetto ristretto e tipizzare quello: il browser non ha motivo di
+ricevere un `EmailDetail` completo per mostrare una stringa di stato.
+
 ## Route Handler
 
 Usa un Route Handler quando a chiamarti è qualcosa di diverso da un form: un
