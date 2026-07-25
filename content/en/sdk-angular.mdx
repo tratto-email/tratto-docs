@@ -1,0 +1,277 @@
+---
+title: Angular SDK — Server-Side Only
+description: Use @tratto/angular from Angular SSR or AnalogJS/Nitro, never from the browser.
+---
+
+# Angular SDK — Server-Side Only
+
+`@tratto/angular` is a **server-side** SDK. It must never execute in a browser.
+
+An API key grants full access to your workspace. Anyone holding it can send mail
+as your verified domains, read your contact list, mint new API keys, remove team
+members and delete the workspace itself. A key shipped to the browser is public:
+it is readable in the JavaScript bundle, in DevTools and in the network tab. No
+amount of obfuscation changes that.
+
+Every Tratto SDK is built for the server, and so is every equivalent SDK from
+other email providers. There is no browser build of this package.
+
+## The Angular-specific trap
+
+React draws a compiler boundary between server and client code. **Angular does
+not.** Anything you write inside a component, a service or a route resolver is
+compiled into the browser bundle, even in an SSR application. Server-side
+rendering changes *where the code runs first* — it does not keep the code off
+the client.
+
+That has one concrete consequence:
+
+```ts
+// ❌ NEVER — app.config.ts is part of the browser bundle
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideHttpClient(),
+    provideTratt({ apiKey: 'tratto_live_...' }),  // shipped to every visitor
+  ],
+};
+```
+
+Putting the key in `app.config.ts` publishes it. The application will work, which
+is what makes this mistake easy to miss.
+
+## Where the key can live
+
+Angular merges a server-only configuration into the browser one at render time.
+Providers declared in `app.config.server.ts` exist **only** in the server bundle:
+
+```ts
+// app.config.server.ts — server bundle only
+import { mergeApplicationConfig, ApplicationConfig } from '@angular/core';
+import { provideServerRendering } from '@angular/ssr';
+import { provideTratt } from '@tratto/angular';
+
+import { appConfig } from './app.config';
+
+const serverConfig: ApplicationConfig = {
+  providers: [
+    provideServerRendering(),
+    provideTratt({ apiKey: process.env['TRATTO_API_KEY']! }),
+  ],
+};
+
+export const config = mergeApplicationConfig(appConfig, serverConfig);
+```
+
+`app.config.ts` stays clean — no `provideTratt`, no key.
+
+Because the provider only exists on the server, injecting `TrattoService` in code
+that also runs in the browser throws a "no provider" error there. That is the
+intended behaviour: it fails loudly instead of leaking.
+
+## Pattern 1 — Call Tratto from your server routes (recommended)
+
+The safest design keeps Tratto out of the Angular application entirely. Your
+server exposes an endpoint, the browser calls that endpoint, and the server talks
+to Tratto using the Node SDK.
+
+```ts
+// server.ts
+import {
+  AngularNodeAppEngine,
+  createNodeRequestHandler,
+  isMainModule,
+  writeResponseToNodeResponse,
+} from '@angular/ssr/node';
+import express from 'express';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Tratto } from '@tratto/email';
+
+const browserDistFolder = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../browser',
+);
+
+const app = express();
+const angularApp = new AngularNodeAppEngine();
+const tratto = new Tratto(process.env['TRATTO_API_KEY']!);
+
+app.use(express.json());
+
+// Your own endpoint — the browser never sees the Tratto key.
+app.post('/api/contact', async (req, res, next) => {
+  try {
+    // Validate before sending. Never interpolate user input into `from`.
+    const { email, message } = req.body ?? {};
+    if (typeof email !== 'string' || typeof message !== 'string') {
+      return res.status(400).json({ error: 'Invalid payload' });
+    }
+
+    const result = await tratto.emails.send({
+      from: 'Acme <hello@mail.acme.com>',
+      to: 'support@acme.com',
+      replyTo: email,
+      subject: 'New contact form submission',
+      text: message,
+    });
+
+    // Return only what the client needs.
+    res.json({ id: result.id });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.use(
+  express.static(browserDistFolder, {
+    maxAge: '1y',
+    index: false,
+    redirect: false,
+  }),
+);
+
+app.use((req, res, next) => {
+  angularApp
+    .handle(req)
+    .then((response) =>
+      response ? writeResponseToNodeResponse(response, res) : next(),
+    )
+    .catch(next);
+});
+
+if (isMainModule(import.meta.url)) {
+  const port = process.env['PORT'] || 4000;
+  app.listen(port);
+}
+
+export const reqHandler = createNodeRequestHandler(app);
+```
+
+This uses [`@tratto/email`](/en/docs/sdk-nodejs), the Node SDK — inside a plain
+Express handler there is no Angular injector, so the Node SDK is the natural fit.
+
+## Pattern 2 — Fetch during server rendering
+
+If you need Tratto data *while the page renders*, inject the service and guard
+the call so it only runs on the server. The provider from
+`app.config.server.ts` makes the key available there and nowhere else.
+
+```ts
+import { Component, inject, PLATFORM_ID, signal } from '@angular/core';
+import { isPlatformServer } from '@angular/common';
+import { TrattoService } from '@tratto/angular';
+
+@Component({
+  selector: 'app-newsletter-stats',
+  template: `<p>{{ subscribers() }} subscribers</p>`,
+})
+export class NewsletterStatsComponent {
+  private readonly platformId = inject(PLATFORM_ID);
+  readonly subscribers = signal(0);
+
+  constructor() {
+    if (!isPlatformServer(this.platformId)) return;
+
+    // Injected lazily so the browser build never resolves the provider.
+    const tratto = inject(TrattoService);
+    tratto.analytics
+      .getSummary({ period: '30d' })
+      .subscribe((summary) => this.subscribers.set(summary.subscribers));
+  }
+}
+```
+
+Transfer the result to the client with Angular's state transfer so the value
+survives hydration without a second request.
+
+<Callout type="warn">
+Pattern 2 still compiles `TrattoService` references into the browser bundle —
+only the *key* stays server-side. Prefer Pattern 1 whenever the data does not
+have to be in the initial HTML.
+</Callout>
+
+## AnalogJS and Nitro
+
+[AnalogJS](https://analogjs.org) is the Angular meta-framework built on Nitro. Its
+server API routes are the equivalent of Pattern 1:
+
+```ts
+// src/server/routes/api/contact.post.ts
+import { defineEventHandler, readBody, createError } from 'h3';
+import { Tratto } from '@tratto/email';
+
+const tratto = new Tratto(process.env['TRATTO_API_KEY']!);
+
+export default defineEventHandler(async (event) => {
+  const body = await readBody(event);
+
+  if (typeof body?.email !== 'string') {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid payload' });
+  }
+
+  const result = await tratto.emails.send({
+    from: 'Acme <hello@mail.acme.com>',
+    to: 'support@acme.com',
+    replyTo: body.email,
+    subject: 'New contact form submission',
+    text: String(body.message ?? ''),
+  });
+
+  return { id: result.id };
+});
+```
+
+Files under `src/server/` are bundled by Nitro into the server output and never
+reach the browser.
+
+## Supplying the key
+
+Read the key from the environment. Never commit it, and never place it in
+`environment.ts` — Angular environment files are part of the browser bundle.
+
+```bash
+# .env — gitignored
+TRATTO_API_KEY=tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Use `tratto_test_...` keys in development so a mistake cannot send real mail.
+
+## Error handling
+
+Service methods return RxJS `Observable`s and surface failures as Angular's
+`HttpErrorResponse`:
+
+```ts
+import { catchError, EMPTY } from 'rxjs';
+
+emails
+  .send({ from: '...', to: '...', subject: '...', html: '...' })
+  .pipe(
+    catchError((err) => {
+      // Log server-side only — never return the raw error to the browser.
+      console.error(err.status, err.error?.error?.code);
+      return EMPTY;
+    }),
+  )
+  .subscribe(({ id }) => console.log(id));
+```
+
+Return a generic message to the client. Tratto error payloads can contain
+recipient addresses and other details that should not leave your server. See
+[Error Codes](/en/docs/error-codes).
+
+## Checklist
+
+- [ ] `provideTratt` appears only in `app.config.server.ts`, never in `app.config.ts`
+- [ ] The key comes from `process.env`, not from `environment.ts`
+- [ ] No component reachable in the browser calls Tratto without a server guard
+- [ ] Your own endpoints validate input before forwarding it to Tratto
+- [ ] `from` is a fixed, verified address — never built from user input
+- [ ] Errors are logged on the server and returned to the client as generic messages
+- [ ] `grep -r "tratto_live" dist/browser` returns nothing after a production build
+
+That last check is the one that matters. Run it in CI.
+
+---
+
+Related: [Node.js SDK](/en/docs/sdk-nodejs) · [Authentication](/en/docs/authentication) · [React](/en/docs/sdk-react)

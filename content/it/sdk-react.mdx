@@ -1,0 +1,252 @@
+---
+title: React — Server Component e Server Action
+description: Invia email da React usando @tratto/email sul server. Non esiste un SDK browser.
+---
+
+# React — Server Component e Server Action
+
+**Non esiste un pacchetto `@tratto/react`, e non esisterà.** Le applicazioni React
+inviano email dal server, usando [`@tratto/email`](/it/docs/sdk-nodejs) dentro un
+Server Component, una Server Action o un Route Handler.
+
+Non è un limite di Tratto. Nessun provider di email transazionali pubblica un SDK
+per browser, perché una chiave API dà accesso completo all'account: inviare dai
+tuoi domini verificati, leggere i contatti, creare nuove chiavi, eliminare il
+workspace. Una chiave nel bundle browser è una chiave che hai pubblicato.
+
+React si presta particolarmente bene a questo approccio. I Server Component
+offrono un vero confine di compilazione — il codice in un file server non
+raggiunge mai il bundle client — quindi il pattern corretto è anche quello
+naturale.
+
+## Installazione
+
+```bash
+npm install @tratto/email
+```
+
+Tieni la chiave nell'ambiente, senza il prefisso `NEXT_PUBLIC_`. È esattamente
+quel prefisso a inlinare un valore dentro il bundle browser.
+
+```bash
+# .env.local — in gitignore
+TRATTO_API_KEY=tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+In sviluppo usa `tratto_test_...`, così un errore non può inviare email reali.
+
+## Proteggi il modulo
+
+Installa il pacchetto `server-only` e importalo in cima a ogni file che tocca
+l'SDK. Se quel modulo finisce per errore dentro un Client Component, la build
+fallisce invece di spedire la tua chiave.
+
+```bash
+npm install server-only
+```
+
+```ts
+// lib/tratto.ts
+import 'server-only';
+import { Tratto } from '@tratto/email';
+
+export const tratto = new Tratto(process.env.TRATTO_API_KEY!);
+```
+
+<Callout type="warn">
+Questo singolo import è la differenza tra un errore intercettato in fase di build
+e una chiave finita in produzione. Aggiungilo prima di scrivere la prima chiamata.
+</Callout>
+
+## Server Action
+
+Un form che invia a una Server Action non espone mai la chiave: il corpo della
+funzione resta sul server e il browser trasmette solo i dati del form.
+
+```tsx
+// app/contact/actions.ts
+'use server';
+
+import { tratto } from '@/lib/tratto';
+
+export async function sendContactMessage(formData: FormData) {
+  const email = formData.get('email');
+  const message = formData.get('message');
+
+  // Valida sul server. Non fidarti mai dei valori inviati.
+  if (typeof email !== 'string' || typeof message !== 'string') {
+    return { ok: false, error: 'Invio non valido' };
+  }
+
+  try {
+    await tratto.emails.send({
+      // `from` è un indirizzo verificato fisso, mai costruito da input utente.
+      from: 'Acme <hello@mail.acme.com>',
+      to: 'support@acme.com',
+      replyTo: email,
+      subject: 'Nuovo messaggio dal form di contatto',
+      text: message,
+    });
+
+    return { ok: true };
+  } catch (error) {
+    // Logga il dettaglio, restituisci qualcosa di generico.
+    console.error('tratto.emails.send fallita', error);
+    return { ok: false, error: 'Non è stato possibile inviare il messaggio' };
+  }
+}
+```
+
+```tsx
+// app/contact/page.tsx
+import { sendContactMessage } from './actions';
+
+export default function ContactPage() {
+  return (
+    <form action={sendContactMessage}>
+      <input type="email" name="email" required />
+      <textarea name="message" required />
+      <button type="submit">Invia</button>
+    </form>
+  );
+}
+```
+
+## Server Component
+
+Leggi i dati durante il render. Il componente gira sul server, quindi la chiamata
+all'SDK non raggiunge mai il client.
+
+```tsx
+// app/dashboard/page.tsx
+import { tratto } from '@/lib/tratto';
+
+export default async function DashboardPage() {
+  const summary = await tratto.analytics.getSummary({ period: '30d' });
+
+  return (
+    <dl>
+      <dt>Consegnate</dt>
+      <dd>{summary.delivered}</dd>
+      <dt>Aperte</dt>
+      <dd>{summary.opened}</dd>
+    </dl>
+  );
+}
+```
+
+Passa ai Client Component solo i valori che servono. Tutto ciò che attraversa quel
+confine viene serializzato nel payload HTML ed è leggibile dal visitatore: passa
+`summary.delivered`, non l'intera risposta dell'API.
+
+## Route Handler
+
+Usa un Route Handler quando a chiamarti è qualcosa di diverso da un form: un
+ricevitore di webhook, una `fetch` lato client o un servizio esterno.
+
+```ts
+// app/api/subscribe/route.ts
+import { NextResponse } from 'next/server';
+import { tratto } from '@/lib/tratto';
+
+export async function POST(request: Request) {
+  const body = await request.json().catch(() => null);
+
+  if (!body || typeof body.email !== 'string') {
+    return NextResponse.json({ error: 'Payload non valido' }, { status: 400 });
+  }
+
+  try {
+    const contact = await tratto.contacts.create({
+      email: body.email,
+      audienceId: 'aud_abc123',
+    });
+
+    return NextResponse.json({ id: contact.id });
+  } catch (error) {
+    console.error('tratto.contacts.create fallita', error);
+    return NextResponse.json(
+      { error: 'Iscrizione non riuscita' },
+      { status: 500 },
+    );
+  }
+}
+```
+
+Applica un rate limit a ogni endpoint raggiungibile da internet. Senza, un form
+che invia email diventa il modo con cui chiunque può consumare la tua quota di
+invio e danneggiare la reputazione del tuo dominio. Vedi
+[Rate Limit](/it/docs/rate-limits).
+
+## Cosa non fare
+
+```tsx
+// ❌ MAI — 'use client' porta questo codice nel bundle browser
+'use client';
+
+import { Tratto } from '@tratto/email';
+
+// Pubblicata a ogni visitatore.
+const tratto = new Tratto(process.env.NEXT_PUBLIC_TRATTO_API_KEY!);
+```
+
+Sono due errori distinti, e ciascuno basterebbe da solo: l'SDK viene istanziato in
+un Client Component, e la chiave usa `NEXT_PUBLIC_`, che la inlina come stringa
+letterale in fase di build.
+
+L'import di `server-only` mostrato sopra trasforma il primo errore in un errore di
+build. Per il secondo, fai grep sull'output della build.
+
+## Comporre le email con React
+
+C'è un punto in cui React è davvero utile per le email: scrivere i template.
+Librerie come [React Email](https://react.email) permettono di costruire un
+messaggio come componenti React e renderizzarlo in HTML **sul server**, per poi
+passare il risultato a Tratto:
+
+```tsx
+// app/emails/welcome.tsx
+export function WelcomeEmail({ name }: { name: string }) {
+  return (
+    <div>
+      <h1>Benvenuto, {name}</h1>
+      <p>Grazie per esserti registrato.</p>
+    </div>
+  );
+}
+```
+
+```ts
+import { render } from '@react-email/render';
+import { WelcomeEmail } from '@/app/emails/welcome';
+import { tratto } from '@/lib/tratto';
+
+const html = await render(<WelcomeEmail name="Alice" />);
+
+await tratto.emails.send({
+  from: 'Acme <hello@mail.acme.com>',
+  to: 'alice@example.com',
+  subject: 'Benvenuto',
+  html,
+});
+```
+
+Questo è rendering, non invio: avviene sul server e non comporta nessuna chiave
+API nel browser. I [Template](/it/docs/templates) di Tratto coprono la stessa
+esigenza se preferisci gestire i contenuti fuori dal codice.
+
+## Checklist
+
+- [ ] `import 'server-only'` in cima al modulo che crea il client
+- [ ] La chiave è `TRATTO_API_KEY`, mai `NEXT_PUBLIC_TRATTO_API_KEY`
+- [ ] Nessun file `'use client'` importa `@tratto/email`
+- [ ] Gli endpoint pubblici validano l'input e hanno un rate limit
+- [ ] `from` è un indirizzo fisso e verificato, mai costruito da input utente
+- [ ] Gli errori sono loggati sul server e restituiti in forma generica
+- [ ] `grep -r "tratto_live" .next/static` non trova nulla dopo una build di produzione
+
+Metti quest'ultimo controllo in CI.
+
+---
+
+Correlati: [SDK Node.js](/it/docs/sdk-nodejs) · [Autenticazione](/it/docs/authentication) · [Angular](/it/docs/sdk-angular)
