@@ -44,7 +44,11 @@ export default async function Layout({
           href={`${marketingUrl}/signup`}
           target="_blank"
           rel="noreferrer noopener"
-          className="whitespace-nowrap bg-[var(--color-score)] px-3.5 py-1.5 text-[13px] font-medium text-[#fff] transition-opacity hover:opacity-85"
+          className="whitespace-nowrap bg-[var(--color-score)] px-4 py-2 text-[12px] uppercase text-[#fff] transition-opacity hover:opacity-85"
+          style={{
+            fontWeight: 'var(--weight-semibold)',
+            letterSpacing: 'var(--tracking-label)',
+          }}
         >
           {t('getStarted')}
         </a>
