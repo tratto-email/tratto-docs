@@ -44,7 +44,7 @@ export default async function Layout({
           href={`${marketingUrl}/signup`}
           target="_blank"
           rel="noreferrer noopener"
-          className="whitespace-nowrap bg-[var(--color-score)] px-3.5 py-1.5 text-[13px] font-medium text-white transition-opacity hover:opacity-85"
+          className="whitespace-nowrap bg-[var(--color-score)] px-3.5 py-1.5 text-[13px] font-medium text-[#fff] transition-opacity hover:opacity-85"
         >
           {t('getStarted')}
         </a>

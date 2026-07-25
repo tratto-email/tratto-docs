@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
+@import './design-tokens.css';
 
 @source '../app/**/*.{ts,tsx}';
 @source '../components/**/*.{ts,tsx}';
@@ -8,99 +9,103 @@
 @source '../node_modules/fumadocs-ui/dist/**/*.js';
 
 /* ---------------------------------------------------------------------------
-   Tratto design tokens — kept identical to the marketing site (tratto.email)
-   so docs.tratto.email shows no visual drift.
+   1. Theme toggle bridge
+
+   design-tokens.css switches on `prefers-color-scheme`, but the docs ship a
+   theme switcher (next-themes writes `.light` / `.dark` on <html>). Without
+   this block an explicit choice loses to the OS setting in both directions.
+   Class selectors outrank the bare `:root` inside the media query.
    --------------------------------------------------------------------------- */
-@theme {
-  --color-ink: #0d0d0d;
-  --color-ink-80: #3d3d3d;
-  --color-ink-60: #6b6b6b;
-  --color-ink-40: #9a9a9a;
-  --color-ink-20: #c9c9c9;
-  --color-ink-10: #e4e4e4;
-
-  --color-score: #c8382a;
-  --color-score-80: #d35f53;
-  --color-score-20: #f1cdc9;
-  --color-score-10: #f8e6e4;
-
+:root.light {
   --color-paper: #f7f4ef;
+  --color-paper-warm: #ede8e0;
+  --color-paper-deep: #e2ddd5;
   --color-white: #ffffff;
-
-  --font-display: 'DM Serif Display', Georgia, serif;
-  --font-body: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-
-  --tracking-eyebrow: 0.08em;
-
-  /* Layout metrics referenced by the docs shell */
-  --topbar-height: 52px;
-  --sidebar-width: 200px;
-  --content-max-width: 1060px;
-
-  /* Tratto uses square corners everywhere. */
-  --radius: 0px;
+  --color-border: rgba(13, 13, 13, 0.09);
+  --color-border-md: rgba(13, 13, 13, 0.16);
+  --color-ink: #0d0d0d;
+  --color-ink-60: #3d3d3d;
+  --color-ink-40: #6b6b6b;
 }
 
-/* Map the Fumadocs theme surface onto Tratto's palette. */
+:root.dark {
+  --color-paper: #111111;
+  --color-paper-warm: #1a1a1a;
+  --color-paper-deep: #222222;
+  --color-white: #1a1a1a;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-md: rgba(255, 255, 255, 0.14);
+  --color-ink: #f0ede8;
+  --color-ink-60: #a8a5a0;
+  --color-ink-40: #706e6a;
+  /* Not covered by the shared file: these would stay near-black on a dark
+     background. Kept local so design-tokens.css remains byte-identical. */
+  --color-ink-80: #d6d2cc;
+  --color-ink-20: #55534f;
+}
+
+/* ---------------------------------------------------------------------------
+   2. Fumadocs surface → Tratto tokens
+
+   Mapped by token *name*, not value, so the dark palette above flows through
+   without a second mapping block.
+   --------------------------------------------------------------------------- */
 :root {
-  --color-fd-background: #ffffff;
-  --color-fd-foreground: #0d0d0d;
-  --color-fd-muted: #f7f4ef;
-  --color-fd-muted-foreground: #6b6b6b;
-  --color-fd-popover: #ffffff;
-  --color-fd-popover-foreground: #0d0d0d;
-  --color-fd-card: #f7f4ef;
-  --color-fd-card-foreground: #0d0d0d;
-  --color-fd-border: #e4e4e4;
-  --color-fd-primary: #c8382a;
+  --color-fd-background: var(--color-paper);
+  --color-fd-foreground: var(--color-ink);
+  --color-fd-muted: var(--color-paper-warm);
+  --color-fd-muted-foreground: var(--color-ink-40);
+  --color-fd-popover: var(--color-white);
+  --color-fd-popover-foreground: var(--color-ink);
+  --color-fd-card: var(--color-white);
+  --color-fd-card-foreground: var(--color-ink);
+  --color-fd-border: var(--color-border);
+  --color-fd-primary: var(--color-score);
   --color-fd-primary-foreground: #ffffff;
-  --color-fd-secondary: #f7f4ef;
-  --color-fd-secondary-foreground: #0d0d0d;
-  --color-fd-accent: #f8e6e4;
-  --color-fd-accent-foreground: #0d0d0d;
-  --color-fd-ring: #c8382a;
+  --color-fd-secondary: var(--color-paper-warm);
+  --color-fd-secondary-foreground: var(--color-ink);
+  --color-fd-accent: var(--color-score-10);
+  --color-fd-accent-foreground: var(--color-ink);
+  --color-fd-ring: var(--color-score);
 
-  --fd-layout-width: 1060px;
-  --fd-nav-height: 52px;
+  --fd-layout-width: var(--content-max-width);
+  --fd-nav-height: var(--topbar-height);
+
+  /* The shared token file names the families literally, which assumes they are
+     loaded globally. Next self-hosts them via next/font under hashed family
+     names, so point the tokens at those variables — same fonts, resolvable. */
+  --font-display: var(--font-dm-serif), Georgia, serif;
+  --font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-jetbrains), 'Fira Code', 'Courier New', monospace;
 }
 
-.dark {
-  --color-fd-background: #0d0d0d;
-  --color-fd-foreground: #f2efe9;
-  --color-fd-muted: #1a1a1a;
-  --color-fd-muted-foreground: #9a9a9a;
-  --color-fd-popover: #141414;
-  --color-fd-popover-foreground: #f2efe9;
-  --color-fd-card: #141414;
-  --color-fd-card-foreground: #f2efe9;
-  --color-fd-border: #2a2a2a;
-  --color-fd-primary: #d35f53;
-  --color-fd-primary-foreground: #0d0d0d;
-  --color-fd-secondary: #1a1a1a;
-  --color-fd-secondary-foreground: #f2efe9;
-  --color-fd-accent: #2a1a18;
-  --color-fd-accent-foreground: #f2efe9;
-  --color-fd-ring: #d35f53;
-}
-
+/* ---------------------------------------------------------------------------
+   3. Typography — the brand scale is 14px base, not the 16px browser default.
+   --------------------------------------------------------------------------- */
 @layer base {
   html {
     scroll-behavior: smooth;
-    /* Offset anchor jumps by the sticky topbar. */
-    scroll-padding-top: calc(var(--topbar-height) + 16px);
+    scroll-padding-top: calc(var(--topbar-height) + var(--space-4));
   }
 
   body {
+    background: var(--color-paper);
+    color: var(--color-ink);
     font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+    letter-spacing: var(--tracking-tight);
     -webkit-font-smoothing: antialiased;
   }
 
   h1,
   h2,
-  h3 {
+  h3,
+  h4 {
     font-family: var(--font-display);
-    font-weight: 400;
+    font-weight: var(--weight-regular);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-display);
   }
 
   code,
@@ -109,47 +114,91 @@
   samp {
     font-family: var(--font-mono);
   }
+
+  /* Sharp is the brand: 0px everywhere except pills and avatars, which the
+     token file explicitly allows. */
+  :where(button, input, select, textarea, figure, aside, nav, dialog, table) {
+    border-radius: var(--radius-none);
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
 }
 
 /* ---------------------------------------------------------------------------
-   Tratto has no rounded UI. Fumadocs ships `rounded-*` utilities throughout its
-   navbar, sidebar and search dialog, so square them off at the source.
+   4. Docs chrome
    --------------------------------------------------------------------------- */
+
+/* Flat is the brand — Fumadocs ships rounded, shadowed chrome by default. */
 #nd-nav,
 #nd-sidebar,
 #nd-subnav,
 #nd-toc,
 #nd-docs-layout {
-  --radius: 0px;
+  --radius: var(--radius-none);
 }
 
 #nd-nav :where(a, button, input, kbd, div),
 #nd-sidebar :where(a, button, input, kbd),
 #nd-toc :where(a, button) {
-  border-radius: 0;
+  border-radius: var(--radius-none);
+  box-shadow: none;
 }
 
-/* Active sidebar entry: vermiglio wash plus the 2px left accent (issue #9). */
+#nd-nav {
+  background: var(--color-paper);
+  border-bottom: 1px solid var(--color-border);
+}
+
+#nd-sidebar {
+  font-size: var(--text-sm);
+}
+
+/* Active sidebar entry: vermiglio wash plus a 2px left accent. */
 #nd-sidebar a[data-active='true'] {
   background: var(--color-score-10);
   color: var(--color-score);
   border-left: 2px solid var(--color-score);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
-.dark #nd-sidebar a[data-active='true'] {
-  background: color-mix(in srgb, var(--color-score) 18%, transparent);
-  color: var(--color-score-80);
-  border-left-color: var(--color-score-80);
+#nd-toc {
+  font-size: var(--text-xs);
 }
 
-/* Long cURL commands and JSON payloads must scroll inside their own block —
-   never widen the page or push the layout around. */
+/* Fumadocs' own "On this page" heading, restyled as an eyebrow (issue #10)
+   rather than rendering a second label above it. Its text is already
+   localised through the i18n provider. */
+#nd-toc h3 {
+  font-family: var(--font-body);
+  font-size: var(--text-eyebrow);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--color-ink-40);
+}
+
+#nd-toc h3 svg {
+  display: none;
+}
+
+/* Page title uses the medium display size; 52px is reserved for marketing. */
+#nd-page h1,
+article h1 {
+  font-size: var(--text-display-md);
+}
+
+/* Content surfaces sit on white above the paper page. */
 .fd-codeblock,
 figure[data-rehype-pretty-code-figure],
 pre {
   max-width: 100%;
   overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-none);
+  font-size: var(--text-sm);
 }
 
 pre code {
@@ -157,18 +206,19 @@ pre code {
   min-width: 0;
 }
 
-/* Wide tables (error-code and event references) scroll independently too. */
+/* Wide tables (error codes, event references) scroll on their own. */
 .prose table,
 #nd-page table {
   display: block;
   max-width: 100%;
   overflow-x: auto;
+  font-size: var(--text-sm);
 }
 
-/* Eyebrow style used for "On this page" and section labels. */
+/* Eyebrow — "On this page" and section labels. */
 .tratto-eyebrow {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--text-eyebrow);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
   letter-spacing: var(--tracking-eyebrow);
   color: var(--color-ink-40);

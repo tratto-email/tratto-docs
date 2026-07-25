@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/page';
-import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { setRequestLocale } from 'next-intl/server';
 
 import { notFound } from 'next/navigation';
 
@@ -99,7 +99,6 @@ export default async function APIReferencePage({
   if (!locale) notFound();
 
   setRequestLocale(locale);
-  const t = await getTranslations({ locale, namespace: 'page' });
 
   const spec = loadSpec();
   const endpointsByTag = groupByTag(spec);
@@ -112,10 +111,7 @@ export default async function APIReferencePage({
         url: `#${slugify(tag.name)}`,
         depth: 2,
       }))}
-      tableOfContent={{
-        style: 'clerk',
-        header: <p className="tratto-eyebrow mb-2">{t('onThisPage')}</p>,
-      }}
+      tableOfContent={{ style: 'clerk' }}
       breadcrumb={{ enabled: false }}
     >
       <DocsTitle>API Reference</DocsTitle>
@@ -144,7 +140,7 @@ export default async function APIReferencePage({
                   >
                     <div className="mb-1.5 flex items-center gap-3">
                       <span
-                        className={`px-2 py-0.5 font-mono text-[11px] font-bold text-white ${
+                        className={`px-2 py-0.5 font-mono text-[11px] font-bold text-[#fff] ${
                           METHOD_COLOURS[endpoint.method] ?? 'bg-neutral-600'
                         }`}
                       >

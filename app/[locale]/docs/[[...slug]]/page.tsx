@@ -89,10 +89,7 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
       toc={page.data.toc}
       full={page.data.full}
       lastUpdate={page.data.lastModified}
-      tableOfContent={{
-        style: 'clerk',
-        header: <p className="tratto-eyebrow mb-2">{t('onThisPage')}</p>,
-      }}
+      tableOfContent={{ style: 'clerk' }}
       breadcrumb={{ enabled: false }}
       article={{ className: 'max-w-none' }}
     >

@@ -79,9 +79,28 @@ and `fumadocs-core@15` (array). Leave it until Fumadocs 16 + Next 16.
 
 ### 5. Design tokens
 
-Colours, fonts and metrics live in `app/globals.css` under `@theme`, mirroring
-the marketing site. Fumadocs' `--color-fd-*` variables are remapped onto them.
-Tratto UI has **0px border radius** — do not introduce rounded corners.
+`app/design-tokens.css` is a **shared file, copied verbatim** from
+`tratto-email/tratto`. Keep it byte-identical — never edit a value there to fix
+something in the docs. Docs-only adjustments belong in `globals.css`, which:
+
+- bridges the token file's `prefers-color-scheme` switch to the `.light` /
+  `.dark` classes the theme toggle writes;
+- remaps Fumadocs' `--color-fd-*` onto token **names** (not values), so dark
+  mode flows through without a second mapping;
+- repoints `--font-display` / `--font-body` / `--font-mono` at the `next/font`
+  variables, because the shared file names families literally and Next
+  self-hosts them under hashed names.
+
+Things that are easy to get wrong:
+
+- The base type scale is **14px** (`--text-base`), not the 16px browser default.
+- The page background is `--color-paper` (#F7F4EF); `--color-white` is the
+  *elevated* surface for cards and code blocks. In dark mode `--color-white`
+  becomes `#1A1A1A` — so never use Tailwind's `text-white` on a coloured
+  background, use a literal `#fff`.
+- Radius is 0 by default. `--radius-pill` and `--radius-circle` are the only
+  sanctioned exceptions.
+- Flat is the brand: no shadows except `--shadow-focus`.
 
 ---
 
