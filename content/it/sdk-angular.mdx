@@ -1,20 +1,20 @@
 ---
-title: SDK Angular — Solo Lato Server
-description: Usa @tratto/angular da Angular SSR o AnalogJS/Nitro, mai dal browser.
+title: Angular — SSR e AnalogJS
+description: Invia email da un'applicazione Angular usando @tratto/email sul server.
 ---
 
-# SDK Angular — Solo Lato Server
+# Angular — SSR e AnalogJS
 
-`@tratto/angular` è un SDK **lato server**. Non deve mai essere eseguito in un browser.
+**Non esiste un SDK Angular.** Le applicazioni Angular inviano email dal server,
+usando [`@tratto/email`](/it/docs/sdk-nodejs) nel processo Node che renderizza o
+serve l'applicazione.
 
-Una chiave API dà accesso completo al tuo workspace. Chi la possiede può inviare
-email dai tuoi domini verificati, leggere la lista contatti, creare nuove chiavi
-API, rimuovere membri del team ed eliminare il workspace stesso. Una chiave
-spedita al browser è pubblica: si legge nel bundle JavaScript, nei DevTools e nel
-tab di rete. Nessuna offuscazione cambia questo fatto.
-
-Tutti gli SDK Tratto sono pensati per il server, così come quelli equivalenti
-degli altri provider email. Di questo pacchetto non esiste una build per browser.
+Una chiave API dà accesso completo al workspace: inviare dai tuoi domini
+verificati, leggere la lista contatti, creare nuove chiavi API, rimuovere membri
+del team, eliminare il workspace. Una chiave spedita al browser è pubblica: si
+legge nel bundle JavaScript, nei DevTools e nel tab di rete. Nessuna offuscazione
+cambia questo, ed è il motivo per cui nessun provider email pubblica un SDK per
+browser.
 
 ## Il tranello specifico di Angular
 
@@ -24,56 +24,26 @@ finisce compilato nel bundle del browser, anche in un'applicazione SSR. Il serve
 side rendering cambia *dove il codice viene eseguito la prima volta* — non
 impedisce al codice di raggiungere il client.
 
-La conseguenza è concreta:
+Quindi "usiamo SSR" non è di per sé una protezione. Quello che conta è dove sta la
+**chiave**, e se il codice che la legge può mai essere eseguito in un browser.
 
 ```ts
 // ❌ MAI — app.config.ts fa parte del bundle browser
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(),
-    provideTratt({ apiKey: 'tratto_live_...' }),  // spedita a ogni visitatore
+    { provide: TRATTO_KEY, useValue: 'tratto_live_...' },  // spedita a ogni visitatore
   ],
 };
 ```
 
-Mettere la chiave in `app.config.ts` la pubblica. L'applicazione funzionerà lo
-stesso, ed è proprio questo che rende l'errore facile da non notare.
-
-## Dove può stare la chiave
-
-Angular unisce una configurazione solo-server a quella del browser al momento del
-render. I provider dichiarati in `app.config.server.ts` esistono **soltanto** nel
-bundle server:
-
-```ts
-// app.config.server.ts — solo bundle server
-import { mergeApplicationConfig, ApplicationConfig } from '@angular/core';
-import { provideServerRendering } from '@angular/ssr';
-import { provideTratt } from '@tratto/angular';
-
-import { appConfig } from './app.config';
-
-const serverConfig: ApplicationConfig = {
-  providers: [
-    provideServerRendering(),
-    provideTratt({ apiKey: process.env['TRATTO_API_KEY']! }),
-  ],
-};
-
-export const config = mergeApplicationConfig(appConfig, serverConfig);
-```
-
-`app.config.ts` resta pulito: niente `provideTratt`, niente chiave.
-
-Poiché il provider esiste solo sul server, iniettare `TrattoService` in codice che
-gira anche nel browser genera lì un errore "no provider". È il comportamento
-voluto: fallisce in modo rumoroso invece di far trapelare la chiave.
+L'applicazione continua a funzionare, ed è questo che rende l'errore facile da non
+notare.
 
 ## Pattern 1 — Chiama Tratto dalle tue route server (consigliato)
 
 Il design più sicuro tiene Tratto completamente fuori dall'applicazione Angular.
 Il tuo server espone un endpoint, il browser chiama quell'endpoint e il server
-parla con Tratto usando l'SDK Node.
+parla con Tratto.
 
 ```ts
 // server.ts
@@ -148,54 +118,87 @@ if (isMainModule(import.meta.url)) {
 export const reqHandler = createNodeRequestHandler(app);
 ```
 
-Qui si usa [`@tratto/email`](/it/docs/sdk-nodejs), l'SDK Node: dentro un handler
-Express non esiste l'injector di Angular, quindi l'SDK Node è la scelta naturale.
+`server.ts` viene impacchettato nell'output server e non raggiunge mai il browser.
 
 ## Pattern 2 — Recuperare dati durante il render server
 
-Se ti servono dati Tratto *mentre la pagina viene renderizzata*, inietta il
-servizio e proteggi la chiamata perché avvenga solo sul server. Il provider di
-`app.config.server.ts` rende la chiave disponibile lì e in nessun altro punto.
+Se ti servono dati Tratto *mentre la pagina viene renderizzata*, dichiara un tuo
+injection token e forniscilo **solo** nella configurazione server.
+
+Il file del token si può importare ovunque, perché dichiara un token e usa
+`import type` per il client: dall'SDK non viene emesso nulla.
 
 ```ts
-import { Component, inject, PLATFORM_ID, signal } from '@angular/core';
-import { isPlatformServer } from '@angular/common';
-import { TrattoService } from '@tratto/angular';
+// app/tratto.token.ts
+import { InjectionToken } from '@angular/core';
+import type { Tratto } from '@tratto/email';
+
+export const TRATTO = new InjectionToken<Tratto>('TRATTO');
+```
+
+Il provider esiste solo nel bundle server:
+
+```ts
+// app.config.server.ts — solo bundle server
+import { mergeApplicationConfig, ApplicationConfig } from '@angular/core';
+import { provideServerRendering } from '@angular/ssr';
+import { Tratto } from '@tratto/email';
+
+import { appConfig } from './app.config';
+import { TRATTO } from './tratto.token';
+
+const serverConfig: ApplicationConfig = {
+  providers: [
+    provideServerRendering(),
+    {
+      provide: TRATTO,
+      useFactory: () => new Tratto(process.env['TRATTO_API_KEY']!),
+    },
+  ],
+};
+
+export const config = mergeApplicationConfig(appConfig, serverConfig);
+```
+
+Nel browser il provider semplicemente non c'è, quindi `optional: true` restituisce
+`null` e la chiamata viene saltata:
+
+```ts
+import { Component, inject, signal } from '@angular/core';
+import { TRATTO } from './tratto.token';
 
 @Component({
   selector: 'app-newsletter-stats',
   template: `<p>{{ subscribers() }} iscritti</p>`,
 })
 export class NewsletterStatsComponent {
-  private readonly platformId = inject(PLATFORM_ID);
   readonly subscribers = signal(0);
 
   constructor() {
-    if (!isPlatformServer(this.platformId)) return;
+    // null nel browser — il provider è solo lato server.
+    const tratto = inject(TRATTO, { optional: true });
+    if (!tratto) return;
 
-    // Iniettato in modo pigro: la build browser non risolve mai il provider.
-    const tratto = inject(TrattoService);
     tratto.analytics
       .getSummary({ period: '30d' })
-      .subscribe((summary) => this.subscribers.set(summary.subscribers));
+      .then((summary) => this.subscribers.set(summary.subscribers));
   }
 }
 ```
 
-Trasferisci il risultato al client con lo state transfer di Angular, così il
-valore sopravvive all'hydration senza una seconda richiesta.
+Trasferisci il risultato con lo state transfer di Angular, così il valore
+sopravvive all'hydration senza una seconda richiesta.
 
 <Callout type="warn">
-Il Pattern 2 compila comunque i riferimenti a `TrattoService` nel bundle del
-browser — solo la *chiave* resta lato server. Preferisci il Pattern 1 ogni volta
-che il dato non deve stare nell'HTML iniziale.
+Preferisci il Pattern 1 ogni volta che il dato non deve stare nell'HTML iniziale.
+Tiene l'SDK completamente fuori dal grafo delle dipendenze dell'applicazione: una
+cosa in meno che può rompersi durante un refactor.
 </Callout>
 
 ## Tipizzare i dati nel browser
 
-Non esiste un pacchetto di tipi separato, e non serve. `@tratto/email` esporta
-tutti i tipi di richiesta e risposta, e `import type` viene cancellato in fase di
-compilazione: nel bundle non arriva nulla.
+`@tratto/email` esporta tutti i tipi di richiesta e risposta, e `import type`
+viene cancellato in fase di compilazione: nel bundle non arriva nulla.
 
 ```ts
 import type { EmailEvent } from '@tratto/email';
@@ -244,8 +247,8 @@ export default defineEventHandler(async (event) => {
 });
 ```
 
-I file sotto `src/server/` vengono impacchettati da Nitro nell'output server e
-non raggiungono mai il browser.
+I file sotto `src/server/` vengono impacchettati da Nitro nell'output server e non
+raggiungono mai il browser.
 
 ## Fornire la chiave
 
@@ -262,39 +265,37 @@ reali.
 
 ## Gestione degli errori
 
-I metodi dei servizi restituiscono `Observable` RxJS ed espongono i fallimenti
-come `HttpErrorResponse` di Angular:
+`@tratto/email` solleva `TrattoError` con il codice di errore dell'API. Logga il
+dettaglio lato server e restituisci qualcosa di generico:
 
 ```ts
-import { catchError, EMPTY } from 'rxjs';
+import { TrattoError } from '@tratto/email';
 
-emails
-  .send({ from: '...', to: '...', subject: '...', html: '...' })
-  .pipe(
-    catchError((err) => {
-      // Logga solo lato server — mai restituire l'errore grezzo al browser.
-      console.error(err.status, err.error?.error?.code);
-      return EMPTY;
-    }),
-  )
-  .subscribe(({ id }) => console.log(id));
+try {
+  await tratto.emails.send({ /* … */ });
+} catch (error) {
+  if (error instanceof TrattoError) {
+    console.error(error.code, error.statusCode);
+  }
+  res.status(500).json({ error: 'Invio non riuscito' });
+}
 ```
 
-Al client restituisci un messaggio generico. I payload di errore di Tratto possono
-contenere indirizzi dei destinatari e altri dettagli che non devono uscire dal tuo
-server. Vedi [Codici di Errore](/it/docs/error-codes).
+I payload di errore di Tratto possono contenere indirizzi dei destinatari e altri
+dettagli che non devono uscire dal tuo server. Vedi
+[Codici di Errore](/it/docs/error-codes).
 
 ## Checklist
 
-- [ ] `provideTratt` compare solo in `app.config.server.ts`, mai in `app.config.ts`
-- [ ] La chiave arriva da `process.env`, non da `environment.ts`
-- [ ] Nessun componente raggiungibile dal browser chiama Tratto senza guardia server
-- [ ] I tuoi endpoint validano l'input prima di inoltrarlo a Tratto
+- [ ] La chiave è letta da `process.env`, mai da `environment.ts`
+- [ ] Nessun provider che porta la chiave esiste in `app.config.ts`
+- [ ] I componenti usano `inject(TRATTO, { optional: true })` e gestiscono `null`
+- [ ] I tuoi endpoint validano l'input e hanno un rate limit
 - [ ] `from` è un indirizzo fisso e verificato, mai costruito da input utente
-- [ ] Gli errori sono loggati sul server e restituiti al client in forma generica
+- [ ] Gli errori sono loggati sul server e restituiti in forma generica
 - [ ] `grep -r "tratto_live" dist/browser` non trova nulla dopo una build di produzione
 
-Quest'ultimo controllo è quello che conta davvero. Mettilo in CI.
+Metti quest'ultimo controllo in CI.
 
 ---
 
