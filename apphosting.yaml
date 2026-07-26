@@ -17,12 +17,6 @@ env:
       - BUILD
       - RUNTIME
 
-  - variable: NEXT_PUBLIC_GTM_ID
-    value: ''
-    availability:
-      - BUILD
-      - RUNTIME
-
   # Lets the build pull the live OpenAPI spec instead of the committed fallback.
   - variable: TRATTO_OPENAPI_URL
     value: https://api.tratto.email/docs/json
