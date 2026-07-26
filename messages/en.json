@@ -28,5 +28,22 @@
     "subtitle": "Transactional and marketing email for startups and non-profits. REST API, SDKs and guides.",
     "ctaPrimary": "Quickstart",
     "ctaSecondary": "API Reference"
+  },
+  "cookieBanner": {
+    "message": "We use analytics cookies to understand how the docs are used and improve them. Read our",
+    "accept": "Accept all",
+    "decline": "Decline",
+    "manage": "Manage",
+    "privacyLabel": "Privacy Policy"
+  },
+  "cookiePrefs": {
+    "title": "Cookie Preferences",
+    "save": "Save preferences",
+    "cancel": "Cancel",
+    "necessaryName": "Necessary",
+    "necessaryDescription": "Required for the site to function correctly. Covers session management and security. Cannot be disabled.",
+    "analyticsName": "Analytics",
+    "analyticsDescription": "Help us understand how the docs are used so we can improve them. Powered by Google Analytics via GTM.",
+    "alwaysOn": "Always on"
   }
 }

@@ -17,6 +17,13 @@ env:
       - BUILD
       - RUNTIME
 
+  # Same container as tratto.email — one GTM property tracks both sites.
+  - variable: NEXT_PUBLIC_GTM_ID
+    value: GTM-5W7XJ2HB
+    availability:
+      - BUILD
+      - RUNTIME
+
   # Lets the build pull the live OpenAPI spec instead of the committed fallback.
   - variable: TRATTO_OPENAPI_URL
     value: https://api.tratto.email/docs/json

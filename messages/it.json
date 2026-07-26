@@ -28,5 +28,22 @@
     "subtitle": "Email transazionali e marketing per startup e no-profit. API REST, SDK e guide.",
     "ctaPrimary": "Quickstart",
     "ctaSecondary": "API Reference"
+  },
+  "cookieBanner": {
+    "message": "Usiamo cookie analitici per capire come viene usata la documentazione e migliorarla. Leggi la nostra",
+    "accept": "Accetta tutti",
+    "decline": "Rifiuta",
+    "manage": "Gestisci",
+    "privacyLabel": "Informativa privacy"
+  },
+  "cookiePrefs": {
+    "title": "Preferenze cookie",
+    "save": "Salva preferenze",
+    "cancel": "Annulla",
+    "necessaryName": "Necessari",
+    "necessaryDescription": "Indispensabili per il corretto funzionamento del sito. Gestione della sessione e sicurezza. Non disattivabili.",
+    "analyticsName": "Analitici",
+    "analyticsDescription": "Ci aiutano a capire come viene usata la documentazione per poterla migliorare. Gestiti tramite Google Analytics via GTM.",
+    "alwaysOn": "Sempre attivi"
   }
 }
