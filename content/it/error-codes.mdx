@@ -1,0 +1,123 @@
+---
+title: Riferimento Codici di Errore
+description: Gli otto codici di errore restituiti dall'API Tratto, e cosa fare per ciascuno.
+---
+
+# Riferimento Codici di Errore
+
+L'API restituisce **otto** codici di errore. Sono volutamente generici: il codice
+indica la *classe* del problema e lo stato HTTP, mentre `message` contiene il
+dettaglio specifico.
+
+Fai i controlli su `code`, non su `message`: i messaggi sono scritti per le
+persone e possono cambiare senza preavviso.
+
+## Formato degli Errori
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Webhook 'wh_abc123' not found.",
+    "docs": "https://tratto.email/docs/api/errors#not_found"
+  }
+}
+```
+
+`suggestion` è presente su alcuni errori con un'indicazione su come risolvere.
+Gli errori di validazione aggiungono un array `details` — vedi sotto.
+
+## I Codici
+
+| Codice | HTTP | Significato | Cosa fare |
+|---|---|---|---|
+| `UNAUTHORIZED` | 401 | Chiave API mancante o non valida | Controlla l'header `Authorization: Bearer` |
+| `FORBIDDEN` | 403 | La chiave non ha i permessi per questa risorsa | Usa una chiave con i permessi corretti |
+| `NOT_FOUND` | 404 | La risorsa non esiste | Verifica l'ID: potrebbe appartenere a un altro workspace |
+| `CONFLICT` | 409 | La risorsa esiste già | Recuperala o aggiornala invece di crearla |
+| `VALIDATION_ERROR` | 422 | Il corpo della richiesta non ha superato la validazione | Leggi `details` per i campi errati |
+| `RATE_LIMITED` | 429 | Più di 500 richieste in un minuto | Applica un backoff esponenziale e riprova |
+| `QUOTA_EXCEEDED` | 429 | Quota mensile di email esaurita | Passa a un piano superiore o attendi il reset |
+| `INTERNAL_ERROR` | 500 | Errore dalla nostra parte | Riprova con backoff; contatta il supporto se persiste |
+
+<Callout type="warn">
+Non esistono codici specifici per risorsa. Un template inesistente, un contatto
+inesistente e una campagna inesistente restituiscono tutti `NOT_FOUND`: la
+risorsa è indicata in `message`, non in `code`.
+</Callout>
+
+## Errori di validazione
+
+`VALIDATION_ERROR` restituisce **422**, non 400, e include un array `details`
+prodotto dal validatore dello schema, che identifica ogni campo non valido:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Request validation failed.",
+    "docs": "https://tratto.email/docs/api/errors#validation_error",
+    "details": [
+      {
+        "instancePath": "/to",
+        "message": "Invalid email"
+      }
+    ]
+  }
+}
+```
+
+## Due codici condividono il 429
+
+`RATE_LIMITED` e `QUOTA_EXCEEDED` restituiscono entrambi 429, ma richiedono
+reazioni opposte:
+
+- **`RATE_LIMITED`** — stai inviando troppo in fretta. Rallenta e riprova: la
+  richiesta andrà a buon fine a breve. Vedi [Rate Limit](/it/docs/rate-limits).
+- **`QUOTA_EXCEEDED`** — hai esaurito il monte email mensile. Riprovare non serve
+  finché il piano non si resetta o non viene aggiornato.
+
+Trattarli allo stesso modo significa riprovare all'infinito contro un muro:
+
+```javascript
+if (error.status === 429) {
+  if (error.code === 'QUOTA_EXCEEDED') {
+    // Avvisa qualcuno. Riprovare non può risolvere.
+    throw error;
+  }
+  await backoff();
+  return retry();
+}
+```
+
+## Gestione degli errori con l'SDK
+
+`@tratto/email` solleva `TrattoError`, che espone `code` e `statusCode`:
+
+```javascript
+import { TrattoError } from '@tratto/email';
+
+try {
+  await tratto.emails.send({ /* … */ });
+} catch (error) {
+  if (error instanceof TrattoError) {
+    switch (error.code) {
+      case 'VALIDATION_ERROR':
+        // Correggi il payload: riprovare invariato fallirà di nuovo.
+        break;
+      case 'RATE_LIMITED':
+        await backoff();
+        break;
+      case 'QUOTA_EXCEEDED':
+        // Non c'è nulla da riprovare.
+        break;
+      default:
+        throw error;
+    }
+  }
+}
+```
+
+---
+
+Prossimo: [Rate Limit](/it/docs/rate-limits) · [Idempotenza](/it/docs/idempotency)

@@ -9,7 +9,7 @@ description: L'endpoint principale per inviare email tramite Tratto
 
 ## Prerequisiti
 
-Prima di poter inviare email, hai bisogno di un **dominio di invio verificato**. Vedi [Domini](/docs/it/domains) per la configurazione.
+Prima di poter inviare email, hai bisogno di un **dominio di invio verificato**. Vedi [Domini](/it/docs/domains) per la configurazione.
 
 ## Invio Minimo
 
@@ -106,7 +106,7 @@ I client email mostrano `html` se supportato; ricadere a `text` altrimenti.
 
 Invece di comporre HTML nel codice, usa un template con sostituzione di variabili.
 
-**Step 1: Crea un template (vedi [Template](/docs/it/templates))**
+**Step 1: Crea un template (vedi [Template](/it/docs/templates))**
 
 ```json
 {
@@ -261,37 +261,38 @@ Successivamente, filtra le email per tag o usali nei webhook.
 ```json
 {
   "error": {
-    "code": "DOMAIN_NOT_VERIFIED",
+    "code": "FORBIDDEN",
     "message": "The sending domain is not verified.",
     "docs": "https://docs.tratto.email/it/domains",
-    "suggestion": "Run POST /v1/domains/{id}/verify and check DNS records."
+    "suggestion": "Add and verify the domain at https://app.tratto.email/domains before sending."
   }
 }
 ```
 
 ## Errori Comuni
 
-### DOMAIN_NOT_VERIFIED
+### FORBIDDEN — dominio non verificato
 
-**Causa:** Il dominio `from` non è stato ancora verificato.
+**Causa:** Il dominio `from` non è ancora verificato. L'API restituisce 403 con il
+dominio indicato in `message`.
 
-**Fix:** Completa il [processo di verifica del dominio](/docs/it/domains).
+**Fix:** Completa il [processo di verifica del dominio](/it/docs/domains).
 
-### RATE_LIMIT_EXCEEDED
+### RATE_LIMITED
 
-**Causa:** Hai superato il limite di velocità del tuo tenant (500 richieste/minuto).
+**Causa:** Hai superato il limite di 500 richieste al minuto.
 
-**Fix:** Implementa backoff esponenziale e riprova più tardi. Vedi [Rate Limits](/docs/it/rate-limits).
+**Fix:** Implementa backoff esponenziale e riprova più tardi. Vedi [Rate Limits](/it/docs/rate-limits).
 
 ### VALIDATION_ERROR
 
 **Causa:** Richiesta non valida (campo mancante, JSON malformato, ecc.).
 
-**Fix:** Controlla il messaggio di errore e consulta il riferimento [Codici di Errore](/docs/it/error-codes).
+**Fix:** Controlla il messaggio di errore e consulta il riferimento [Codici di Errore](/it/docs/error-codes).
 
 ## Prossimi Passi
 
-- **Tracciare gli eventi email?** Configura [Webhook](/docs/it/webhooks)
-- **Controllare lo stato dell'email?** Vedi [Stato e Ciclo di Vita dell'Email](/docs/it/email-status)
-- **Creare template?** Vai a [Template](/docs/it/templates)
-- **Gestire domini?** Leggi [Domini](/docs/it/domains)
+- **Tracciare gli eventi email?** Configura [Webhook](/it/docs/webhooks)
+- **Controllare lo stato dell'email?** Vedi [Stato e Ciclo di Vita dell'Email](/it/docs/email-status)
+- **Creare template?** Vai a [Template](/it/docs/templates)
+- **Gestire domini?** Leggi [Domini](/it/docs/domains)

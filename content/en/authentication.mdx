@@ -200,6 +200,9 @@ API keys grant full workspace access. Never include them in:
 
 Instead, call your backend API, which holds the key securely.
 
+For framework-specific guidance see [React](/en/docs/sdk-react) (Server Components
+and Server Actions) and [Angular](/en/docs/sdk-angular) (SSR and AnalogJS/Nitro).
+
 **Wrong:**
 ```javascript
 // ❌ NEVER DO THIS
@@ -297,7 +300,8 @@ Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 - Value should be a UUID v4 (RFC 4122)
 - Tratto caches the response for 24 hours
 - If you retry with the same key, you get the same response without a duplicate action
-- Using the same key with different request bodies returns `409 IDEMPOTENCY_CONFLICT`
+- The cached response is returned for any retry with that key; the request body
+  is not compared, so reuse a key only for the operation that created it
 
 **Example:**
 
@@ -320,12 +324,12 @@ const response = await fetch('https://api.tratto.email/v1/emails', {
 });
 ```
 
-See [Idempotency](/docs/en/idempotency) for more details.
+See [Idempotency](/en/docs/idempotency) for more details.
 
 ---
 
 ## Next Steps
 
-- **Ready to send?** Go to [Send Email](/docs/en/send-email)
-- **Need to verify domains?** See [Domains](/docs/en/domains)
-- **Understand all error codes?** Check [Error Codes](/docs/en/error-codes)
+- **Ready to send?** Go to [Send Email](/en/docs/send-email)
+- **Need to verify domains?** See [Domains](/en/docs/domains)
+- **Understand all error codes?** Check [Error Codes](/en/docs/error-codes)

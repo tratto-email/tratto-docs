@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "siteName": "Tratto Docs",
+    "titleTemplate": "{title} — Tratto Docs",
+    "defaultDescription": "Documentation for the Tratto Email API: transactional email, campaigns, flows, domains and webhooks."
+  },
+  "nav": {
+    "home": "Home",
+    "docs": "Docs",
+    "pricing": "Pricing",
+    "blog": "Blog",
+    "status": "Status",
+    "getStarted": "Get started",
+    "search": "Search",
+    "searchPlaceholder": "Search the docs…",
+    "toggleMenu": "Toggle navigation menu",
+    "switchLanguage": "Switch language"
+  },
+  "page": {
+    "onThisPage": "On this page",
+    "editOnGithub": "Edit this page on GitHub",
+    "lastUpdated": "Last updated",
+    "breadcrumb": "Breadcrumb"
+  },
+  "home": {
+    "eyebrow": "Documentation",
+    "title": "Build with Tratto",
+    "subtitle": "Transactional and marketing email for startups and non-profits. REST API, SDKs and guides.",
+    "ctaPrimary": "Quickstart",
+    "ctaSecondary": "API Reference"
+  }
+}

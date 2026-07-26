@@ -42,68 +42,6 @@ curl -X POST https://api.tratto.email/v1/contacts \
 }
 ```
 
-## Bulk Import Contacts
-
-Import many contacts from a CSV file.
-
-**CSV Format:**
-```csv
-email,firstName,lastName,tags,metadata.plan
-alice@example.com,Alice,Smith,"vip,newsletter",pro
-bob@example.com,Bob,Jones,"newsletter",free
-carol@example.com,Carol,Davis,,pro
-```
-
-**cURL**
-```bash
-curl -X POST https://api.tratto.email/v1/contacts/import \
-  -H "Authorization: Bearer tratto_live_..." \
-  -F "file=@contacts.csv"
-```
-
-**Response:**
-```json
-{
-  "data": {
-    "jobId": "imp_job_xyz",
-    "status": "pending",
-    "totalCount": 3,
-    "processedCount": 0,
-    "errorCount": 0,
-    "createdAt": "2025-06-30T12:00:00Z"
-  }
-}
-```
-
-Check the import job status later.
-
-## Check Import Status
-
-Monitor a bulk import job.
-
-**cURL**
-```bash
-curl https://api.tratto.email/v1/contacts/import/imp_job_xyz \
-  -H "Authorization: Bearer tratto_live_..."
-```
-
-**Response:**
-```json
-{
-  "data": {
-    "jobId": "imp_job_xyz",
-    "status": "completed",
-    "totalCount": 3,
-    "processedCount": 3,
-    "errorCount": 0,
-    "createdAt": "2025-06-30T12:00:00Z",
-    "completedAt": "2025-06-30T12:02:00Z"
-  }
-}
-```
-
-Statuses: `pending`, `processing`, `completed`, `failed`
-
 ## List Contacts
 
 Retrieve all contacts with optional filtering.
@@ -131,16 +69,6 @@ curl "https://api.tratto.email/v1/contacts?status=subscribed&limit=50" \
     "nextCursor": "Y3Vyc29yOnZhbHVl"
   }
 }
-```
-
-## Get a Contact
-
-Retrieve a specific contact by ID or email.
-
-**cURL**
-```bash
-curl https://api.tratto.email/v1/contacts/cont_abc123 \
-  -H "Authorization: Bearer tratto_live_..."
 ```
 
 ## Update a Contact
@@ -207,24 +135,31 @@ Use metadata to:
 - Filter audiences by metadata conditions
 - Personalize email content with variables
 
-## Delete a Contact
+## Unsubscribe a Contact
 
-Permanently remove a contact.
+There is no delete endpoint. A contact is deactivated by moving it to the
+`unsubscribed` status, which keeps the record so it stays suppressed — a deleted
+contact could be re-imported and mailed again by mistake.
 
 **cURL**
 ```bash
-curl -X DELETE https://api.tratto.email/v1/contacts/cont_abc123 \
-  -H "Authorization: Bearer tratto_live_..."
+curl -X PATCH https://api.tratto.email/v1/contacts/cont_abc123 \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"status":"unsubscribed"}'
 ```
 
-<Callout type="warning">
-Deleting a contact is permanent. Use status `unsubscribed` instead to deactivate without deleting.
-</Callout>
-
----
+**Response:**
+```json
+{
+  "data": {
+    "id": "cont_abc123"
+  }
+}
+```
 
 ## Next Steps
 
-- **Use contacts in campaigns?** See [Campaigns](/docs/en/campaigns)
-- **Segment contacts into audiences?** Go to [Audiences](/docs/en/audiences)
-- **Use contact metadata in templates?** See [Templates](/docs/en/templates)
+- **Use contacts in campaigns?** See [Campaigns](/en/docs/campaigns)
+- **Segment contacts into audiences?** Go to [Audiences](/en/docs/audiences)
+- **Use contact metadata in templates?** See [Templates](/en/docs/templates)

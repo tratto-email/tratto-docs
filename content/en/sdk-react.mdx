@@ -1,0 +1,277 @@
+---
+title: React — Server Components and Server Actions
+description: Send email from React using @tratto/email on the server. There is no browser SDK.
+---
+
+# React — Server Components and Server Actions
+
+**There is no `@tratto/react` package, and there will not be one.** React
+applications send email from the server, using
+[`@tratto/email`](/en/docs/sdk-nodejs) inside a Server Component, a Server Action
+or a Route Handler.
+
+This is not a limitation of Tratto. No transactional email provider ships a
+browser SDK, because an API key grants full access to the account: send as your
+verified domains, read your contacts, mint new keys, delete the workspace. A key
+in the browser bundle is a key you have published.
+
+React is unusually well suited to this. Server Components give you a real
+compiler boundary — code in a server file never reaches the client bundle — so
+the correct pattern is also the natural one.
+
+## Install
+
+```bash
+npm install @tratto/email
+```
+
+Keep the key in the environment, without the `NEXT_PUBLIC_` prefix. That prefix
+is exactly what inlines a value into the browser bundle.
+
+```bash
+# .env.local — gitignored
+TRATTO_API_KEY=tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Use `tratto_test_...` in development so a mistake cannot send real mail.
+
+## Guard the module
+
+Install the `server-only` package and import it at the top of any file that
+touches the SDK. If that module is ever pulled into a Client Component, the build
+fails instead of shipping your key.
+
+```bash
+npm install server-only
+```
+
+```ts
+// lib/tratto.ts
+import 'server-only';
+import { Tratto } from '@tratto/email';
+
+export const tratto = new Tratto(process.env.TRATTO_API_KEY!);
+```
+
+<Callout type="warn">
+This one import is the difference between a mistake caught at build time and a
+key leaked to production. Add it before you write the first call.
+</Callout>
+
+## Server Action
+
+A form that submits to a Server Action never exposes the key — the function body
+stays on the server and the browser only sends the form data.
+
+```tsx
+// app/contact/actions.ts
+'use server';
+
+import { tratto } from '@/lib/tratto';
+
+export async function sendContactMessage(formData: FormData) {
+  const email = formData.get('email');
+  const message = formData.get('message');
+
+  // Validate on the server. Never trust the submitted values.
+  if (typeof email !== 'string' || typeof message !== 'string') {
+    return { ok: false, error: 'Invalid submission' };
+  }
+
+  try {
+    await tratto.emails.send({
+      // `from` is a fixed verified address — never built from user input.
+      from: 'Acme <hello@mail.acme.com>',
+      to: 'support@acme.com',
+      replyTo: email,
+      subject: 'New contact form submission',
+      text: message,
+    });
+
+    return { ok: true };
+  } catch (error) {
+    // Log the detail, return something generic.
+    console.error('tratto.emails.send failed', error);
+    return { ok: false, error: 'Could not send your message' };
+  }
+}
+```
+
+```tsx
+// app/contact/page.tsx
+import { sendContactMessage } from './actions';
+
+export default function ContactPage() {
+  return (
+    <form action={sendContactMessage}>
+      <input type="email" name="email" required />
+      <textarea name="message" required />
+      <button type="submit">Send</button>
+    </form>
+  );
+}
+```
+
+## Server Component
+
+Read data during render. The component runs on the server, so the SDK call never
+reaches the client.
+
+```tsx
+// app/dashboard/page.tsx
+import { tratto } from '@/lib/tratto';
+
+export default async function DashboardPage() {
+  const summary = await tratto.analytics.getSummary({ period: '30d' });
+
+  return (
+    <dl>
+      <dt>Delivered</dt>
+      <dd>{summary.delivered}</dd>
+      <dt>Opened</dt>
+      <dd>{summary.opened}</dd>
+    </dl>
+  );
+}
+```
+
+Pass only the values the page needs into Client Components. Anything you hand
+across that boundary is serialised into the HTML payload and is readable by the
+visitor — send `summary.delivered`, not the whole API response.
+
+## Typing data in Client Components
+
+There is no separate types package, and you do not need one. `@tratto/email`
+exports every request and response type, and `import type` is erased at compile
+time — nothing is bundled:
+
+```ts
+// components/status-badge.tsx
+'use client';
+
+import type { EmailEvent } from '@tratto/email';
+
+export function StatusBadge({ event }: { event: EmailEvent }) {
+  return <span>{event.type}</span>;
+}
+```
+
+<Callout type="warn">
+Write `import type`, not `import`. Under `verbatimModuleSyntax` TypeScript emits
+a plain import verbatim, which pulls the whole SDK — and its API key handling —
+into the client bundle. Enable
+`@typescript-eslint/consistent-type-imports` so the linter enforces it.
+</Callout>
+
+Reach for these types when your server forwards Tratto's own shapes, which is
+mostly webhook events. For everything else, prefer returning a narrowed object
+from the server and typing that: the browser has no reason to receive a full
+`EmailDetail` when it renders a status string.
+
+## Route Handler
+
+Use a Route Handler when something other than a form calls you — a webhook
+receiver, a client-side `fetch`, or a third-party service.
+
+```ts
+// app/api/subscribe/route.ts
+import { NextResponse } from 'next/server';
+import { tratto } from '@/lib/tratto';
+
+export async function POST(request: Request) {
+  const body = await request.json().catch(() => null);
+
+  if (!body || typeof body.email !== 'string') {
+    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+  }
+
+  try {
+    const contact = await tratto.contacts.create({
+      email: body.email,
+      audienceId: 'aud_abc123',
+    });
+
+    return NextResponse.json({ id: contact.id });
+  } catch (error) {
+    console.error('tratto.contacts.create failed', error);
+    return NextResponse.json({ error: 'Could not subscribe' }, { status: 500 });
+  }
+}
+```
+
+Rate-limit any endpoint reachable from the public internet. Without it, a form
+that sends mail is a way for anyone to spend your sending quota — and to damage
+your domain reputation. See [Rate Limits](/en/docs/rate-limits).
+
+## What not to do
+
+```tsx
+// ❌ NEVER — 'use client' puts this in the browser bundle
+'use client';
+
+import { Tratto } from '@tratto/email';
+
+// Published to every visitor.
+const tratto = new Tratto(process.env.NEXT_PUBLIC_TRATTO_API_KEY!);
+```
+
+Two separate mistakes, either of which is enough on its own: the SDK is
+instantiated in a Client Component, and the key uses `NEXT_PUBLIC_`, which
+inlines it as a string literal at build time.
+
+The `server-only` import shown above turns the first mistake into a build error.
+For the second, grep your build output.
+
+## Composing emails with React
+
+React is genuinely useful for email in one place: writing the templates.
+Libraries such as [React Email](https://react.email) let you build a message as
+React components and render it to HTML **on the server**, then hand the result to
+Tratto:
+
+```tsx
+// app/emails/welcome.tsx
+export function WelcomeEmail({ name }: { name: string }) {
+  return (
+    <div>
+      <h1>Welcome, {name}</h1>
+      <p>Thanks for signing up.</p>
+    </div>
+  );
+}
+```
+
+```ts
+import { render } from '@react-email/render';
+import { WelcomeEmail } from '@/app/emails/welcome';
+import { tratto } from '@/lib/tratto';
+
+const html = await render(<WelcomeEmail name="Alice" />);
+
+await tratto.emails.send({
+  from: 'Acme <hello@mail.acme.com>',
+  to: 'alice@example.com',
+  subject: 'Welcome',
+  html,
+});
+```
+
+This is rendering, not sending — it runs on the server and involves no API key in
+the browser. Tratto [Templates](/en/docs/templates) cover the same need if you
+prefer to manage content outside your codebase.
+
+## Checklist
+
+- [ ] `import 'server-only'` at the top of the module that creates the client
+- [ ] The key is `TRATTO_API_KEY`, never `NEXT_PUBLIC_TRATTO_API_KEY`
+- [ ] No `'use client'` file imports `@tratto/email`
+- [ ] Public endpoints validate input and are rate-limited
+- [ ] `from` is a fixed, verified address — never built from user input
+- [ ] Errors are logged on the server and returned as generic messages
+- [ ] `grep -r "tratto_live" .next/static` returns nothing after a production build
+
+Run that last check in CI.
+
+---
+
+Related: [Node.js SDK](/en/docs/sdk-nodejs) · [Authentication](/en/docs/authentication) · [Angular](/en/docs/sdk-angular)

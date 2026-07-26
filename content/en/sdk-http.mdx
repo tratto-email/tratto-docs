@@ -53,8 +53,8 @@ curl -X POST https://api.tratto.email/v1/emails \
 ```json
 {
   "error": {
-    "code": "DOMAIN_NOT_VERIFIED",
-    "message": "The sending domain is not verified.",
+    "code": "FORBIDDEN",
+    "message": "Domain 'mail.acme.com' is not verified for this tenant.",
     "docs": "https://docs.tratto.email/en/domains",
     "suggestion": "Verify your domain first"
   }
@@ -191,6 +191,6 @@ curl -v ...
 
 ## Next Steps
 
-- **Use a compiled SDK?** See [Node.js SDK](/docs/en/sdk-nodejs) or [Python SDK](/docs/en/sdk-python)
-- **Learn the API?** Go to [API Reference](/docs/en/api-reference)
-- **Understand auth?** See [Authentication](/docs/en/authentication)
+- **Use a compiled SDK?** See [Node.js SDK](/en/docs/sdk-nodejs) or [Python SDK](/en/docs/sdk-python)
+- **Learn the API?** Go to [API Reference](/en/docs/api-reference)
+- **Understand auth?** See [Authentication](/en/docs/authentication)

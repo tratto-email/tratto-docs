@@ -1,0 +1,385 @@
+---
+title: Verifica della Firma dei Webhook
+description: Verifica l'header X-Tratto-Signature, che firma un timestamp insieme al corpo.
+---
+
+# Verifica della Firma dei Webhook
+
+Ogni webhook inviato da Tratto è firmato con HMAC-SHA256. **Verifica sempre la
+firma**: un endpoint che non lo fa accetta qualunque cosa gli venga inviata.
+
+## L'header della firma
+
+Ogni consegna porta due header:
+
+```http
+X-Tratto-Signature: t=1784977714054,v1=0b37dd97144dcdf176572a1b...
+X-Tratto-Webhook-Id: wh_abc123
+```
+
+`X-Tratto-Signature` **non** è un hash nudo. Ha due campi:
+
+| Campo | Significato |
+|---|---|
+| `t` | Timestamp Unix in **millisecondi**, preso al momento della firma |
+| `v1` | HMAC-SHA256 in esadecimale, versione 1 dello schema. Può comparire più volte |
+
+## Cosa viene firmato
+
+La stringa firmata è il timestamp e il corpo grezzo uniti da un **punto**:
+
+```
+{timestamp}.{rawBody}
+```
+
+Firmare il solo corpo non corrisponderà mai. Il timestamp fa parte del materiale
+firmato, ed è questo a renderlo affidabile per la protezione dai replay.
+
+## Algoritmo di verifica
+
+1. Estrai `t` e **tutte** le `v1` dall'header
+2. Rifiuta la richiesta se `t` è fuori dalla tua finestra di tolleranza (5 minuti
+   è un valore ragionevole)
+3. Calcola `HMAC-SHA256("{t}.{rawBody}", secret)` sui byte **grezzi** del corpo
+4. Confronta con ciascuna `v1` a tempo costante, accettando se una corrisponde
+
+Il secret viene mostrato una sola volta alla creazione del webhook, nella forma
+`whsec_` seguito da 48 caratteri esadecimali.
+
+## Node.js
+
+```javascript
+const crypto = require('crypto');
+
+// Durante una rotazione l'header può contenere più di una `v1`: raccoglile
+// tutte invece di tenere solo l'ultima.
+function parseSignature(header) {
+  let timestamp = NaN;
+  const signatures = [];
+
+  for (const part of String(header ?? '').split(',')) {
+    const [key, value] = part.split('=').map((s) => s.trim());
+    if (key === 't') timestamp = Number(value);
+    else if (key === 'v1' && value) signatures.push(value);
+  }
+
+  return { timestamp, signatures };
+}
+
+function verifyWebhook(rawBody, header, secret, toleranceMs = 5 * 60_000) {
+  const { timestamp, signatures } = parseSignature(header);
+  if (!Number.isFinite(timestamp)) return false;
+
+  // Rifiuta i replay prima di fare qualsiasi operazione crittografica.
+  if (Math.abs(Date.now() - timestamp) > toleranceMs) return false;
+
+  const expected = Buffer.from(
+    crypto
+      .createHmac('sha256', secret)
+      .update(`${timestamp}.${rawBody}`)
+      .digest('hex'),
+    'hex',
+  );
+
+  // Accetta la consegna se una qualsiasi delle firme corrisponde.
+  return signatures.some((candidate) => {
+    const actual = Buffer.from(candidate, 'hex');
+    // timingSafeEqual accetta buffer, non stringhe, e lancia su lunghezze
+    // diverse: confronta prima le lunghezze.
+    if (actual.length !== expected.length) return false;
+    return crypto.timingSafeEqual(expected, actual);
+  });
+}
+```
+
+Collegalo conservando il corpo grezzo: `express.json()` di default lo scarta.
+
+```javascript
+const express = require('express');
+const app = express();
+
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+);
+
+app.post('/webhooks/tratto', (req, res) => {
+  const ok = verifyWebhook(
+    req.rawBody,
+    req.header('x-tratto-signature'),
+    process.env.TRATTO_WEBHOOK_SECRET,
+  );
+
+  if (!ok) return res.status(401).json({ error: 'Invalid signature' });
+
+  // Conferma subito, elabora dopo: Tratto ritenta se vai in timeout.
+  res.json({ ok: true });
+
+  const event = JSON.parse(req.rawBody);
+  console.log(event.type, event.emailId);
+});
+```
+
+## Runtime edge (Vercel Edge, Cloudflare Workers)
+
+I runtime edge non hanno `node:crypto`. WebCrypto è disponibile ovunque, Node 18+
+compreso, quindi questa versione è portabile:
+
+```ts
+function parseSignature(header: string | null) {
+  let timestamp = NaN;
+  const signatures: string[] = [];
+
+  for (const part of (header ?? '').split(',')) {
+    const [key, value] = part.split('=').map((s) => s.trim());
+    if (key === 't') timestamp = Number(value);
+    else if (key === 'v1' && value) signatures.push(value);
+  }
+
+  return { timestamp, signatures };
+}
+
+async function verifyWebhook(
+  rawBody: string,
+  header: string | null,
+  secret: string,
+  toleranceMs = 5 * 60_000,
+): Promise<boolean> {
+  const { timestamp, signatures } = parseSignature(header);
+  if (!Number.isFinite(timestamp)) return false;
+  if (Math.abs(Date.now() - timestamp) > toleranceMs) return false;
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+
+  const mac = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(`${timestamp}.${rawBody}`),
+  );
+
+  const expected = [...new Uint8Array(mac)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+
+  // Accetta se una qualsiasi firma corrisponde, confrontando a tempo costante.
+  return signatures.some((candidate) => {
+    if (candidate.length !== expected.length) return false;
+    let diff = 0;
+    for (let i = 0; i < expected.length; i++) {
+      diff |= expected.charCodeAt(i) ^ candidate.charCodeAt(i);
+    }
+    return diff === 0;
+  });
+}
+
+export async function POST(request: Request) {
+  // Leggi il corpo una volta sola, come testo, prima di parsarlo.
+  const rawBody = await request.text();
+
+  const ok = await verifyWebhook(
+    rawBody,
+    request.headers.get('x-tratto-signature'),
+    process.env.TRATTO_WEBHOOK_SECRET!,
+  );
+
+  if (!ok) return new Response('Invalid signature', { status: 401 });
+
+  const event = JSON.parse(rawBody);
+  return Response.json({ ok: true });
+}
+```
+
+## Python
+
+```python
+import hmac
+import hashlib
+import time
+
+def verify_webhook(raw_body: bytes, header: str, secret: str, tolerance_s: int = 300) -> bool:
+    timestamp, signatures = None, []
+    for part in (header or '').split(','):
+        key, _, value = part.partition('=')
+        key, value = key.strip(), value.strip()
+        if key == 't':
+            timestamp = value
+        elif key == 'v1' and value:
+            signatures.append(value)
+
+    try:
+        timestamp = int(timestamp)
+    except (TypeError, ValueError):
+        return False
+
+    # `t` è in millisecondi.
+    if abs(time.time() * 1000 - timestamp) > tolerance_s * 1000:
+        return False
+
+    signed = f"{timestamp}.".encode() + raw_body
+    expected = hmac.new(secret.encode(), signed, hashlib.sha256).hexdigest()
+
+    return any(hmac.compare_digest(expected, s) for s in signatures)
+
+
+@app.route('/webhooks/tratto', methods=['POST'])
+def tratto_webhook():
+    raw_body = request.get_data()  # byte, prima di qualsiasi parsing
+    header = request.headers.get('X-Tratto-Signature', '')
+
+    if not verify_webhook(raw_body, header, os.environ['TRATTO_WEBHOOK_SECRET']):
+        return {'error': 'Invalid signature'}, 401
+
+    event = json.loads(raw_body)
+    return {'ok': True}, 200
+```
+
+## PHP
+
+```php
+function verify_webhook(string $raw_body, string $header, string $secret, int $tolerance_s = 300): bool {
+    $timestamp = null;
+    $signatures = [];
+    foreach (explode(',', $header) as $piece) {
+        $kv = explode('=', $piece, 2);
+        if (count($kv) !== 2) continue;
+        [$key, $value] = [trim($kv[0]), trim($kv[1])];
+        if ($key === 't') $timestamp = (int) $value;
+        elseif ($key === 'v1' && $value !== '') $signatures[] = $value;
+    }
+
+    if ($timestamp === null || !$signatures) return false;
+    if (abs(round(microtime(true) * 1000) - $timestamp) > $tolerance_s * 1000) return false;
+
+    $expected = hash_hmac('sha256', $timestamp . '.' . $raw_body, $secret);
+
+    foreach ($signatures as $signature) {
+        if (hash_equals($expected, $signature)) return true;
+    }
+    return false;
+}
+
+$raw_body = file_get_contents('php://input');
+$header = $_SERVER['HTTP_X_TRATTO_SIGNATURE'] ?? '';
+
+if (!verify_webhook($raw_body, $header, getenv('TRATTO_WEBHOOK_SECRET'))) {
+    http_response_code(401);
+    exit;
+}
+```
+
+## Errori comuni
+
+### ❌ Firmare il solo corpo
+
+```javascript
+// SBAGLIATO — il timestamp fa parte della stringa firmata
+const sig = hmac('sha256', rawBody, secret);
+```
+
+```javascript
+// CORRETTO
+const sig = hmac('sha256', `${timestamp}.${rawBody}`, secret);
+```
+
+### ❌ Trattare l'header come un hash nudo
+
+```javascript
+// SBAGLIATO — l'header è `t=…,v1=…`, non un digest esadecimale
+crypto.timingSafeEqual(computed, req.header('x-tratto-signature'));
+```
+
+Estrai prima `v1`.
+
+### ❌ Firmare il JSON già parsato
+
+```javascript
+// SBAGLIATO — la ri-serializzazione altera spazi e ordine delle chiavi
+const sig = hmac('sha256', JSON.stringify(JSON.parse(body)), secret);
+```
+
+Usa i byte grezzi esattamente come ricevuti.
+
+### ❌ Confrontare con `===`
+
+```javascript
+// SBAGLIATO — espone informazioni tramite i tempi di risposta
+if (computed === signature) { /* … */ }
+```
+
+Usa `crypto.timingSafeEqual` su buffer di pari lunghezza, o il ciclo a tempo
+costante mostrato nell'esempio edge.
+
+## Protezione dai replay
+
+Il campo `t` è coperto dalla firma, quindi non può essere alterato senza
+invalidare `v1`. Rifiutare i timestamp fuori da una finestra di tolleranza è
+perciò sufficiente, ed è già integrato in tutti gli esempi qui sopra.
+
+Non usare `occurredAt` del payload per questo scopo: indica quando è avvenuto
+l'*evento*, non quando la consegna è stata firmata, e i due valori divergono nei
+tentativi successivi.
+
+## Comportamento delle consegne
+
+Sapere come Tratto ritenta determina come dovrebbe comportarsi il tuo handler:
+
+| | |
+|---|---|
+| Timeout della richiesta | 10 secondi |
+| Tentativi | fino a 5 |
+| Backoff | 5s, 30s, 5min, 30min, 2h |
+| Successo | qualsiasi risposta 2xx |
+| Disattivazione automatica | dopo 10 fallimenti consecutivi |
+
+Due conseguenze da tenere presenti in fase di progettazione:
+
+- **Conferma prima di elaborare.** Tutto ciò che supera i 10 secondi conta come
+  fallimento e verrà ritentato.
+- **Gestisci i duplicati.** I retry fanno sì che lo stesso evento possa arrivare
+  più di una volta. Deduplica sul campo `id` dell'evento.
+
+## Rotazione del secret
+
+<Callout type="warn">
+La rotazione ha effetto **immediato**. Non esiste alcun periodo di grazia: il
+secret precedente smette di funzionare nel momento in cui viene emesso quello
+nuovo, e ogni consegna firmata da lì in poi fallirà la verifica finché il tuo
+endpoint non avrà il nuovo valore.
+</Callout>
+
+```bash
+curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/rotate-secret \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+La risposta contiene il nuovo secret, mostrato una sola volta.
+
+Per ruotare senza perdere eventi, pubblica prima un endpoint che accetti
+**entrambi** i secret, poi ruota, poi rimuovi il vecchio:
+
+```javascript
+const secrets = [
+  process.env.TRATTO_WEBHOOK_SECRET,
+  process.env.TRATTO_WEBHOOK_SECRET_PREVIOUS,
+].filter(Boolean);
+
+const ok = secrets.some((secret) => verifyWebhook(req.rawBody, header, secret));
+```
+
+La rotazione azzera anche il contatore dei fallimenti e riabilita un webhook che
+era stato disattivato.
+
+---
+
+Vedi [Webhook](/it/docs/webhooks) per registrazione e tipi di evento, e
+[Deployment](/it/docs/deployment) per leggere il corpo grezzo su ogni piattaforma.

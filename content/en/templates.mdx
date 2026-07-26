@@ -42,13 +42,19 @@ curl -X POST https://api.tratto.email/v1/templates \
 
 ## Publish a Template
 
-Move a template from `draft` to `published` so it can be used for sending.
+Templates are created as `draft` and cannot be used for sending until they are
+`published`. Publishing is a status change on the template itself — there is no
+separate publish endpoint.
 
 **cURL**
 ```bash
-curl -X POST https://api.tratto.email/v1/templates/tmpl_abc123/publish \
-  -H "Authorization: Bearer tratto_live_..."
+curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"status":"published"}'
 ```
+
+`status` accepts only `draft` and `published`.
 
 ## Send Using a Template
 
@@ -135,18 +141,6 @@ curl https://api.tratto.email/v1/templates/tmpl_abc123/versions \
   ]
 }
 ```
-
-## Restore a Previous Version
-
-Roll back to an older version.
-
-**cURL**
-```bash
-curl -X POST https://api.tratto.email/v1/templates/tmpl_abc123/versions/1/restore \
-  -H "Authorization: Bearer tratto_live_..."
-```
-
-This creates a new version (3) with the content of version 1 in `draft` status.
 
 ## Test Send
 
@@ -257,6 +251,6 @@ Always test-send a template before publishing to catch rendering issues.
 
 ## Next Steps
 
-- **Send with a template?** See [Send Email](/docs/en/send-email)
-- **Use templates in campaigns?** Go to [Campaigns](/docs/en/campaigns)
-- **Use templates in flows?** See [Flows](/docs/en/flows)
+- **Send with a template?** See [Send Email](/en/docs/send-email)
+- **Use templates in campaigns?** Go to [Campaigns](/en/docs/campaigns)
+- **Use templates in flows?** See [Flows](/en/docs/flows)

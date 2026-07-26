@@ -1,0 +1,108 @@
+---
+title: Guida all'IP Warming
+description: Riscalda gli IP di invio per volumi elevati
+---
+
+# Guida all'IP Warming
+
+L'**IP warming** è il processo di aumento graduale del volume di email su un nuovo IP, per costruirne la reputazione.
+
+## Perché l'IP Warming è Importante
+
+I server di posta valutano la reputazione del mittente **per singolo IP**. Un IP nuovo non ha reputazione, quindi i server:
+- Rallentano il recapito (ramp-up graduale)
+- Indirizzano più messaggi in spam (controlli più severi)
+- Possono rifiutare del tutto (server molto conservativi)
+
+Il warming dimostra che l'IP è legittimo e migliora la deliverability.
+
+## L'IP Warming Automatico di Tratto
+
+Se sei su un **pool di IP condivisi**, Tratto gestisce il warming automaticamente: non devi fare nulla.
+
+**Per gli IP dedicati** il riscaldamento è a tuo carico. Ecco il procedimento.
+
+## Calendario di Warming (Tipico)
+
+Nell'arco di **30 giorni**, aumenta gradualmente il volume giornaliero:
+
+| Settimana | Volume Giornaliero | Totale |
+|------|---|---|
+| Settimana 1 | 100-500 email | 500 email |
+| Settimana 2 | 1.000-5.000 email | 10.000 email |
+| Settimana 3 | 5.000-10.000 email | 50.000 email |
+| Settimana 4 | 10.000-50.000 email | 200.000 email |
+
+Il calendario esatto dipende dal monitoraggio degli ISP.
+
+## Cosa Fa Tratto in Automatico
+
+La nostra Cloud Function `warmingMonitor`:
+1. Traccia il volume giornaliero inviato per ciascun IP
+2. Rileva il throttling (soft rejection)
+3. Regola automaticamente la velocità di invio
+4. Monitora le metriche di reputazione
+
+## Cosa Devi Fare Tu
+
+### 1. Parti in Piccolo
+
+Invia prima ai **destinatari più coinvolti**:
+- Clienti che hanno aperto le email precedenti
+- Team interno (aperture garantite)
+- Beta user con alto engagement
+
+Evita:
+- ❌ Liste fredde
+- ❌ Destinatari sconosciuti
+- ❌ Indirizzi non verificati
+
+### 2. Mantieni la Qualità della Lista
+
+Durante il warming **ogni bounce pesa**:
+- Verifica gli indirizzi prima dell'invio
+- Rimuovi subito i bounce
+- Rimuovi gli indirizzi inattivi dopo 6 mesi
+
+### 3. Monitora le Metriche
+
+Controlla le analytics ogni settimana:
+
+```bash
+curl "https://api.tratto.email/v1/analytics/summary?period=7d" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+Tieni d'occhio:
+- Delivery rate stabile al 99%+ (buon segno)
+- Bounce rate sotto il 2% (buon segno)
+- Complaint rate sotto lo 0,1% (critico)
+
+### 4. Invia con Costanza
+
+Invia regolarmente, possibilmente ogni giorno. Gli ISP premiano la costanza:
+
+✅ 100 email al giorno, tutti i giorni  
+❌ 7.000 email il lunedì, poi nulla per una settimana
+
+## Segnali di Throttling
+
+Se i server di posta stanno applicando throttling noterai:
+- Delivery rate sotto il 95%
+- Soft bounce in aumento
+- Tempi di invio più lenti
+
+**Cosa fare:** rallenta l'aumento di volume per qualche giorno, poi riprendi la salita più gradualmente.
+
+## Dopo il Warming
+
+Quando l'IP ha una buona reputazione (dalla quarta settimana):
+- Bounce rate stabilmente sotto il 2%
+- Complaint rate stabilmente sotto lo 0,1%
+- Delivery rate costantemente al 99%+
+
+Puoi aumentare il volume più rapidamente, ma continua a monitorare le metriche.
+
+---
+
+Vedi [Deliverability](/it/docs/deliverability) per le best practice.

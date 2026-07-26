@@ -1,0 +1,109 @@
+---
+title: Best Practice di Deliverability
+description: Massimizza il recapito in inbox con indicazioni pratiche
+---
+
+# Best Practice di Deliverability
+
+Segui queste pratiche per massimizzare il recapito in inbox ed evitare la cartella spam.
+
+## 1. Autenticazione del Dominio (SPF + DKIM + DMARC)
+
+**Checklist:**
+- ✅ Aggiungi il record SPF: `v=spf1 include:spf.tratto.email ~all`
+- ✅ Aggiungi il record DKIM con la chiave pubblica fornita da Tratto
+- ✅ Aggiungi la policy DMARC: `v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com`
+
+Vedi [Domini](/it/docs/domains) per la configurazione.
+
+## 2. Coerenza dell'Indirizzo Mittente
+
+Usa sempre lo stesso indirizzo "From" negli invii. Cambiare mittente confonde i filtri.
+
+✅ `hello@yourdomain.com` (sempre)  
+❌ `hello@yourdomain.com`, poi `noreply@yourdomain.com`
+
+## 3. Gestisci gli Eventi di Bounce e Reclamo
+
+**Disiscrivi automaticamente i contatti che:**
+- Generano un hard bounce (indirizzo non valido)
+- Segnalano il messaggio come spam
+
+Tratto aggiorna in automatico lo stato a `bounced` o `complained`. Usa i webhook per sincronizzare il tuo database.
+
+```javascript
+app.post('/webhooks/tratto', (req, res) => {
+  const event = req.body;
+  if (event.type === 'bounced' || event.type === 'complained') {
+    // Aggiorna il database: segna il contatto come disiscritto
+    db.contacts.update(event.contactId, { status: 'unsubscribed' });
+  }
+  res.json({ ok: true });
+});
+```
+
+## 4. Igiene della Lista
+
+**Rimuovi regolarmente gli indirizzi inattivi o in bounce:**
+
+```bash
+curl "https://api.tratto.email/v1/contacts?status=bounced" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+Inviare a indirizzi non validi genera segnalazioni di spam e danneggia la reputazione del mittente.
+
+## 5. Frequenza di Invio Consigliata
+
+- **Transazionali:** invio immediato (reset password, conferma d'ordine)
+- **Marketing:** 1-2 volte a settimana (troppo spesso porta a disiscrizioni)
+- **Newsletter:** settimanale o mensile (conta la costanza)
+
+Alta frequenza senza engagement significa cartella spam.
+
+## 6. Best Practice sui Contenuti
+
+**Evita i trigger antispam:**
+- ❌ Oggetti TUTTI IN MAIUSCOLO
+- ❌ Punti esclamativi eccessivi: "Compra ORA!!!"
+- ❌ Rapporto immagini/testo troppo alto (100% immagini = spam)
+- ❌ Testo nascosto (bianco su sfondo bianco)
+
+**Fai invece così:**
+- ✅ Oggetti chiari e onesti
+- ✅ Equilibrio tra immagini e testo
+- ✅ Link di disiscrizione in un clic
+- ✅ Indirizzo postale reale (requisito CAN-SPAM)
+
+## 7. Monitora Bounce Rate e Complaint Rate
+
+**Controlla le analytics ogni settimana:**
+
+```bash
+curl "https://api.tratto.email/v1/analytics/summary?period=7d" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+- **Bounce rate:** accettabile sotto il 2%
+- **Complaint rate:** accettabile sotto lo 0,1%
+
+Valori elevati danneggiano la reputazione del mittente: intervieni subito.
+
+## 8. IP Warming
+
+Se usi un IP dedicato, riscaldalo gradualmente. Vedi [IP Warming](/it/docs/ip-warming).
+
+## Checklist di Deliverability
+
+- [ ] Dominio autenticato (SPF + DKIM + DMARC)
+- [ ] Indirizzo "From" coerente
+- [ ] Eventi di bounce e reclamo gestiti
+- [ ] Lista ripulita dagli indirizzi in bounce
+- [ ] Frequenza di invio adeguata
+- [ ] Contenuti privi di trigger antispam
+- [ ] Bounce rate e complaint rate monitorati
+- [ ] IP riscaldato (se dedicato)
+
+---
+
+Vedi [IP Warming](/it/docs/ip-warming) per riscaldare un nuovo IP.

@@ -1,13 +1,296 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+@import './design-tokens.css';
 
+@source '../app/**/*.{ts,tsx}';
+@source '../components/**/*.{ts,tsx}';
+@source '../content/**/*.mdx';
+@source '../node_modules/fumadocs-ui/dist/**/*.js';
+
+/* ---------------------------------------------------------------------------
+   1. Theme toggle bridge
+
+   design-tokens.css switches on `prefers-color-scheme`, but the docs ship a
+   theme switcher (next-themes writes `.light` / `.dark` on <html>). Without
+   this block an explicit choice loses to the OS setting in both directions.
+   Class selectors outrank the bare `:root` inside the media query.
+   --------------------------------------------------------------------------- */
+/* Ghost stroke of the Tratto mark — 0.30 on light, 0.35 on dark, as in the
+   two source SVGs. */
+:root {
+  --tratto-mark-ghost: 0.3;
+
+  /* CTA tracking, measured against the header on tratto.email. It sits between
+     --tracking-label (0.08em) and --tracking-eyebrow (0.18em), so it has no
+     token yet — this is a brand value shared with the marketing site and
+     belongs in design-tokens.css once that file is next updated. */
+  --tracking-cta: 0.12em;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tratto-mark-ghost: 0.35;
+  }
+}
+
+:root.light {
+  --tratto-mark-ghost: 0.3;
+  --color-paper: #f7f4ef;
+  --color-paper-warm: #ede8e0;
+  --color-paper-deep: #e2ddd5;
+  --color-white: #ffffff;
+  --color-border: rgba(13, 13, 13, 0.09);
+  --color-border-md: rgba(13, 13, 13, 0.16);
+  --color-ink: #0d0d0d;
+  --color-ink-60: #3d3d3d;
+  --color-ink-40: #6b6b6b;
+}
+
+:root.dark {
+  --tratto-mark-ghost: 0.35;
+  --color-paper: #111111;
+  --color-paper-warm: #1a1a1a;
+  --color-paper-deep: #222222;
+  --color-white: #1a1a1a;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-md: rgba(255, 255, 255, 0.14);
+  --color-ink: #f0ede8;
+  --color-ink-60: #a8a5a0;
+  --color-ink-40: #706e6a;
+  /* Not covered by the shared file: these would stay near-black on a dark
+     background. Kept local so design-tokens.css remains byte-identical. */
+  --color-ink-80: #d6d2cc;
+  --color-ink-20: #55534f;
+}
+
+/* ---------------------------------------------------------------------------
+   2. Fumadocs surface → Tratto tokens
+
+   Mapped by token *name*, not value, so the dark palette above flows through
+   without a second mapping block.
+   --------------------------------------------------------------------------- */
+:root {
+  --color-fd-background: var(--color-paper);
+  --color-fd-foreground: var(--color-ink);
+  --color-fd-muted: var(--color-paper-warm);
+  --color-fd-muted-foreground: var(--color-ink-40);
+  --color-fd-popover: var(--color-white);
+  --color-fd-popover-foreground: var(--color-ink);
+  --color-fd-card: var(--color-white);
+  --color-fd-card-foreground: var(--color-ink);
+  --color-fd-border: var(--color-border);
+  --color-fd-primary: var(--color-score);
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-secondary: var(--color-paper-warm);
+  --color-fd-secondary-foreground: var(--color-ink);
+  --color-fd-accent: var(--color-score-10);
+  --color-fd-accent-foreground: var(--color-ink);
+  --color-fd-ring: var(--color-score);
+
+  --fd-layout-width: var(--content-max-width);
+  --fd-nav-height: var(--topbar-height);
+
+  /* The shared token file names the families literally, which assumes they are
+     loaded globally. Next self-hosts them via next/font under hashed family
+     names, so point the tokens at those variables — same fonts, resolvable. */
+  --font-display: var(--font-dm-serif), Georgia, serif;
+  --font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-jetbrains), 'Fira Code', 'Courier New', monospace;
+}
+
+/* ---------------------------------------------------------------------------
+   3. Typography — the brand scale is 14px base, not the 16px browser default.
+   --------------------------------------------------------------------------- */
 @layer base {
   html {
-    @apply scroll-smooth;
+    scroll-behavior: smooth;
+    scroll-padding-top: calc(var(--topbar-height) + var(--space-4));
   }
 
+  /* 14px is the base for UI chrome — nav, sidebar, TOC, controls. Long-form
+     prose steps up to --text-xl below. */
   body {
-    @apply bg-white text-slate-900 antialiased;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+    letter-spacing: var(--tracking-tight);
+    -webkit-font-smoothing: antialiased;
   }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: var(--weight-regular);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-display);
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+  }
+
+  /* Sharp is the brand: 0px everywhere except pills and avatars, which the
+     token file explicitly allows. */
+  :where(button, input, select, textarea, figure, aside, nav, dialog, table) {
+    border-radius: var(--radius-none);
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   4. Docs chrome
+   --------------------------------------------------------------------------- */
+
+/* Flat is the brand — Fumadocs ships rounded, shadowed chrome by default.
+   The notebook layout renders its topbar as #nd-subnav; #nd-nav is kept so the
+   rules survive a switch back to the standard docs layout. */
+#nd-nav,
+#nd-subnav,
+#nd-sidebar,
+#nd-toc,
+#nd-tocnav,
+#nd-docs-layout {
+  --radius: var(--radius-none);
+}
+
+#nd-nav :where(a, button, input, kbd, div),
+#nd-subnav :where(a, button, input, kbd, div),
+#nd-sidebar :where(a, button, input, kbd),
+#nd-tocnav :where(a, button),
+#nd-toc :where(a, button) {
+  border-radius: var(--radius-none);
+  box-shadow: none;
+}
+
+#nd-nav,
+#nd-subnav {
+  background: var(--color-paper);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* The ⌘K dialog and its input, likewise. */
+[role='dialog'],
+[role='dialog'] :where(input, button, kbd, li, div) {
+  border-radius: var(--radius-none);
+}
+
+#nd-sidebar {
+  font-size: var(--text-sm);
+}
+
+/* Active sidebar entry: vermiglio wash plus a 2px left accent. */
+#nd-sidebar a[data-active='true'] {
+  background: var(--color-score-10);
+  color: var(--color-score);
+  border-left: 2px solid var(--color-score);
+  font-weight: var(--weight-medium);
+}
+
+#nd-toc {
+  font-size: var(--text-xs);
+}
+
+/* Fumadocs' own "On this page" heading, restyled as an eyebrow (issue #10)
+   rather than rendering a second label above it. Its text is already
+   localised through the i18n provider. */
+#nd-toc h3 {
+  font-family: var(--font-body);
+  font-size: var(--text-eyebrow);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--color-ink-40);
+}
+
+#nd-toc h3 svg {
+  display: none;
+}
+
+/* Page title uses the medium display size; 52px is reserved for marketing. */
+#nd-page h1,
+article h1 {
+  font-size: var(--text-display-md);
+}
+
+/* ---------------------------------------------------------------------------
+   Long-form prose
+
+   Docs pages are read end to end, so body copy steps up from the 14px UI base
+   to --text-xl. Chrome (sidebar, TOC) stays small, which keeps the hierarchy.
+   --------------------------------------------------------------------------- */
+/* Scoped to .prose (what DocsBody renders) so it never reaches the breadcrumb
+   or the page footer, which sit outside it in the same <article>. */
+.prose :where(p, li, blockquote, dd) {
+  font-size: var(--text-xl);
+  line-height: var(--leading-normal);
+}
+
+.prose :where(h2) {
+  font-size: var(--text-display-md);
+}
+
+.prose :where(h3) {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-medium);
+}
+
+/* Inline code should not tower over the prose around it. */
+.prose :where(p, li, td) code {
+  font-size: 0.85em;
+}
+
+/* Content surfaces sit on white above the paper page. Fumadocs ships the Shiki
+   container with rounded-xl and a shadow; flat and sharp is the brand. */
+.fd-codeblock,
+figure[data-rehype-pretty-code-figure],
+.prose .shiki,
+pre {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius-none);
+  box-shadow: none;
+  font-size: var(--text-base);
+}
+
+.prose .shiki {
+  border: 1px solid var(--color-border);
+}
+
+pre code {
+  display: block;
+  min-width: 0;
+}
+
+/* Wide tables (error codes, event references) scroll on their own. Kept at the
+   14px base — these run to four columns and 18px would force a scrollbar. */
+.prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: var(--text-base);
+}
+
+.prose table :where(p, li) {
+  font-size: inherit;
+}
+
+/* Eyebrow — "On this page" and section labels. */
+.tratto-eyebrow {
+  font-size: var(--text-eyebrow);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--color-ink-40);
 }

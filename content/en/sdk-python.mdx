@@ -105,16 +105,6 @@ contact = client.contacts.create(
 )
 ```
 
-## Bulk Import Contacts
-
-```python
-with open('contacts.csv', 'rb') as f:
-    job = client.contacts.import_csv(f)
-
-print(job['jobId'])  # imp_job_xyz
-print(job['status'])  # 'pending'
-```
-
 ## Create Campaign
 
 ```python
@@ -164,8 +154,9 @@ try:
         text='Test',
     )
 except TrattoException as e:
-    if e.code == 'DOMAIN_NOT_VERIFIED':
-        print('Verify your domain first')
+    if e.code == 'FORBIDDEN':
+        # The message names the domain that is not verified.
+        print(e.message)
 ```
 
 ## Async Support
@@ -193,4 +184,4 @@ asyncio.run(send_email())
 
 - **PyPI:** https://pypi.org/project/tratto-email/
 - **GitHub:** https://github.com/tratto-email/tratto-python
-- **API Docs:** [API Reference](/docs/en/api-reference)
+- **API Docs:** [API Reference](/en/docs/api-reference)

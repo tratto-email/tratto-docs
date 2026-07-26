@@ -42,68 +42,6 @@ curl -X POST https://api.tratto.email/v1/contacts \
 }
 ```
 
-## Importazione Bulk di Contatti
-
-Importa molti contatti da un file CSV.
-
-**Formato CSV:**
-```csv
-email,firstName,lastName,tags,metadata.plan
-alice@example.com,Alice,Smith,"vip,newsletter",pro
-bob@example.com,Bob,Jones,"newsletter",free
-carol@example.com,Carol,Davis,,pro
-```
-
-**cURL**
-```bash
-curl -X POST https://api.tratto.email/v1/contacts/import \
-  -H "Authorization: Bearer tratto_live_..." \
-  -F "file=@contacts.csv"
-```
-
-**Risposta:**
-```json
-{
-  "data": {
-    "jobId": "imp_job_xyz",
-    "status": "pending",
-    "totalCount": 3,
-    "processedCount": 0,
-    "errorCount": 0,
-    "createdAt": "2025-06-30T12:00:00Z"
-  }
-}
-```
-
-Controlla lo status del job di importazione in seguito.
-
-## Controlla lo Status di Importazione
-
-Monitora un job di importazione bulk.
-
-**cURL**
-```bash
-curl https://api.tratto.email/v1/contacts/import/imp_job_xyz \
-  -H "Authorization: Bearer tratto_live_..."
-```
-
-**Risposta:**
-```json
-{
-  "data": {
-    "jobId": "imp_job_xyz",
-    "status": "completed",
-    "totalCount": 3,
-    "processedCount": 3,
-    "errorCount": 0,
-    "createdAt": "2025-06-30T12:00:00Z",
-    "completedAt": "2025-06-30T12:02:00Z"
-  }
-}
-```
-
-Status: `pending`, `processing`, `completed`, `failed`
-
 ## Elenca i Contatti
 
 Recupera tutti i contatti con filtraggio opzionale.
@@ -131,16 +69,6 @@ curl "https://api.tratto.email/v1/contacts?status=subscribed&limit=50" \
     "nextCursor": "Y3Vyc29yOnZhbHVl"
   }
 }
-```
-
-## Ottieni un Contatto
-
-Recupera un contatto specifico per ID o email.
-
-**cURL**
-```bash
-curl https://api.tratto.email/v1/contacts/cont_abc123 \
-  -H "Authorization: Bearer tratto_live_..."
 ```
 
 ## Aggiorna un Contatto
@@ -207,24 +135,31 @@ Usa metadata per:
 - Filtrare audience per condizioni metadata
 - Personalizzare contenuto email con variabili
 
-## Elimina un Contatto
+## Disiscrivi un Contatto
 
-Rimuovi permanentemente un contatto.
+Non esiste un endpoint di eliminazione. Un contatto si disattiva portandolo allo
+status `unsubscribed`, che ne conserva il record mantenendolo soppresso: un
+contatto eliminato potrebbe essere reimportato e ricevere email per errore.
 
 **cURL**
 ```bash
-curl -X DELETE https://api.tratto.email/v1/contacts/cont_abc123 \
-  -H "Authorization: Bearer tratto_live_..."
+curl -X PATCH https://api.tratto.email/v1/contacts/cont_abc123 \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"status":"unsubscribed"}'
 ```
 
-<Callout type="warning">
-L'eliminazione di un contatto è permanente. Usa lo status `unsubscribed` invece per disattivare senza eliminare.
-</Callout>
-
----
+**Risposta:**
+```json
+{
+  "data": {
+    "id": "cont_abc123"
+  }
+}
+```
 
 ## Prossimi Passi
 
-- **Usare contatti nelle campagne?** Vedi [Campagne](/docs/it/campaigns)
-- **Segmentare contatti in audience?** Vai a [Audience](/docs/it/audiences)
-- **Usare metadata contatto nei template?** Vedi [Template](/docs/it/templates)
+- **Usare contatti nelle campagne?** Vedi [Campagne](/it/docs/campaigns)
+- **Segmentare contatti in audience?** Vai a [Audience](/it/docs/audiences)
+- **Usare metadata contatto nei template?** Vedi [Template](/it/docs/templates)

@@ -78,11 +78,11 @@ data = response.json()
 
 ## Supported Endpoints
 
-Idempotency is supported on critical POST operations:
+Two endpoints honour `Idempotency-Key`:
 - `POST /v1/emails` — Send email
-- `POST /v1/campaigns/{id}/send` — Send campaign
-- `POST /v1/flows` — Create flow
-- `POST /v1/contacts/import` — Bulk import
+- `POST /v1/api-keys` — Create an API key
+
+Sending the header to any other endpoint is harmless but has no effect.
 
 ## Key Format
 
@@ -97,21 +97,6 @@ Any unique string is technically valid, but UUID v4 is recommended.
 ## Cache Duration
 
 Idempotency keys are cached for **24 hours**. Retry within 24 hours and get the same response. After 24 hours, the key expires.
-
-## Idempotency Conflict (409)
-
-If you use the same key with a **different request body**, you'll get a 409 error:
-
-```json
-{
-  "error": {
-    "code": "IDEMPOTENCY_CONFLICT",
-    "message": "Request body differs from previous request with this key"
-  }
-}
-```
-
-**Fix:** Use a new idempotency key for a different request.
 
 ## Best Practices
 
@@ -166,4 +151,4 @@ async function sendWithIdempotency(emailData) {
 
 ---
 
-Next: [Rate Limits](/docs/en/rate-limits)
+Next: [Rate Limits](/en/docs/rate-limits)

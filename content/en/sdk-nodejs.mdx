@@ -113,18 +113,6 @@ const contact = await client.contacts.create({
 });
 ```
 
-## Bulk Import Contacts
-
-```typescript
-import fs from 'fs';
-
-const csvFile = fs.createReadStream('contacts.csv');
-const job = await client.contacts.import(csvFile);
-
-console.log(job.jobId); // imp_job_xyz
-console.log(job.status); // 'pending'
-```
-
 ## Create Campaign
 
 ```typescript
@@ -174,8 +162,9 @@ try {
     text: 'Test',
   });
 } catch (error) {
-  if (error.code === 'DOMAIN_NOT_VERIFIED') {
-    console.error('Verify your domain first');
+  if (error.code === 'FORBIDDEN') {
+    // The message names the domain that is not verified.
+    console.error(error.message);
   }
 }
 ```
@@ -202,4 +191,4 @@ async function sendWelcome() {
 
 - **npm:** https://www.npmjs.com/package/@tratto/email
 - **GitHub:** https://github.com/tratto-email/tratto-node
-- **API Docs:** [API Reference](/docs/en/api-reference)
+- **API Docs:** [API Reference](/en/docs/api-reference)

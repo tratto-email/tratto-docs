@@ -1,10 +1,56 @@
 import type { NextConfig } from 'next';
+import { createMDX } from 'fumadocs-mdx/next';
+import createNextIntlPlugin from 'next-intl/plugin';
+
+/**
+ * Staging must never be indexed. Firebase App Hosting sets NEXT_PUBLIC_SITE_URL
+ * per backend, so we key off that rather than NODE_ENV.
+ */
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://docs.tratto.email';
+const isProduction = siteUrl === 'https://docs.tratto.email';
+
+const csp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' https://fonts.gstatic.com data:",
+  "img-src 'self' data: https:",
+  "connect-src 'self' https://www.google-analytics.com",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
+const securityHeaders = [
+  { key: 'Content-Security-Policy', value: csp },
+  {
+    key: 'Strict-Transport-Security',
+    value: 'max-age=63072000; includeSubDomains; preload',
+  },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+];
 
 const config: NextConfig = {
-  pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'mdx'],
-  images: {
-    unoptimized: true,
+  reactStrictMode: true,
+  // Orama ships ESM that webpack mangles when bundled into the server output
+  // (it emits a `ReferenceError: id is not defined` at module init).
+  serverExternalPackages: ['@orama/orama'],
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: isProduction
+          ? securityHeaders
+          : [...securityHeaders, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
+    ];
   },
 };
 
-export default config;
+const withMDX = createMDX();
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
+
+export default withNextIntl(withMDX(config));

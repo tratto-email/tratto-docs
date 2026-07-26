@@ -14,10 +14,14 @@ description: Understand API rate limits and plan your integration
 Every response includes rate limit info:
 
 ```http
-X-RateLimit-Limit: 500
-X-RateLimit-Remaining: 245
-X-RateLimit-Reset: 1625084400
+x-ratelimit-limit: 500
+x-ratelimit-remaining: 245
+x-ratelimit-reset: 47
 ```
+
+`x-ratelimit-reset` is the number of **seconds remaining** in the current window,
+not a Unix timestamp. On a 429 the response also carries a `retry-after` header,
+in seconds.
 
 ## Check Rate Limit Status
 
@@ -37,12 +41,15 @@ When you exceed the limit:
 ```json
 {
   "error": {
-    "code": "RATE_LIMIT_EXCEEDED",
-    "message": "Too many requests. Try again after 60 seconds.",
-    "retryAfter": 60
+    "code": "RATE_LIMITED",
+    "message": "Too many requests. Slow down.",
+    "docs": "https://tratto.email/docs/api/errors#rate_limited"
   }
 }
 ```
+
+The response carries no `retryAfter` field — use the `x-ratelimit-reset` header
+and your own backoff.
 
 ## Retry Strategy
 
@@ -76,12 +83,14 @@ Limits per plan (rolling 30-day window):
 | Growth | 100,000 | 3,333 |
 | Pro | Unlimited | Unlimited |
 
-Exceed your quota → `PLAN_LIMIT_EXCEEDED` error.
+Exceed your quota and requests fail with `QUOTA_EXCEEDED`, which also returns
+429. Unlike `RATE_LIMITED` it will not clear by retrying — see
+[Error Codes](/en/docs/error-codes).
 
 ## Burst Behavior
 
-Short bursts (seconds) can exceed `X-RateLimit-Remaining` due to asynchronous processing. The 500 req/min limit is a hard cap; short peaks are allowed if average stays under the limit.
+Short bursts (seconds) can exceed `x-ratelimit-remaining` due to asynchronous processing. The 500 req/min limit is a hard cap; short peaks are allowed if average stays under the limit.
 
 ---
 
-Next: [Error Codes](/docs/en/error-codes)
+Next: [Error Codes](/en/docs/error-codes)

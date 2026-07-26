@@ -1,0 +1,30 @@
+# Firebase App Hosting — production backend (GCP project: trattoemail)
+# Serves https://docs.tratto.email from the `main` branch.
+#
+# The staging backend uses apphosting.staging.yaml (GCP project: tratto-staging).
+runConfig:
+  runCommand: pnpm start
+  cpu: 1
+  memoryMiB: 512
+  minInstances: 0
+  maxInstances: 4
+  concurrency: 80
+
+env:
+  - variable: NEXT_PUBLIC_SITE_URL
+    value: https://docs.tratto.email
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_GTM_ID
+    value: ''
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Lets the build pull the live OpenAPI spec instead of the committed fallback.
+  - variable: TRATTO_OPENAPI_URL
+    value: https://api.tratto.email/docs/json
+    availability:
+      - BUILD

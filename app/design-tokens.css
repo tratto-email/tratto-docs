@@ -1,0 +1,135 @@
+/* =============================================================
+   TRATTO — Design Tokens
+   Importa in entrambi i frontend:
+     Next.js:  @import './design-tokens.css' in globals.css
+     Angular:  @import 'design-tokens.css' in styles.scss
+
+   NOTE: shared file — keep byte-identical with the copy in
+   tratto-email/tratto. Docs-specific overrides belong in
+   globals.css, never here.
+   ============================================================= */
+
+:root {
+
+  /* ── Colour ─────────────────────────────────────────────── */
+
+  /* Brand core */
+  --color-ink:          #0D0D0D;
+  --color-ink-80:       #1A1A1A;
+  --color-ink-60:       #3D3D3D;
+  --color-ink-40:       #6B6B6B;
+  --color-ink-20:       #9E9E9E;
+  --color-score:        #C8382A;   /* vermiglio — use sparingly */
+  --color-score-10:     rgba(200, 56, 42, 0.10);
+  --color-score-20:     rgba(200, 56, 42, 0.20);
+  --color-paper:        #F7F4EF;
+  --color-paper-warm:   #EDE8E0;
+  --color-paper-deep:   #E2DDD5;
+  --color-white:        #FFFFFF;
+
+  /* Semantic — status */
+  --color-success:      #1A7A55;
+  --color-success-bg:   #E8F5EE;
+  --color-success-border: #B3E0CB;
+  --color-warning:      #7A5C00;
+  --color-warning-bg:   #FFF6E0;
+  --color-warning-border: #F5D97A;
+  --color-danger:       #C8382A;   /* alias of score */
+  --color-danger-bg:    #FEECEB;
+  --color-danger-border: #F5B8B4;
+  --color-info:         #3730A3;
+  --color-info-bg:      #EEF2FF;
+  --color-info-border:  #C7D2FE;
+
+  /* Border */
+  --color-border:       rgba(13, 13, 13, 0.09);
+  --color-border-md:    rgba(13, 13, 13, 0.16);
+  --color-border-dark:  rgba(255, 255, 255, 0.10); /* on ink bg */
+
+  /* ── Typography ─────────────────────────────────────────── */
+  --font-display:  'DM Serif Display', Georgia, serif;
+  --font-body:     'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:     'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+
+  --text-display:  52px;
+  --text-display-md: 32px;
+  --text-xl:       18px;
+  --text-base:     14px;
+  --text-sm:       13px;
+  --text-xs:       12px;
+  --text-xxs:      11px;
+  --text-eyebrow:  10px;
+
+  --weight-regular: 400;
+  --weight-medium:  500;
+  --weight-semibold: 600;
+
+  --leading-tight:  1.1;
+  --leading-snug:   1.4;
+  --leading-normal: 1.65;
+  --leading-loose:  1.8;
+
+  --tracking-eyebrow: 0.18em;
+  --tracking-label:   0.08em;
+  --tracking-tight:  -0.02em;
+  --tracking-display: -0.03em;
+
+  /* ── Spacing ─────────────────────────────────────────────── */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-20:  80px;
+  --space-24:  96px;
+
+  /* ── Border radius ───────────────────────────────────────── */
+  --radius-none:   0px;    /* default — sharp is the brand */
+  --radius-sm:     2px;    /* micro accent only */
+  --radius-pill:   999px;  /* pill badges */
+  --radius-circle: 50%;    /* avatars */
+
+  /* ── Shadows ─────────────────────────────────────────────── */
+  /* None by default — flat is the brand.
+     Only for focus rings and dropdown elevation. */
+  --shadow-focus:   0 0 0 2px var(--color-score);
+  --shadow-focus-sm: 0 0 0 1.5px var(--color-score);
+
+  /* ── Transitions ─────────────────────────────────────────── */
+  --transition-fast: 120ms ease;
+  --transition-base: 180ms ease;
+  --transition-slow: 280ms ease;
+
+  /* ── Z-index ─────────────────────────────────────────────── */
+  --z-base:     0;
+  --z-raised:   10;
+  --z-dropdown: 100;
+  --z-sticky:   200;
+  --z-overlay:  300;
+  --z-modal:    400;
+  --z-toast:    500;
+
+  /* ── Layout ──────────────────────────────────────────────── */
+  --sidebar-width:      200px;
+  --topbar-height:       52px;
+  --content-max-width: 1060px;
+  --content-padding:     32px;
+}
+
+/* ── Dark mode (app shell only — sidebar is always ink) ─── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-paper:      #111111;
+    --color-paper-warm: #1A1A1A;
+    --color-paper-deep: #222222;
+    --color-white:      #1A1A1A;
+    --color-border:     rgba(255, 255, 255, 0.08);
+    --color-border-md:  rgba(255, 255, 255, 0.14);
+    --color-ink:        #F0EDE8;
+    --color-ink-60:     #A8A5A0;
+    --color-ink-40:     #706E6A;
+  }
+}

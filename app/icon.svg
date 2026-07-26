@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
+  <title>Tratto</title>
+  <!-- Ink tile so the mark stays legible on both light and dark browser tabs;
+       a transparent favicon would lose its strokes on one of the two. -->
+  <rect width="32" height="32" fill="#0D0D0D"/>
+  <g transform="translate(3 7) scale(0.65)">
+    <line x1="2" y1="26" x2="13" y2="2" stroke="#C8382A" stroke-width="3.2" stroke-linecap="round"/>
+    <line x1="15" y1="26" x2="26" y2="2" stroke="#F7F4EF" stroke-width="3.2" stroke-linecap="round"/>
+    <line x1="28" y1="26" x2="38" y2="2" stroke="#F7F4EF" stroke-width="1.6" stroke-linecap="round" opacity="0.35"/>
+  </g>
+</svg>

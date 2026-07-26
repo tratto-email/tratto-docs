@@ -34,7 +34,7 @@ Un' **API key** è un bearer token che autentica le tue richieste. Le API key di
 Authorization: Bearer tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-Vedi [Autenticazione](/docs/it/authentication) per gestire le chiavi.
+Vedi [Autenticazione](/it/docs/authentication) per gestire le chiavi.
 
 ## Domain
 
@@ -51,7 +51,7 @@ I record provano ai server di posta riceventi che controlli il dominio e sei aut
 - `verified` — Pronto per l'invio
 - `failed` — Verifica DNS non riuscita (ri-verifica più tardi)
 
-Vedi [Domini](/docs/it/domains) per la configurazione passo dopo passo.
+Vedi [Domini](/it/docs/domains) per la configurazione passo dopo passo.
 
 ## Email
 
@@ -85,7 +85,7 @@ L'email scorre quindi attraverso la pipeline di consegna.
 - `delivered` — Server di posta ha confermato consegna (senza rimbalzi)
 - `failed` — Consegna non riuscita (dominio non valido, rate limit, ecc.)
 
-Vedi [Stato e Ciclo di Vita dell'Email](/docs/it/email-status) per ulteriori informazioni.
+Vedi [Stato e Ciclo di Vita dell'Email](/it/docs/email-status) per ulteriori informazioni.
 
 ## Events
 
@@ -103,7 +103,7 @@ Ricevi gli eventi tramite:
 - **Webhook** — Notifiche HTTP push real-time
 - **Email events API** — `GET /v1/emails/{id}/events`
 
-Vedi [Webhook](/docs/it/webhooks) per la configurazione.
+Vedi [Webhook](/it/docs/webhooks) per la configurazione.
 
 ## Webhook
 
@@ -125,7 +125,7 @@ Un **webhook** è un endpoint HTTP che controlli e che Tratto chiama quando si v
 - Sempre verificare la firma prima di elaborare
 - Attacchi replay: controlla il timestamp `occurredAt`
 
-Vedi [Webhook](/docs/it/webhooks) per il codice di verifica della firma.
+Vedi [Webhook](/it/docs/webhooks) per il codice di verifica della firma.
 
 ## Template
 
@@ -157,7 +157,7 @@ HTML:    <h1>Ciao {{firstName}} {{lastName}}</h1>
 - Puoi ripristinare versioni precedenti
 - Campagne e flussi referenziano una versione template
 
-Vedi [Template](/docs/it/templates) per la documentazione completa.
+Vedi [Template](/it/docs/templates) per la documentazione completa.
 
 ## Flow
 
@@ -184,7 +184,7 @@ Step 4 (es., branchia su email_opened)
 - Contatti iscritti: traccia chi è nel flusso
 - Attiva/disattiva flussi senza perdere dati di iscrizione
 
-Vedi [Flussi](/docs/it/flows) per la configurazione dettagliata.
+Vedi [Flussi](/it/docs/flows) per la configurazione dettagliata.
 
 ## Campaign
 
@@ -207,7 +207,7 @@ draft → (invio di prova opzionale) → send → scheduled → sending → sent
 - Visualizza eventi email individuali
 - Non può essere ri-inviata (crea una nuova campagna invece)
 
-Vedi [Campagne](/docs/it/campaigns) per i dettagli.
+Vedi [Campagne](/it/docs/campaigns) per i dettagli.
 
 ## Audience
 
@@ -227,18 +227,18 @@ Un' **audience** è un gruppo di contatti, creata tramite filtri basati su regol
 - Campagne: invia a un'audience
 - Flussi: attivazione quando contatto si unisce audience
 
-Vedi [Audience](/docs/it/audiences) per la configurazione.
+Vedi [Audience](/it/docs/audiences) per la configurazione.
 
 ---
 
 ## Prossimi Passi
 
-- **Autenticazione?** Inizia con [API Key e Auth](/docs/it/authentication)
-- **Pronto a inviare?** Vai a [Quickstart](/docs/it/quickstart)
+- **Autenticazione?** Inizia con [API Key e Auth](/it/docs/authentication)
+- **Pronto a inviare?** Vai a [Quickstart](/it/docs/quickstart)
 - **Approfondisci?** Esplora i singoli concetti:
-  - [Domini](/docs/it/domains)
-  - [Template](/docs/it/templates)
-  - [Contatti](/docs/it/contacts)
-  - [Campagne](/docs/it/campaigns)
-  - [Webhook](/docs/it/webhooks)
-  - [Flussi](/docs/it/flows)
+  - [Domini](/it/docs/domains)
+  - [Template](/it/docs/templates)
+  - [Contatti](/it/docs/contacts)
+  - [Campagne](/it/docs/campaigns)
+  - [Webhook](/it/docs/webhooks)
+  - [Flussi](/it/docs/flows)
