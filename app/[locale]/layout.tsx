@@ -11,6 +11,9 @@ import '@/app/globals.css';
 import { i18n, locales, type Locale } from '@/lib/i18n';
 import { siteUrl } from '@/lib/site';
 import { routing } from '@/i18n/routing';
+import { CookieConsent } from '@/components/cookie-consent';
+import { CookiePreferencesModal } from '@/components/cookie-preferences-modal';
+import { GoogleTagManager } from '@/components/google-tag-manager';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -91,6 +94,9 @@ export default async function LocaleLayout({
   // Enables static rendering for this locale segment.
   setRequestLocale(locale);
 
+  const tCookieBanner = await getTranslations({ locale, namespace: 'cookieBanner' });
+  const tCookiePrefs = await getTranslations({ locale, namespace: 'cookiePrefs' });
+
   return (
     <html
       lang={locale}
@@ -98,9 +104,34 @@ export default async function LocaleLayout({
       className={`${inter.variable} ${dmSerif.variable} ${jetbrains.variable}`}
     >
       <body className="flex min-h-screen flex-col">
+        {process.env.NEXT_PUBLIC_GTM_ID && (
+          <GoogleTagManager id={process.env.NEXT_PUBLIC_GTM_ID} />
+        )}
         <NextIntlClientProvider>
           <RootProvider i18n={provider(locale as Locale)}>{children}</RootProvider>
         </NextIntlClientProvider>
+        <CookieConsent
+          locale={locale}
+          t={{
+            message: tCookieBanner('message'),
+            accept: tCookieBanner('accept'),
+            decline: tCookieBanner('decline'),
+            manage: tCookieBanner('manage'),
+            privacyLabel: tCookieBanner('privacyLabel'),
+          }}
+        />
+        <CookiePreferencesModal
+          t={{
+            title: tCookiePrefs('title'),
+            save: tCookiePrefs('save'),
+            cancel: tCookiePrefs('cancel'),
+            necessaryName: tCookiePrefs('necessaryName'),
+            necessaryDescription: tCookiePrefs('necessaryDescription'),
+            analyticsName: tCookiePrefs('analyticsName'),
+            analyticsDescription: tCookiePrefs('analyticsDescription'),
+            alwaysOn: tCookiePrefs('alwaysOn'),
+          }}
+        />
       </body>
     </html>
   );

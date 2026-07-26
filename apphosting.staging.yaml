@@ -18,12 +18,6 @@ env:
       - BUILD
       - RUNTIME
 
-  - variable: NEXT_PUBLIC_GTM_ID
-    value: ''
-    availability:
-      - BUILD
-      - RUNTIME
-
   - variable: TRATTO_OPENAPI_URL
     value: https://api-staging.tratto.email/docs/json
     availability:

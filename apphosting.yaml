@@ -17,8 +17,9 @@ env:
       - BUILD
       - RUNTIME
 
+  # Same container as tratto.email — one GTM property tracks both sites.
   - variable: NEXT_PUBLIC_GTM_ID
-    value: ''
+    value: GTM-5W7XJ2HB
     availability:
       - BUILD
       - RUNTIME
