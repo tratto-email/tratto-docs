@@ -88,7 +88,11 @@
   --color-fd-accent-foreground: var(--color-ink);
   --color-fd-ring: var(--color-score);
 
-  --fd-layout-width: var(--content-max-width);
+  /* The docs shell spans the viewport on desktop — sidebar hard left, TOC hard
+     right — rather than being centred inside --content-max-width. That token
+     still governs the marketing-style pages, which are not full-bleed.
+     --fd-page-width keeps the prose column to a readable measure. */
+  --fd-page-width: 100%;
   --fd-nav-height: var(--topbar-height);
 
   /* The shared token file names the families literally, which assumes they are
@@ -235,6 +239,14 @@ article h1 {
 .prose :where(p, li, blockquote, dd) {
   font-size: var(--text-xl);
   line-height: var(--leading-normal);
+}
+
+/* The column fills the viewport, but running text does not: past roughly 80
+   characters a line is hard to track back from. Code blocks and tables are
+   deliberately left uncapped — they are the things that benefit from the extra
+   room a full-width layout buys. */
+.prose :where(p, li, blockquote, dd, h1, h2, h3, h4) {
+  max-width: 80ch;
 }
 
 .prose :where(h2) {
