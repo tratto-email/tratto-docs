@@ -53,3 +53,9 @@ fallback is excluded from the sitemap and its canonical points at the English
 URL, so it never competes with the original in search results.
 
 See [SETUP.md](./SETUP.md) for architecture and deployment.
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development setup and PR
+workflow, and [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) for community
+standards.
