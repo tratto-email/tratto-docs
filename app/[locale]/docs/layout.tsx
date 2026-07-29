@@ -28,9 +28,7 @@ export default async function Layout({
   const links: LinkItemType[] = [
     { text: t('home'), url: marketingUrl, external: true },
     { text: t('docs'), url: `/${locale}/docs`, active: 'nested-url' },
-    { text: t('pricing'), url: `${marketingUrl}/pricing`, external: true },
     { text: t('blog'), url: `${marketingUrl}/blog`, external: true },
-    { text: t('status'), url: 'https://status.tratto.email', external: true },
     {
       type: 'custom',
       secondary: true,

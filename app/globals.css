@@ -306,3 +306,113 @@ pre code {
   letter-spacing: var(--tracking-eyebrow);
   color: var(--color-ink-40);
 }
+
+/* ---------------------------------------------------------------------------
+   5. Homepage hero — ported 1:1 from `tratto-email/tratto`'s marketing hero.
+
+   `.animate-logo` is the site's own logo entrance (stroke-dasharray draw-in,
+   used on `TrattoWordmark` in the nav/error page there); `.signal-trace*` is
+   the oscilloscope-trace background (`components/signal-trace.tsx`) — one
+   absolutely-positioned instance per section, low-opacity bars with
+   scroll-timeline parallax, plus cursor-proximity SVG displacement on the
+   hero. No new motion vocabulary invented here — same classes, same
+   keyframes, same values as the source.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  .animate-logo line {
+    stroke-dasharray: 27;
+    stroke-dashoffset: 27;
+    animation: draw-line 0.6s cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+  .animate-logo line:nth-child(2) {
+    animation-delay: 80ms;
+  }
+  .animate-logo line:nth-child(3) {
+    animation-delay: 160ms;
+  }
+}
+
+@keyframes draw-line {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.signal-trace {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.signal-trace__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.signal-trace__line {
+  stroke: currentColor;
+}
+.signal-trace__line--1 {
+  opacity: 0.14;
+}
+.signal-trace__line--2 {
+  opacity: 0.07;
+}
+.signal-trace__line--3 {
+  opacity: 0.045;
+}
+
+.signal-trace__readout {
+  position: absolute;
+  bottom: 16px;
+  left: 20px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: currentColor;
+  opacity: 0.3;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .signal-trace__line--1 {
+    animation: signal-trace-parallax-1 linear both;
+    animation-timeline: view();
+    animation-range: cover 0% cover 100%;
+  }
+  .signal-trace__line--2 {
+    animation: signal-trace-parallax-2 linear both;
+    animation-timeline: view();
+    animation-range: cover 0% cover 100%;
+  }
+  .signal-trace__line--3 {
+    animation: signal-trace-parallax-3 linear both;
+    animation-timeline: view();
+    animation-range: cover 0% cover 100%;
+  }
+}
+@keyframes signal-trace-parallax-1 {
+  from {
+    transform: translateY(-30px);
+  }
+  to {
+    transform: translateY(30px);
+  }
+}
+@keyframes signal-trace-parallax-2 {
+  from {
+    transform: translateY(22px);
+  }
+  to {
+    transform: translateY(-46px);
+  }
+}
+@keyframes signal-trace-parallax-3 {
+  from {
+    transform: translateY(-16px);
+  }
+  to {
+    transform: translateY(60px);
+  }
+}
