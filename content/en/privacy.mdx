@@ -1,0 +1,38 @@
+---
+title: Privacy & GDPR
+description: How Tratto handles data residency, analytics, and your rights under GDPR
+---
+
+Tratto is built on EU infrastructure by default, not retrofitted for compliance. This page covers what that means in practice, and what to expect if you're evaluating Tratto for a GDPR-sensitive workload.
+
+## EU-Native Infrastructure
+
+Tratto runs on Google Cloud's EU region. Your data — contacts, email content, event logs — is stored and processed there, not exported to the US and synced back.
+
+## Cookie Consent & Analytics
+
+The Tratto marketing site loads no analytics scripts by default. Google Analytics 4 (via Google Tag Manager) only activates after a visitor explicitly accepts the cookie banner, and is configured to avoid collecting personally identifiable information.
+
+## One-Click Unsubscribe (RFC 8058)
+
+Every email sent through Tratto carries `List-Unsubscribe` and `List-Unsubscribe-Post` headers, so mail clients that support one-click unsubscribe (Gmail, Outlook, and others) can act on it without a landing page. Unsubscribing moves a contact to `unsubscribed` status immediately — see [Contacts](/en/docs/contacts) for the API.
+
+<Callout>
+Unsubscribing suppresses future sends immediately. It does not delete the contact record — see below.
+</Callout>
+
+## Data Subject Rights
+
+You can request access to, rectification of, or deletion of your data by writing to **privacy@tratto.email**.
+
+<Callout type="warning">
+Self-service deletion via the API isn't available yet — the [Contacts API](/en/docs/contacts) supports suppressing a contact (`status: unsubscribed`), not deleting the record. Full data deletion requests are handled manually today. If your compliance workflow requires a self-service erasure endpoint, talk to us before committing to Tratto for that use case.
+</Callout>
+
+## Legal & Jurisdiction
+
+Tratto is governed by Italian law, with exclusive jurisdiction in the Court of Milan — see the [Terms of Service](https://tratto.email/en/terms) for the full text.
+
+---
+
+Questions about a specific compliance requirement? Write to **privacy@tratto.email**.

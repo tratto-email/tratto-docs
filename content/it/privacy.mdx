@@ -1,0 +1,38 @@
+---
+title: Privacy & GDPR
+description: Come Tratto gestisce la residenza dei dati, gli analytics e i tuoi diritti secondo il GDPR
+---
+
+Tratto è costruito su infrastruttura UE per default, non adattato in un secondo momento per la compliance. Questa pagina spiega cosa significa in pratica, e cosa aspettarsi se stai valutando Tratto per un caso d'uso sensibile dal punto di vista GDPR.
+
+## Infrastruttura EU-native
+
+Tratto gira sulla regione UE di Google Cloud. I tuoi dati — contatti, contenuto delle email, log degli eventi — sono archiviati ed elaborati lì, non esportati negli US e poi sincronizzati.
+
+## Consenso Cookie & Analytics
+
+Il sito marketing di Tratto non carica script di analytics per default. Google Analytics 4 (via Google Tag Manager) si attiva solo dopo che un visitatore accetta esplicitamente il cookie banner, ed è configurato per non raccogliere dati personalmente identificabili.
+
+## Disiscrizione One-Click (RFC 8058)
+
+Ogni email inviata tramite Tratto include gli header `List-Unsubscribe` e `List-Unsubscribe-Post`, così i client email che supportano la disiscrizione one-click (Gmail, Outlook e altri) possono agire senza una landing page. La disiscrizione sposta un contatto allo stato `unsubscribed` immediatamente — vedi [Contatti](/it/docs/contacts) per l'API.
+
+<Callout>
+La disiscrizione sospende immediatamente gli invii futuri. Non cancella il record del contatto — vedi sotto.
+</Callout>
+
+## Diritti dell'interessato
+
+Puoi richiedere l'accesso, la rettifica o la cancellazione dei tuoi dati scrivendo a **privacy@tratto.email**.
+
+<Callout type="warning">
+La cancellazione self-service via API non è ancora disponibile — l'[API Contatti](/it/docs/contacts) permette di sospendere un contatto (`status: unsubscribed`), non di cancellare il record. Le richieste di cancellazione dati vengono gestite manualmente oggi. Se il tuo workflow di compliance richiede un endpoint di cancellazione self-service, parlane con noi prima di scegliere Tratto per quel caso d'uso.
+</Callout>
+
+## Legge applicabile e foro competente
+
+Tratto è regolato dalla legge italiana, con foro esclusivo il Tribunale di Milano — vedi i [Termini di Servizio](https://tratto.email/it/terms) per il testo completo.
+
+---
+
+Domande su un requisito di compliance specifico? Scrivi a **privacy@tratto.email**.
