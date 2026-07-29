@@ -9,9 +9,16 @@ import createNextIntlPlugin from 'next-intl/plugin';
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://docs.tratto.email';
 const isProduction = siteUrl === 'https://docs.tratto.email';
 
+// Next's dev-mode HMR/Fast Refresh runtime evaluates modules via `eval()`.
+// Without 'unsafe-eval' the browser throws on it and no client component
+// ever hydrates in `pnpm dev` — production builds don't eval, so this is
+// dev-only and keyed off NODE_ENV, not `isProduction` above (that one
+// tracks the deploy target URL, which is unset locally).
+const isDev = process.env.NODE_ENV !== 'production';
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://www.googletagmanager.com`,
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: https:",
