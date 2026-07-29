@@ -3,7 +3,8 @@ title: Python SDK
 description: SDK ufficiale Python per Tratto Email API
 ---
 
-SDK ufficiale per Python: **`tratto-email`**
+SDK ufficiale per Python: **`tratto-email`**. Nessuna dipendenza esterna —
+costruito su `urllib`. Richiede Python 3.10+.
 
 ## Installazione
 
@@ -14,73 +15,165 @@ pip install tratto-email
 ## Inizializzazione
 
 ```python
-from tratto import TrattoClient
+from tratto import Tratto
 
-client = TrattoClient(api_key='tratto_live_...')
+client = Tratto('tratto_live_...')
 ```
 
 ## Invia Email
 
 ```python
-email = client.emails.send(
+from tratto import SendEmailOptions
+
+result = client.emails.send(SendEmailOptions(
     from_='hello@tuodominio.it',
     to='user@example.com',
     subject='Ciao!',
-    text='Benvenuto a Tratto',
     html='<h1>Benvenuto!</h1>',
-)
+    text='Benvenuto a Tratto',
+))
 
-print(email['id'])  # email_abc123
+print(result['id'])  # email_abc123
 ```
 
 ## Invia con Template
 
 ```python
-email = client.emails.send(
+result = client.emails.send(SendEmailOptions(
     from_='hello@tuodominio.it',
     to='user@example.com',
+    subject='Benvenuto su Acme!',
     template_id='tmpl_abc123',
     variables={
         'firstName': 'Alice',
         'code': 'SECRET123',
     },
-)
+))
+```
+
+## Pianifica Invio
+
+```python
+result = client.emails.send(SendEmailOptions(
+    from_='hello@tuodominio.it',
+    to='user@example.com',
+    subject='Promemoria',
+    text='Ci vediamo domani!',
+    scheduled_at='2025-07-01T09:00:00Z',
+))
 ```
 
 ## Ottieni Status Email
 
 ```python
 email = client.emails.get('email_abc123')
-print(email['status'])  # 'delivered'
+print(email['data']['status'])  # 'delivered'
 ```
 
-## Crea Dominio
+## Lista Email
 
 ```python
-domain = client.domains.create(domain='hello.tuodominio.it')
+response = client.emails.list(limit=50)
+for email in response['data']:
+    print(f"{email['id']}: {email['status']}")
+```
+
+## Registra un Dominio
+
+```python
+domain = client.domains.add('hello.tuodominio.it')
+for record in domain['data']['records']:
+    print(record['type'], record['host'], record['value'])
+```
+
+## Verifica Dominio
+
+```python
+result = client.domains.verify('dom_abc123')
+print(result['data']['status'])  # 'verified' oppure 'failed'
+```
+
+## Crea Contatto
+
+```python
+from tratto import CreateContactOptions
+
+contact = client.contacts.create(CreateContactOptions(
+    email='user@example.com',
+    first_name='Alice',
+    last_name='Smith',
+    tags=['vip', 'newsletter'],
+    custom_fields={'plan': 'pro'},
+))
 ```
 
 ## Crea Campagna
 
 ```python
-campaign = client.campaigns.create(
+from tratto import CreateCampaignOptions
+
+campaign = client.campaigns.create(CreateCampaignOptions(
     name='Saldi Q3',
     template_id='tmpl_abc123',
     audience_id='aud_abc123',
-)
+    from_name='Acme Newsletter',
+    from_email='newsletter@tuodominio.it',
+    subject_a='Le nostre migliori offerte del Q3',
+))
+
+print(campaign['data']['id'])
+```
+
+## Invia Campagna
+
+```python
+sent = client.campaigns.send('camp_xyz789')
+print(sent['data']['status'])  # 'sending'
+```
+
+## Statistiche Campagna
+
+```python
+stats = client.campaigns.get_stats('camp_xyz789')
+print(stats['data']['stats']['delivered'])   # 4950
+print(stats['data']['rates']['openRate'])    # 0.50
 ```
 
 ## Registra Webhook
 
 ```python
-webhook = client.webhooks.create(
+from tratto import CreateWebhookOptions
+
+webhook = client.webhooks.create(CreateWebhookOptions(
     url='https://tuoapi.com/webhooks/tratto',
     events=['sent', 'delivered', 'opened', 'clicked', 'bounced'],
-)
+))
+
+print(webhook['data']['secret'])  # whsec_xyz789... — restituito una sola volta
+```
+
+## Gestione Errori
+
+```python
+from tratto import TrattoError
+
+try:
+    result = client.emails.send(SendEmailOptions(
+        from_='hello@nonverificato.com',
+        to='user@example.com',
+        subject='Ciao',
+        text='Test',
+    ))
+except TrattoError as e:
+    if e.code == 'FORBIDDEN':
+        # Il messaggio indica quale dominio non è verificato.
+        print(e)
 ```
 
 ---
 
-**Links:**
-- PyPI: https://pypi.org/project/tratto-email/
-- GitHub: https://github.com/tratto-email/tratto-python
+## Links
+
+- **PyPI:** https://pypi.org/project/tratto-email/
+- **GitHub:** https://github.com/tratto-email/tratto-python
+- **API Docs:** [API Reference](/it/docs/api-reference)
