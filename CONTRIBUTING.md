@@ -89,3 +89,10 @@ See the "Writing docs" section in [README.md](./README.md) for frontmatter
 fields, the locale-prefixed-links rule, and the JSX-brace escaping gotcha.
 A page missing an Italian translation is expected to fall back to English —
 don't add a stub translation just to fill the gap.
+
+---
+
+## License
+
+By contributing you agree that your work will be licensed under the
+[MIT License](./LICENSE).
