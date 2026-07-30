@@ -52,6 +52,31 @@ A page without an Italian translation automatically falls back to English. The
 fallback is excluded from the sitemap and its canonical points at the English
 URL, so it never competes with the original in search results.
 
+## Analytics & Consent
+
+GTM/GA4 is consent-gated at the container level, not just the tag level: the
+GTM container script (`components/google-tag-manager.tsx`) is only injected
+into the page once the visitor has actually granted analytics consent —
+before that, Google Consent Mode defaults are set (`analytics_storage: denied`,
+etc.) via a tiny inline script, but GTM itself never loads. This is stricter
+than relying on Consent Mode alone to suppress tags, since no third-party
+script runs at all pre-consent.
+
+- `lib/cookie-prefs.ts` stores the decision (`localStorage`) and broadcasts
+  it via the `tratto:consent-updated` event whenever it changes (banner
+  accept/decline, or the preferences modal).
+- `components/google-tag-manager.tsx` listens for that event (and checks
+  stored prefs on mount, for returning visitors) before rendering the GTM
+  `<Script>` tag.
+- `components/cookie-consent.tsx` / `cookie-preferences-modal.tsx` are the
+  only things that call `pushConsentUpdate()` — that's what fires the event.
+
+This exact pattern (same file names, same event name) is intentionally
+duplicated in the `tratto` marketing site's `src/lib/cookie-prefs.ts` /
+`src/components/ui/GoogleTagManager.tsx` — not shared as a package, since the
+two Next.js apps are separate deploys. If you change the consent-gating logic
+here, check whether the same fix applies there too, and vice versa.
+
 See [SETUP.md](./SETUP.md) for architecture and deployment.
 
 ## Contributing

@@ -8,6 +8,10 @@ export const PREFS_KEY = 'tratto_cookie_prefs';
 
 export const OPEN_PREFS_EVENT = 'tratto:open-cookie-prefs';
 export const PREFS_SAVED_EVENT = 'tratto:prefs-saved';
+// Fired every time consent changes (banner accept/decline, or modal save)
+// with the resulting analytics decision — GoogleTagManager listens for
+// this to know when it's allowed to inject the GTM container script.
+export const CONSENT_UPDATED_EVENT = 'tratto:consent-updated';
 
 export interface CookiePrefs {
   necessary: true;
@@ -42,6 +46,7 @@ export function pushConsentUpdate(analytics: boolean): void {
   if (analytics) {
     window.dataLayer.push({ event: 'cookie_consent_accepted' });
   }
+  window.dispatchEvent(new CustomEvent(CONSENT_UPDATED_EVENT, { detail: { analytics } }));
 }
 
 export function openCookiePreferences(): void {
