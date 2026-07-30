@@ -18,7 +18,7 @@ curl -X POST https://api.tratto.email/v1/audiences \
     "name":"Iscritti Newsletter VIP",
     "rules":[
       {"field":"status","operator":"equals","value":"subscribed"},
-      {"field":"tags","operator":"contains","value":"vip"}
+      {"field":"tags","operator":"array_contains","value":"vip"}
     ]
   }'
 ```
@@ -38,12 +38,14 @@ curl -X POST https://api.tratto.email/v1/audiences \
 
 ## Tipi di Regole
 
-| Campo | Operatori | Esempio |
+Ogni regola è `{ field, operator, value }`. Operatori disponibili: `equals`, `not_equals`, `contains`, `not_contains`, `array_contains`.
+
+| Campo | Operatori validi | Esempio |
 |-------|-----------|---------|
-| `status` | `equals`, `notEquals` | `subscribed`, `bounced` |
-| `tags` | `contains`, `notContains` | L'audience ha contatti taggati "vip" |
-| `metadata.field` | `equals`, `notEquals`, `greaterThan`, `lessThan` | `plan = "pro"`, `accountValue > 500` |
-| `createdAt` | `after`, `before` | Contatti creati dopo 1 Gen 2025 |
+| `status` | `equals`, `not_equals` | `subscribed`, `bounced` |
+| `tags` | solo `array_contains` | L'audience ha contatti taggati "vip" — `tags` è una lista, quindi solo `array_contains` produce un match reale. `equals`/`contains` non corrispondono mai a una lista e restituiscono silenziosamente zero risultati. |
+
+`contains`/`not_contains`/`array_contains` confrontano le stringhe senza distinguere maiuscole/minuscole.
 
 ## Regole Multiple (Logica AND)
 
@@ -53,16 +55,14 @@ Tutte le regole devono corrispondere:
 {
   "rules": [
     {"field": "status", "operator": "equals", "value": "subscribed"},
-    {"field": "tags", "operator": "contains", "value": "newsletter"},
-    {"field": "metadata.plan", "operator": "equals", "value": "pro"}
+    {"field": "tags", "operator": "array_contains", "value": "newsletter"}
   ]
 }
 ```
 
 Questa audience include contatti che sono:
 - Status: subscribed **E**
-- Hanno tag: newsletter **E**
-- Metadata.plan: pro
+- Hanno tag: newsletter
 
 ## Aggiungi Contatti Manualmente
 
@@ -118,6 +118,26 @@ curl https://api.tratto.email/v1/audiences/aud_abc123 \
   }
 }
 ```
+
+## Elimina un'Audience
+
+Elimina definitivamente l'audience stessa. **I contatti non vengono mai
+toccati** — eliminare un'audience rimuove solo quel raggruppamento; ogni
+contatto che ne era membro continua a esistere intatto, con tutti i suoi dati,
+tag e stato.
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/audiences/aud_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+Restituisce `204 No Content` in caso di successo.
+
+Se l'audience è ancora referenziata da una campagna che non ha finito
+l'invio (`draft`, `scheduled`, `sending` o `paused`), la richiesta viene
+rifiutata con `409 Conflict` — rimuovi prima l'audience da quelle campagne,
+oppure aspetta che completino.
 
 ## Usare le Audience nelle Campagne
 

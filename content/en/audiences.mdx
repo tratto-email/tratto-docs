@@ -18,7 +18,7 @@ curl -X POST https://api.tratto.email/v1/audiences \
     "name":"VIP Newsletter Subscribers",
     "rules":[
       {"field":"status","operator":"equals","value":"subscribed"},
-      {"field":"tags","operator":"contains","value":"vip"}
+      {"field":"tags","operator":"array_contains","value":"vip"}
     ]
   }'
 ```
@@ -38,12 +38,14 @@ curl -X POST https://api.tratto.email/v1/audiences \
 
 ## Rule Types
 
-| Field | Operators | Example |
+Every rule is `{ field, operator, value }`. Available operators: `equals`, `not_equals`, `contains`, `not_contains`, `array_contains`.
+
+| Field | Valid operators | Example |
 |-------|-----------|---------|
-| `status` | `equals`, `notEquals` | `subscribed`, `bounced` |
-| `tags` | `contains`, `notContains` | Audience has contacts tagged "vip" |
-| `metadata.field` | `equals`, `notEquals`, `greaterThan`, `lessThan` | `plan = "pro"`, `accountValue > 500` |
-| `createdAt` | `after`, `before` | Contacts created after Jan 1, 2025 |
+| `status` | `equals`, `not_equals` | `subscribed`, `bounced` |
+| `tags` | `array_contains` only | Audience has contacts tagged "vip" — `tags` is a list, so only `array_contains` produces a real match. `equals`/`contains` never match a list and silently return no results. |
+
+`contains`/`not_contains`/`array_contains` compare strings case-insensitively.
 
 ## Multiple Rules (AND Logic)
 
@@ -53,16 +55,14 @@ All rules must match:
 {
   "rules": [
     {"field": "status", "operator": "equals", "value": "subscribed"},
-    {"field": "tags", "operator": "contains", "value": "newsletter"},
-    {"field": "metadata.plan", "operator": "equals", "value": "pro"}
+    {"field": "tags", "operator": "array_contains", "value": "newsletter"}
   ]
 }
 ```
 
 This audience includes contacts that are:
 - Status: subscribed **AND**
-- Have tag: newsletter **AND**
-- Metadata.plan: pro
+- Have tag: newsletter
 
 ## Add Contacts Manually
 
@@ -118,6 +118,25 @@ curl https://api.tratto.email/v1/audiences/aud_abc123 \
   }
 }
 ```
+
+## Delete an Audience
+
+Permanently deletes the audience itself. **Contacts are never touched** —
+deleting an audience just removes that grouping; every contact that was a
+member keeps existing untouched, with all its data, tags and status intact.
+
+**cURL**
+```bash
+curl -X DELETE https://api.tratto.email/v1/audiences/aud_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+Returns `204 No Content` on success.
+
+If the audience is still referenced by a campaign that hasn't finished
+sending (`draft`, `scheduled`, `sending` or `paused`), the request is rejected
+with `409 Conflict` instead — remove the audience from those campaigns first,
+or wait until they complete.
 
 ## Using Audiences in Campaigns
 
