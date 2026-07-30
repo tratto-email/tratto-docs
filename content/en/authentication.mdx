@@ -35,7 +35,7 @@ Without the header, you'll receive `401 Unauthorized`.
 
 ## Create an API Key
 
-Generate a new API key via the API. This is the only way to create keys — there's no dashboard UI for now.
+Generate a new API key via the API. This is the only way to create keys, since there's no dashboard UI for now.
 
 **cURL**
 ```bash
@@ -90,7 +90,7 @@ print(f"New API Key: {api_key}")
 ```
 
 <Callout type="warning">
-**⚠️ Important:** The `key` field is shown **only once**. Save it immediately — it won't be displayed again. If you lose it, revoke and create a new key.
+**⚠️ Important:** The `key` field is shown **only once**. Save it immediately: it won't be displayed again. If you lose it, revoke and create a new key.
 </Callout>
 
 ## List API Keys
@@ -149,7 +149,7 @@ for key in keys:
 }
 ```
 
-Note: The full key is never returned after creation — only the prefix (first and last 4 characters).
+Note: The full key is never returned after creation, only the prefix (first and last 4 characters).
 
 ## Revoke an API Key
 
@@ -236,9 +236,9 @@ const response = await fetch('/api/send-email', {
 
 Create separate keys for:
 
-- `production` — Used only in production
-- `staging` — Used only in staging
-- `development` — Used only in local development
+- `production`: Used only in production
+- `staging`: Used only in staging
+- `development`: Used only in local development
 
 This way, a leaked development key doesn't compromise production.
 

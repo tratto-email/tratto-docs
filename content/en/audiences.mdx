@@ -1,5 +1,5 @@
 ---
-title: Audiences — Segmentation
+title: "Audiences: Segmentation"
 description: Create rule-based audiences for campaigns and flows
 ---
 
@@ -43,7 +43,7 @@ Every rule is `{ field, operator, value }`. Available operators: `equals`, `not_
 | Field | Valid operators | Example |
 |-------|-----------|---------|
 | `status` | `equals`, `not_equals` | `subscribed`, `bounced` |
-| `tags` | `array_contains` only | Audience has contacts tagged "vip" — `tags` is a list, so only `array_contains` produces a real match. `equals`/`contains` never match a list and silently return no results. |
+| `tags` | `array_contains` only | Audience has contacts tagged "vip": `tags` is a list, so only `array_contains` produces a real match. `equals`/`contains` never match a list and silently return no results. |
 
 `contains`/`not_contains`/`array_contains` compare strings case-insensitively.
 
@@ -80,8 +80,8 @@ curl -X POST https://api.tratto.email/v1/audiences/aud_abc123/contacts \
 
 ## Dynamic vs Static
 
-- **Dynamic** — Rules are re-evaluated; membership updates as contact status changes
-- **Static** — Fixed contact list; doesn't update automatically
+- **Dynamic**: Rules are re-evaluated; membership updates as contact status changes
+- **Static**: Fixed contact list; doesn't update automatically
 
 By default, audiences are **dynamic** if you use rules, **static** if only manually added.
 
@@ -121,7 +121,7 @@ curl https://api.tratto.email/v1/audiences/aud_abc123 \
 
 ## Delete an Audience
 
-Permanently deletes the audience itself. **Contacts are never touched** —
+Permanently deletes the audience itself. **Contacts are never touched**:
 deleting an audience just removes that grouping; every contact that was a
 member keeps existing untouched, with all its data, tags and status intact.
 
@@ -135,7 +135,7 @@ Returns `204 No Content` on success.
 
 If the audience is still referenced by a campaign that hasn't finished
 sending (`draft`, `scheduled`, `sending` or `paused`), the request is rejected
-with `409 Conflict` instead — remove the audience from those campaigns first,
+with `409 Conflict` instead. Remove the audience from those campaigns first,
 or wait until they complete.
 
 ## Using Audiences in Campaigns

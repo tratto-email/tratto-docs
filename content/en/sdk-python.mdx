@@ -3,7 +3,7 @@ title: Python SDK
 description: Official Python SDK for the Tratto Email API
 ---
 
-The official SDK for Python: **`tratto-email`**. No external dependencies —
+The official SDK for Python: **`tratto-email`**. No external dependencies,
 built on `urllib`. Requires Python 3.10+.
 
 ## Installation
@@ -149,7 +149,7 @@ webhook = client.webhooks.create(CreateWebhookOptions(
     events=['sent', 'delivered', 'opened', 'clicked', 'bounced'],
 ))
 
-print(webhook['data']['secret'])  # whsec_xyz789... — returned only once
+print(webhook['data']['secret'])  # whsec_xyz789... (returned only once)
 ```
 
 ## Error Handling

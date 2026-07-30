@@ -1,5 +1,5 @@
 ---
-title: Angular — SSR e AnalogJS
+title: "Angular: SSR e AnalogJS"
 description: Invia email da un'applicazione Angular usando @tratto/email sul server.
 ---
 
@@ -19,14 +19,14 @@ browser.
 React ha un confine di compilazione tra codice server e codice client. **Angular
 no.** Tutto ciò che scrivi in un componente, in un servizio o in un resolver
 finisce compilato nel bundle del browser, anche in un'applicazione SSR. Il server
-side rendering cambia *dove il codice viene eseguito la prima volta* — non
+side rendering cambia *dove il codice viene eseguito la prima volta*: non
 impedisce al codice di raggiungere il client.
 
 Quindi "usiamo SSR" non è di per sé una protezione. Quello che conta è dove sta la
 **chiave**, e se il codice che la legge può mai essere eseguito in un browser.
 
 ```ts
-// ❌ MAI — app.config.ts fa parte del bundle browser
+// ❌ MAI: app.config.ts fa parte del bundle browser
 export const appConfig: ApplicationConfig = {
   providers: [
     { provide: TRATTO_KEY, useValue: 'tratto_live_...' },  // spedita a ogni visitatore
@@ -37,7 +37,7 @@ export const appConfig: ApplicationConfig = {
 L'applicazione continua a funzionare, ed è questo che rende l'errore facile da non
 notare.
 
-## Pattern 1 — Chiama Tratto dalle tue route server (consigliato)
+## Pattern 1: Chiama Tratto dalle tue route server (consigliato)
 
 Il design più sicuro tiene Tratto completamente fuori dall'applicazione Angular.
 Il tuo server espone un endpoint, il browser chiama quell'endpoint e il server
@@ -67,7 +67,7 @@ const tratto = new Tratto(process.env['TRATTO_API_KEY']!);
 
 app.use(express.json());
 
-// Endpoint tuo — il browser non vede mai la chiave Tratto.
+// Endpoint tuo: il browser non vede mai la chiave Tratto.
 app.post('/api/contact', async (req, res, next) => {
   try {
     // Valida prima di inviare. Mai interpolare input utente in `from`.
@@ -118,7 +118,7 @@ export const reqHandler = createNodeRequestHandler(app);
 
 `server.ts` viene impacchettato nell'output server e non raggiunge mai il browser.
 
-## Pattern 2 — Recuperare dati durante il render server
+## Pattern 2: Recuperare dati durante il render server
 
 Se ti servono dati Tratto *mentre la pagina viene renderizzata*, dichiara un tuo
 injection token e forniscilo **solo** nella configurazione server.
@@ -137,7 +137,7 @@ export const TRATTO = new InjectionToken<Tratto>('TRATTO');
 Il provider esiste solo nel bundle server:
 
 ```ts
-// app.config.server.ts — solo bundle server
+// app.config.server.ts: solo bundle server
 import { mergeApplicationConfig, ApplicationConfig } from '@angular/core';
 import { provideServerRendering } from '@angular/ssr';
 import { Tratto } from '@tratto/email';
@@ -173,7 +173,7 @@ export class NewsletterStatsComponent {
   readonly subscribers = signal(0);
 
   constructor() {
-    // null nel browser — il provider è solo lato server.
+    // null nel browser: il provider è solo lato server.
     const tratto = inject(TRATTO, { optional: true });
     if (!tratto) return;
 
@@ -254,7 +254,7 @@ Leggi la chiave dall'ambiente. Non committarla mai e non metterla in
 `environment.ts`: i file environment di Angular fanno parte del bundle browser.
 
 ```bash
-# .env — in gitignore
+# .env (in gitignore)
 TRATTO_API_KEY=tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 

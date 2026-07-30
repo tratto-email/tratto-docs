@@ -1,5 +1,5 @@
 ---
-title: Templates — Create, Version & Test
+title: "Templates: Create, Version & Test"
 description: Manage versioned email templates with variable substitution
 ---
 
@@ -41,7 +41,7 @@ curl -X POST https://api.tratto.email/v1/templates \
 ## Publish a Template
 
 Templates are created as `draft` and cannot be used for sending until they are
-`published`. Publishing is a status change on the template itself — there is no
+`published`. Publishing is a status change on the template itself: there is no
 separate publish endpoint.
 
 **cURL**
@@ -83,7 +83,7 @@ HTML: <h1>Welcome, Alice!</h1><p>Your code: SECRET123</p>
 
 ## Update a Template
 
-Update a template — this creates a new version, leaving previous versions intact.
+Update a template. This creates a new version, leaving previous versions intact.
 
 **cURL**
 ```bash
@@ -239,7 +239,7 @@ When sending, always include both variables.
 
 ### 3. Use Templates for Bulk Sends
 
-Don't compose HTML per email — use templates + variables for consistency and reusability.
+Don't compose HTML per email. Use templates and variables for consistency and reusability.
 
 ### 4. Test Before Publishing
 

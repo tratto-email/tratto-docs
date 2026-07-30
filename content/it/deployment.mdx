@@ -1,5 +1,5 @@
 ---
-title: Deployment — Firebase, Vercel, Cloudflare
+title: "Deployment: Firebase, Vercel, Cloudflare"
 description: Dove sta la chiave API su ogni piattaforma, e come ricevere i webhook.
 ---
 
@@ -261,7 +261,7 @@ app.post('/webhooks/tratto', (req, res) => {
 
 ### Vercel e Cloudflare Workers
 
-I runtime edge non hanno `node:crypto`. Usa WebCrypto, disponibile su tutti — e
+I runtime edge non hanno `node:crypto`. Usa WebCrypto, disponibile su tutti, e
 anche su Node 18+, quindi questa versione è portabile:
 
 ```ts
@@ -299,7 +299,7 @@ async function verify(
 
   if (expected.length !== signature.length) return false;
 
-  // Confronto a tempo costante — mai usare === su una firma.
+  // Confronto a tempo costante: mai usare === su una firma.
   let diff = 0;
   for (let i = 0; i < expected.length; i++) {
     diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
@@ -335,9 +335,9 @@ completo, la protezione dai replay e la rotazione del secret.
 L'SDK non tiene socket né connection pool, quindi non c'è nulla da scaldare.
 Costruiscilo dove la chiave è disponibile:
 
-- **Vercel, Cloudflare, server Node** — a livello di modulo va bene ed evita di
+- **Vercel, Cloudflare, server Node**: a livello di modulo va bene ed evita di
   riallocarlo a ogni richiesta.
-- **Firebase Functions** — dentro l'handler, perché `defineSecret().value()` si
+- **Firebase Functions**: dentro l'handler, perché `defineSecret().value()` si
   risolve solo dopo l'avvio della funzione.
 
 ## Checklist

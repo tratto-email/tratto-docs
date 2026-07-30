@@ -46,7 +46,7 @@ When you exceed the limit:
 }
 ```
 
-The response carries no `retryAfter` field — use the `x-ratelimit-reset` header
+The response carries no `retryAfter` field. Use the `x-ratelimit-reset` header
 and your own backoff.
 
 ## Retry Strategy
@@ -82,7 +82,7 @@ Limits per plan (rolling 30-day window):
 | Pro | Unlimited | Unlimited |
 
 Exceed your quota and requests fail with `QUOTA_EXCEEDED`, which also returns
-429. Unlike `RATE_LIMITED` it will not clear by retrying — see
+429. Unlike `RATE_LIMITED` it will not clear by retrying: see
 [Error Codes](/en/docs/error-codes).
 
 ## Burst Behavior

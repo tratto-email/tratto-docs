@@ -7,7 +7,7 @@ The API returns **eight** error codes. They are deliberately generic: the code
 tells you the *class* of problem and the HTTP status, while `message` carries the
 specific detail.
 
-Branch on `code`, not on `message` — messages are written for humans and can
+Branch on `code`, not on `message`: messages are written for humans and can
 change without notice.
 
 ## Error Format
@@ -23,7 +23,7 @@ change without notice.
 ```
 
 `suggestion` is present on some errors with a hint about the fix. Validation
-errors add a `details` array — see below.
+errors add a `details` array: see below.
 
 ## The Codes
 
@@ -40,7 +40,7 @@ errors add a `details` array — see below.
 
 <Callout type="warn">
 There are no resource-specific codes. A missing template, a missing contact and
-a missing campaign all return `NOT_FOUND` — the resource is named in `message`,
+a missing campaign all return `NOT_FOUND`. The resource is named in `message`,
 not in `code`.
 </Callout>
 
@@ -70,9 +70,9 @@ the schema validator identifying each field that failed:
 `RATE_LIMITED` and `QUOTA_EXCEEDED` both return 429, and they need opposite
 responses:
 
-- **`RATE_LIMITED`** — you are sending too fast. Back off and retry; the request
+- **`RATE_LIMITED`**: you are sending too fast. Back off and retry; the request
   will succeed shortly. See [Rate Limits](/en/docs/rate-limits).
-- **`QUOTA_EXCEEDED`** — you have used your monthly email allowance. Retrying
+- **`QUOTA_EXCEEDED`**: you have used your monthly email allowance. Retrying
   will not help until the plan resets or is upgraded.
 
 Treating them the same means retrying forever against a quota wall:
@@ -101,7 +101,7 @@ try {
   if (error instanceof TrattoError) {
     switch (error.code) {
       case 'VALIDATION_ERROR':
-        // Fix the payload — retrying unchanged will fail again.
+        // Fix the payload: retrying unchanged will fail again.
         break;
       case 'RATE_LIMITED':
         await backoff();

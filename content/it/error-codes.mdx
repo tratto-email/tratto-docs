@@ -23,7 +23,7 @@ persone e possono cambiare senza preavviso.
 ```
 
 `suggestion` è presente su alcuni errori con un'indicazione su come risolvere.
-Gli errori di validazione aggiungono un array `details` — vedi sotto.
+Gli errori di validazione aggiungono un array `details`: vedi sotto.
 
 ## I Codici
 
@@ -70,9 +70,9 @@ prodotto dal validatore dello schema, che identifica ogni campo non valido:
 `RATE_LIMITED` e `QUOTA_EXCEEDED` restituiscono entrambi 429, ma richiedono
 reazioni opposte:
 
-- **`RATE_LIMITED`** — stai inviando troppo in fretta. Rallenta e riprova: la
+- **`RATE_LIMITED`**: stai inviando troppo in fretta. Rallenta e riprova: la
   richiesta andrà a buon fine a breve. Vedi [Rate Limit](/it/docs/rate-limits).
-- **`QUOTA_EXCEEDED`** — hai esaurito il monte email mensile. Riprovare non serve
+- **`QUOTA_EXCEEDED`**: hai esaurito il monte email mensile. Riprovare non serve
   finché il piano non si resetta o non viene aggiornato.
 
 Trattarli allo stesso modo significa riprovare all'infinito contro un muro:

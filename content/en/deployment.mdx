@@ -1,9 +1,9 @@
 ---
-title: Deployment — Firebase, Vercel, Cloudflare
+title: "Deployment: Firebase, Vercel, Cloudflare"
 description: Where the API key lives on each platform, and how to receive webhooks there.
 ---
 
-`@tratto/email` has **no dependencies and uses only the global `fetch`** — no
+`@tratto/email` has **no dependencies and uses only the global `fetch`**: no
 `Buffer`, no `crypto`, no `node:` imports. It runs unchanged on Node, on
 Firebase Functions, on Vercel's Node and Edge runtimes, on Cloudflare Workers and
 on Deno.
@@ -48,7 +48,7 @@ const trattoApiKey = defineSecret('TRATTO_API_KEY');
 export const sendWelcome = onCall(
   { secrets: [trattoApiKey], region: 'europe-west1' },
   async (request) => {
-    // Callable functions carry the Firebase Auth context — use it.
+    // Callable functions carry the Firebase Auth context, use it.
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Sign in first');
     }
@@ -75,7 +75,7 @@ export const sendWelcome = onCall(
 
 <Callout type="warn">
 `functions.config()` does not exist in Gen2. If you are migrating from Gen1,
-every `functions.config().tratto.key` has to become a declared secret — the old
+every `functions.config().tratto.key` has to become a declared secret. The old
 values are not carried over.
 </Callout>
 
@@ -159,7 +159,7 @@ For Server Actions and Server Components, see [React](/en/docs/sdk-react).
 
 <Callout type="warn">
 Vercel functions are short-lived. Do not fire an email and return before the
-promise settles — the runtime may freeze the instance first. Always `await` the
+promise settles: the runtime may freeze the instance first. Always `await` the
 send.
 </Callout>
 
@@ -256,7 +256,7 @@ app.post('/webhooks/tratto', (req, res) => {
     return res.status(401).json({ error: 'Invalid signature' });
   }
 
-  // Acknowledge immediately, process afterwards — Tratto retries on timeout.
+  // Acknowledge immediately, process afterwards: Tratto retries on timeout.
   res.json({ ok: true });
 });
 ```
@@ -264,7 +264,7 @@ app.post('/webhooks/tratto', (req, res) => {
 ### Vercel and Cloudflare Workers
 
 Edge runtimes have no `node:crypto`. Use WebCrypto, which is available on all of
-them — and on Node 18+ too, so this version is portable:
+them, and on Node 18+ too, so this version is portable:
 
 ```ts
 async function verify(
@@ -301,7 +301,7 @@ async function verify(
 
   if (expected.length !== signature.length) return false;
 
-  // Constant-time comparison — never use === on a signature.
+  // Constant-time comparison: never use === on a signature.
   let diff = 0;
   for (let i = 0; i < expected.length; i++) {
     diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
@@ -326,7 +326,7 @@ export async function POST(request: Request) {
 ```
 
 `request.text()` can only be called once per request. Read it first, verify, then
-`JSON.parse` the same string — never call `request.json()` as well.
+`JSON.parse` the same string. Never call `request.json()` as well.
 
 See [Webhook Verification](/en/docs/webhook-verification) for the full algorithm,
 replay protection and secret rotation.
@@ -336,9 +336,9 @@ replay protection and secret rotation.
 The SDK holds no sockets and no connection pool, so there is nothing to warm up.
 Construct it wherever the key is available:
 
-- **Vercel, Cloudflare, Node servers** — module scope is fine and avoids
+- **Vercel, Cloudflare, Node servers**: module scope is fine and avoids
   re-allocating per request.
-- **Firebase Functions** — inside the handler, because `defineSecret().value()`
+- **Firebase Functions**: inside the handler, because `defineSecret().value()`
   is only resolved once the function has started.
 
 ## Checklist
@@ -347,7 +347,7 @@ Construct it wherever the key is available:
 - [ ] No variable holding it carries a client-exposed prefix such as `NEXT_PUBLIC_`
 - [ ] Cloudflare secrets are set with `wrangler secret put`, not `[vars]`
 - [ ] Firebase Gen2 functions declare `secrets: [...]` on every function that sends
-- [ ] Background triggers pass an idempotency key — they fire at least once
+- [ ] Background triggers pass an idempotency key, since they fire at least once
 - [ ] Webhook handlers parse `t` and `v1` and sign `{t}.{rawBody}`, not the body alone
 - [ ] Webhook handlers verify against the raw body, before parsing
 - [ ] Signature comparison is constant-time and length-checked

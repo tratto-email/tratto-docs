@@ -1,5 +1,5 @@
 ---
-title: Domini — Aggiungi, Configurazione DNS e Verifica
+title: "Domini: Aggiungi, Configurazione DNS e Verifica"
 description: Configura i domini di invio con proper autenticazione DNS
 ---
 
@@ -7,9 +7,9 @@ Un **dominio** è la tua identità di invio verificata. Prima di inviare email, 
 
 ## Perché i Domini Contano
 
-- **Autenticazione Mittente** — Prova che controlli il dominio
-- **Deliverability** — SPF, DKIM, DMARC prevengono spoofing e migliorano il posizionamento in inbox
-- **Fiducia** — I destinatari vedono il tuo dominio branded, non un servizio di terze parti
+- **Autenticazione Mittente**: Prova che controlli il dominio
+- **Deliverability**: SPF, DKIM, DMARC prevengono spoofing e migliorano il posizionamento in inbox
+- **Fiducia**: I destinatari vedono il tuo dominio branded, non un servizio di terze parti
 
 ## Aggiungi un Dominio
 
@@ -70,7 +70,7 @@ print(f"Domain ID: {data['id']}")
 }
 ```
 
-Lo status del dominio è `pending_verification` — in attesa di record DNS.
+Lo status del dominio è `pending_verification`: in attesa di record DNS.
 
 ## Configurazione Record DNS
 
@@ -158,9 +158,9 @@ print(f"Status: {data['status']}")
 
 **Possibili risposte:**
 
-- `verified` — ✅ Successo! Dominio pronto per inviare
-- `pending_verification` — ⏳ Ancora in corso la verifica dei record DNS (riprova tra qualche minuto)
-- `failed` — ❌ Record DNS non trovati o non validi (controlla i record, attendi la propagazione DNS)
+- `verified`: ✅ Successo! Dominio pronto per inviare
+- `pending_verification`: ⏳ Ancora in corso la verifica dei record DNS (riprova tra qualche minuto)
+- `failed`: ❌ Record DNS non trovati o non validi (controlla i record, attendi la propagazione DNS)
 
 ## Controlla lo Status del Dominio
 

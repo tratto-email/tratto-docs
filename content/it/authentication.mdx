@@ -35,7 +35,7 @@ Senza l'header, riceverai `401 Unauthorized`.
 
 ## Crea una API Key
 
-Genera una nuova API key tramite l'API. Questo è l'unico modo per creare chiavi — non c'è un'interfaccia dashboard per ora.
+Genera una nuova API key tramite l'API. Questo è l'unico modo per creare chiavi, dato che non c'è un'interfaccia dashboard per ora.
 
 **cURL**
 ```bash
@@ -90,7 +90,7 @@ print(f"Nuova API Key: {api_key}")
 ```
 
 <Callout type="warning">
-**⚠️ Importante:** Il campo `key` è mostrato **una sola volta**. Salvalo immediatamente — non verrà più visualizzato. Se lo perdi, revoca e crea una nuova chiave.
+**⚠️ Importante:** Il campo `key` è mostrato **una sola volta**. Salvalo immediatamente: non verrà più visualizzato. Se lo perdi, revoca e crea una nuova chiave.
 </Callout>
 
 ## Elenca le API Key
@@ -149,7 +149,7 @@ for key in keys:
 }
 ```
 
-Nota: La chiave completa non è mai restituita dopo la creazione — solo il prefisso (primi e ultimi 4 caratteri).
+Nota: La chiave completa non è mai restituita dopo la creazione, solo il prefisso (primi e ultimi 4 caratteri).
 
 ## Revoca una API Key
 
@@ -237,9 +237,9 @@ const response = await fetch('/api/send-email', {
 
 Crea chiavi separate per:
 
-- `production` — Usata solo in produzione
-- `staging` — Usata solo in staging
-- `development` — Usata solo nello sviluppo locale
+- `production`: Usata solo in produzione
+- `staging`: Usata solo in staging
+- `development`: Usata solo nello sviluppo locale
 
 In questo modo, una chiave di sviluppo compromessa non compromette la produzione.
 

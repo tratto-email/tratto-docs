@@ -1,5 +1,5 @@
 ---
-title: Angular — SSR and AnalogJS
+title: "Angular: SSR and AnalogJS"
 description: Send email from an Angular application using @tratto/email on the server.
 ---
 
@@ -9,7 +9,7 @@ serves the app.
 
 An API key grants full access to your workspace: send as your verified domains,
 read your contact list, mint new API keys, remove team members, delete the
-workspace. A key shipped to the browser is public — readable in the JavaScript
+workspace. A key shipped to the browser is public: readable in the JavaScript
 bundle, in DevTools and in the network tab. No obfuscation changes that, which is
 why no email provider ships a browser SDK.
 
@@ -18,14 +18,14 @@ why no email provider ships a browser SDK.
 React draws a compiler boundary between server and client code. **Angular does
 not.** Anything you write inside a component, a service or a route resolver is
 compiled into the browser bundle, even in an SSR application. Server-side
-rendering changes *where the code runs first* — it does not keep the code off the
+rendering changes *where the code runs first*: it does not keep the code off the
 client.
 
 So "we use SSR" is not, by itself, protection. What matters is where the **key**
 lives, and whether the code that reads it can ever execute in a browser.
 
 ```ts
-// ❌ NEVER — app.config.ts is part of the browser bundle
+// ❌ NEVER: app.config.ts is part of the browser bundle
 export const appConfig: ApplicationConfig = {
   providers: [
     { provide: TRATTO_KEY, useValue: 'tratto_live_...' },  // shipped to every visitor
@@ -35,7 +35,7 @@ export const appConfig: ApplicationConfig = {
 
 The application still works, which is what makes this mistake easy to miss.
 
-## Pattern 1 — Call Tratto from your server routes (recommended)
+## Pattern 1: Call Tratto from your server routes (recommended)
 
 The safest design keeps Tratto out of the Angular application entirely. Your
 server exposes an endpoint, the browser calls that endpoint, and the server talks
@@ -65,7 +65,7 @@ const tratto = new Tratto(process.env['TRATTO_API_KEY']!);
 
 app.use(express.json());
 
-// Your own endpoint — the browser never sees the Tratto key.
+// Your own endpoint: the browser never sees the Tratto key.
 app.post('/api/contact', async (req, res, next) => {
   try {
     // Validate before sending. Never interpolate user input into `from`.
@@ -116,13 +116,13 @@ export const reqHandler = createNodeRequestHandler(app);
 
 `server.ts` is bundled into the server output. It never reaches the browser.
 
-## Pattern 2 — Fetch during server rendering
+## Pattern 2: Fetch during server rendering
 
 If you need Tratto data *while the page renders*, declare your own injection
 token and provide it **only** in the server configuration.
 
 The token file is safe to import anywhere, because it declares a token and uses
-`import type` for the client — nothing from the SDK is emitted:
+`import type` for the client: nothing from the SDK is emitted:
 
 ```ts
 // app/tratto.token.ts
@@ -135,7 +135,7 @@ export const TRATTO = new InjectionToken<Tratto>('TRATTO');
 The provider exists only in the server bundle:
 
 ```ts
-// app.config.server.ts — server bundle only
+// app.config.server.ts: server bundle only
 import { mergeApplicationConfig, ApplicationConfig } from '@angular/core';
 import { provideServerRendering } from '@angular/ssr';
 import { Tratto } from '@tratto/email';
@@ -171,7 +171,7 @@ export class NewsletterStatsComponent {
   readonly subscribers = signal(0);
 
   constructor() {
-    // null in the browser — the provider is server-only.
+    // null in the browser: the provider is server-only.
     const tratto = inject(TRATTO, { optional: true });
     if (!tratto) return;
 
@@ -208,7 +208,7 @@ Write `import type`, not `import`. Under `verbatimModuleSyntax` TypeScript emits
 a plain import verbatim, which pulls the whole SDK into the browser bundle.
 Enable `@typescript-eslint/consistent-type-imports` so the linter catches it.
 
-Prefer returning a narrowed object from your server and typing that — the browser
+Prefer returning a narrowed object from your server and typing that: the browser
 has no reason to receive a full `EmailDetail` to render a status string.
 
 ## AnalogJS and Nitro
@@ -248,10 +248,10 @@ reach the browser.
 ## Supplying the key
 
 Read the key from the environment. Never commit it, and never place it in
-`environment.ts` — Angular environment files are part of the browser bundle.
+`environment.ts`: Angular environment files are part of the browser bundle.
 
 ```bash
-# .env — gitignored
+# .env (gitignored)
 TRATTO_API_KEY=tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
@@ -284,7 +284,7 @@ should not leave your server. See [Error Codes](/en/docs/error-codes).
 - [ ] No provider carrying the key exists in `app.config.ts`
 - [ ] Components use `inject(TRATTO, { optional: true })` and handle `null`
 - [ ] Your own endpoints validate input and are rate-limited
-- [ ] `from` is a fixed, verified address — never built from user input
+- [ ] `from` is a fixed, verified address, never built from user input
 - [ ] Errors are logged on the server and returned as generic messages
 - [ ] `grep -r "tratto_live" dist/browser` returns nothing after a production build
 

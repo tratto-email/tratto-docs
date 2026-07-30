@@ -14,14 +14,14 @@ Un **tenant** è il tuo workspace isolato. Tutto quello che crei (domini, templa
 - Ha chiavi API separate
 - Non può accedere ai dati di altri tenant
 
-Pensa a esso come l'"account" dell'organizzazione — completamente isolato da altri clienti.
+Pensa a esso come l'"account" dell'organizzazione, completamente isolato da altri clienti.
 
 ## API Key
 
 Un' **API key** è un bearer token che autentica le tue richieste. Le API key di Tratto sono prefissate `tratto_live_` e sono hash quando archiviate (non memorizziamo mai la chiave grezza).
 
 **Proprietà della chiave:**
-- Concedono accesso completo al workspace — trattale come password
+- Concedono accesso completo al workspace, trattale come password
 - Mostrate solo una volta durante la creazione
 - Possono essere revocate in qualsiasi momento
 - Dovrebbero essere ruotate periodicamente per sicurezza
@@ -45,9 +45,9 @@ Un **domain** è un dominio di invio verificato. Prima di inviare email, devi:
 I record provano ai server di posta riceventi che controlli il dominio e sei autorizzato a inviare da esso.
 
 **Ciclo di vita del dominio:**
-- `pending_verification` — In attesa di record DNS
-- `verified` — Pronto per l'invio
-- `failed` — Verifica DNS non riuscita (ri-verifica più tardi)
+- `pending_verification`: In attesa di record DNS
+- `verified`: Pronto per l'invio
+- `failed`: Verifica DNS non riuscita (ri-verifica più tardi)
 
 Vedi [Domini](/it/docs/domains) per la configurazione passo dopo passo.
 
@@ -77,11 +77,11 @@ L'email scorre quindi attraverso la pipeline di consegna.
 ```
 
 **Definizioni dello stato:**
-- `queued` — Email è in coda, verrà inviata a breve
-- `scheduled` — Email è programmata per consegna futura
-- `sent` — Email è stata inviata al server di posta
-- `delivered` — Server di posta ha confermato consegna (senza rimbalzi)
-- `failed` — Consegna non riuscita (dominio non valido, rate limit, ecc.)
+- `queued`: Email è in coda, verrà inviata a breve
+- `scheduled`: Email è programmata per consegna futura
+- `sent`: Email è stata inviata al server di posta
+- `delivered`: Server di posta ha confermato consegna (senza rimbalzi)
+- `failed`: Consegna non riuscita (dominio non valido, rate limit, ecc.)
 
 Vedi [Stato e Ciclo di Vita dell'Email](/it/docs/email-status) per ulteriori informazioni.
 
@@ -89,17 +89,17 @@ Vedi [Stato e Ciclo di Vita dell'Email](/it/docs/email-status) per ulteriori inf
 
 Gli **eventi** sono record di tracking per quello che è successo a un'email. A differenza dello stato (lo stato dell'email), gli eventi sono azioni discrete:
 
-- `sent` — Email è stata inviata al server di posta
-- `delivered` — Server di posta ha confermato ricezione
-- `opened` — Destinatario ha aperto l'email (pixel tracciato)
-- `clicked` — Destinatario ha cliccato un link
-- `bounced` — Server di posta ha rifiutato consegna
-- `complained` — Destinatario ha segnalato come spam
-- `unsubscribed` — Destinatario ha cliccato "annulla iscrizione"
+- `sent`: Email è stata inviata al server di posta
+- `delivered`: Server di posta ha confermato ricezione
+- `opened`: Destinatario ha aperto l'email (pixel tracciato)
+- `clicked`: Destinatario ha cliccato un link
+- `bounced`: Server di posta ha rifiutato consegna
+- `complained`: Destinatario ha segnalato come spam
+- `unsubscribed`: Destinatario ha cliccato "annulla iscrizione"
 
 Ricevi gli eventi tramite:
-- **Webhook** — Notifiche HTTP push real-time
-- **Email events API** — `GET /v1/emails/{id}/events`
+- **Webhook**: Notifiche HTTP push real-time
+- **Email events API**: `GET /v1/emails/{id}/events`
 
 Vedi [Webhook](/it/docs/webhooks) per la configurazione.
 
@@ -194,11 +194,11 @@ draft → (invio di prova opzionale) → send → scheduled → sending → sent
 ```
 
 **Proprietà chiave:**
-- `name` — Nome della campagna
-- `templateId` — Quale template usare
-- `audienceId` — Chi la riceve
-- `sendAt` — Programma per dopo (opzionale)
-- `status` — Stato attuale
+- `name`: Nome della campagna
+- `templateId`: Quale template usare
+- `audienceId`: Chi la riceve
+- `sendAt`: Programma per dopo (opzionale)
+- `status`: Stato attuale
 
 **Dopo l'invio:**
 - Ottieni statistiche di consegna: `GET /v1/campaigns/{id}/stats`
@@ -212,14 +212,14 @@ Vedi [Campagne](/it/docs/campaigns) per i dettagli.
 Un' **audience** è un gruppo di contatti, creata tramite filtri basati su regole o aggiunte manuali.
 
 **Tipi di regola:**
-- `status` — `subscribed`, `unsubscribed`, `bounced`, `complained`
-- `tags` — Filtra per tag contatto (es., "vip", "newsletter")
-- `metadata` — Campi personalizzati (es., `plan: "pro"`)
-- `dateRange` — Contatti creati tra date
+- `status`: `subscribed`, `unsubscribed`, `bounced`, `complained`
+- `tags`: Filtra per tag contatto (es., "vip", "newsletter")
+- `metadata`: Campi personalizzati (es., `plan: "pro"`)
+- `dateRange`: Contatti creati tra date
 
 **Dinamica vs statica:**
-- **Dinamica** — Regole ri-valutate, appartenenza cambia automaticamente
-- **Statica** — Elenco fisso, non si aggiorna
+- **Dinamica**: Regole ri-valutate, appartenenza cambia automaticamente
+- **Statica**: Elenco fisso, non si aggiorna
 
 **Uso:**
 - Campagne: invia a un'audience

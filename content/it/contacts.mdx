@@ -1,5 +1,5 @@
 ---
-title: Contatti — Crea, Importa e Status
+title: "Contatti: Crea, Importa e Status"
 description: Gestisci contatti email con status, tag e metadata
 ---
 
@@ -51,9 +51,9 @@ curl "https://api.tratto.email/v1/contacts?status=subscribed&limit=50" \
 ```
 
 **Parametri di Query:**
-- `status` — Filtra per status (`subscribed`, `unsubscribed`, `bounced`, `complained`)
-- `limit` — Max risultati per pagina (default 50, max 100)
-- `after` — Cursor per paginazione
+- `status`: Filtra per status (`subscribed`, `unsubscribed`, `bounced`, `complained`)
+- `limit`: Max risultati per pagina (default 50, max 100)
+- `after`: Cursor per paginazione
 
 **Risposta:**
 ```json
@@ -103,10 +103,10 @@ curl -X PATCH https://api.tratto.email/v1/contacts/cont_abc123 \
 
 Usa i tag per organizzare i contatti in gruppi logici:
 
-- `vip` — Clienti di alto valore
-- `newsletter` — Iscritti newsletter
-- `beta` — Membri programma beta
-- `churned` — Clienti a rischio
+- `vip`: Clienti di alto valore
+- `newsletter`: Iscritti newsletter
+- `beta`: Membri programma beta
+- `churned`: Clienti a rischio
 
 **Casi d'uso dei tag:**
 - Segmenta campagne per tag

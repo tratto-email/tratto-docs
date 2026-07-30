@@ -7,7 +7,7 @@ Tratto è costruito su infrastruttura UE per default, non adattato in un secondo
 
 ## Infrastruttura EU-native
 
-Tratto gira sulla regione UE di Google Cloud. I tuoi dati — contatti, contenuto delle email, log degli eventi — sono archiviati ed elaborati lì, non esportati negli US e poi sincronizzati.
+Tratto gira sulla regione UE di Google Cloud. I tuoi dati (contatti, contenuto delle email, log degli eventi) sono archiviati ed elaborati lì, non esportati negli US e poi sincronizzati.
 
 ## Consenso Cookie & Analytics
 
@@ -15,10 +15,10 @@ Il sito marketing di Tratto non carica script di analytics per default. Google A
 
 ## Disiscrizione One-Click (RFC 8058)
 
-Ogni email inviata tramite Tratto include gli header `List-Unsubscribe` e `List-Unsubscribe-Post`, così i client email che supportano la disiscrizione one-click (Gmail, Outlook e altri) possono agire senza una landing page. La disiscrizione sposta un contatto allo stato `unsubscribed` immediatamente — vedi [Contatti](/it/docs/contacts) per l'API.
+Ogni email inviata tramite Tratto include gli header `List-Unsubscribe` e `List-Unsubscribe-Post`, così i client email che supportano la disiscrizione one-click (Gmail, Outlook e altri) possono agire senza una landing page. La disiscrizione sposta un contatto allo stato `unsubscribed` immediatamente: vedi [Contatti](/it/docs/contacts) per l'API.
 
 <Callout>
-La disiscrizione sospende immediatamente gli invii futuri. Non cancella il record del contatto — vedi sotto.
+La disiscrizione sospende immediatamente gli invii futuri. Non cancella il record del contatto: vedi sotto.
 </Callout>
 
 ## Consenso Tracking Pixel (Provvedimento Garante n. 284/2026)
@@ -39,10 +39,10 @@ L'informativa e il consenso specifico verso i tuoi destinatari restano responsab
 
 Chi è responsabile di una richiesta dell'interessato dipende da chi ha inviato l'email:
 
-- **L'ha inviata Tratto direttamente** — conferme waitlist, email di account/prodotto, il nostro marketing. Tratto è il titolare del trattamento. Vedi [Diritti dell'Interessato](#diritti-dellinteressato-tratto-come-titolare) qui sotto.
-- **L'ha inviata un tenant Tratto** — un'azienda che usa l'API di Tratto per inviare le proprie email transazionali o di marketing. Tratto è il **responsabile del trattamento** per conto di quel tenant; il tenant è il titolare del trattamento per i propri destinatari. Vedi [Se un Tenant Ti Ha Inviato un'Email](#se-un-tenant-ti-ha-inviato-unemail) qui sotto.
+- **L'ha inviata Tratto direttamente**: conferme waitlist, email di account/prodotto, il nostro marketing. Tratto è il titolare del trattamento. Vedi [Diritti dell'Interessato](#diritti-dellinteressato-tratto-come-titolare) qui sotto.
+- **L'ha inviata un tenant Tratto**: un'azienda che usa l'API di Tratto per inviare le proprie email transazionali o di marketing. Tratto è il **responsabile del trattamento** per conto di quel tenant; il tenant è il titolare del trattamento per i propri destinatari. Vedi [Se un Tenant Ti Ha Inviato un'Email](#se-un-tenant-ti-ha-inviato-unemail) qui sotto.
 
-Se non sei sicuro di quale caso si applichi, controlla da chi arriva l'email — quello è il titolare.
+Se non sei sicuro di quale caso si applichi, controlla da chi arriva l'email: quello è il titolare.
 
 ## Diritti dell'Interessato (Tratto come Titolare)
 
@@ -50,10 +50,10 @@ Per le email che Tratto invia direttamente (waitlist, account, il nostro marketi
 
 ## Se un Tenant Ti Ha Inviato un'Email
 
-Se hai ricevuto un'email transazionale o di marketing inviata *da un cliente di Tratto* tramite la nostra API, Tratto ha elaborato quell'email per loro conto ma non la controlla — l'azienda mittente è il titolare del trattamento ed è responsabile di soddisfare la tua richiesta di accesso, rettifica o cancellazione entro i termini previsti dalla normativa applicabile (GDPR: generalmente un mese). Contatta direttamente il mittente, non Tratto.
+Se hai ricevuto un'email transazionale o di marketing inviata *da un cliente di Tratto* tramite la nostra API, Tratto ha elaborato quell'email per loro conto ma non la controlla: l'azienda mittente è il titolare del trattamento ed è responsabile di soddisfare la tua richiesta di accesso, rettifica o cancellazione entro i termini previsti dalla normativa applicabile (GDPR: generalmente un mese). Contatta direttamente il mittente, non Tratto.
 
 <Callout type="warning">
-**Nota per i tenant**: l'[API Contatti](/it/docs/contacts) oggi permette di sospendere un contatto (`status: unsubscribed`), non di cancellare il record — non esiste ancora un endpoint di cancellazione self-service. Se un tuo destinatario presenta una richiesta di cancellazione GDPR, Tratto non ti offre ancora un modo self-service per eliminare completamente i dati di quel contatto. Scrivici a **privacy@tratto.email** se questo è un blocco per il tuo workflow di compliance.
+**Nota per i tenant**: l'[API Contatti](/it/docs/contacts) oggi permette di sospendere un contatto (`status: unsubscribed`), non di cancellare il record: non esiste ancora un endpoint di cancellazione self-service. Se un tuo destinatario presenta una richiesta di cancellazione GDPR, Tratto non ti offre ancora un modo self-service per eliminare completamente i dati di quel contatto. Scrivici a **privacy@tratto.email** se questo è un blocco per il tuo workflow di compliance.
 </Callout>
 
 ---

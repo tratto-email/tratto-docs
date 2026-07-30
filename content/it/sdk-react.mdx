@@ -1,5 +1,5 @@
 ---
-title: React — Server Component e Server Action
+title: "React: Server Component e Server Action"
 description: Invia email da React usando @tratto/email sul server. Non esiste un SDK browser.
 ---
 
@@ -13,8 +13,8 @@ tuoi domini verificati, leggere i contatti, creare nuove chiavi, eliminare il
 workspace. Una chiave nel bundle browser è una chiave che hai pubblicato.
 
 React si presta particolarmente bene a questo approccio. I Server Component
-offrono un vero confine di compilazione — il codice in un file server non
-raggiunge mai il bundle client — quindi il pattern corretto è anche quello
+offrono un vero confine di compilazione (il codice in un file server non
+raggiunge mai il bundle client), quindi il pattern corretto è anche quello
 naturale.
 
 ## Installazione
@@ -27,7 +27,7 @@ Tieni la chiave nell'ambiente, senza il prefisso `NEXT_PUBLIC_`. È esattamente
 quel prefisso a inlinare un valore dentro il bundle browser.
 
 ```bash
-# .env.local — in gitignore
+# .env.local (in gitignore)
 TRATTO_API_KEY=tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
@@ -156,7 +156,7 @@ export function StatusBadge({ event }: { event: EmailEvent }) {
 
 <Callout type="warn">
 Scrivi `import type`, non `import`. Con `verbatimModuleSyntax` TypeScript emette
-l'import così com'è, trascinando l'intero SDK — e la gestione della chiave API —
+l'import così com'è, trascinando l'intero SDK (e la gestione della chiave API)
 dentro il bundle client. Attiva
 `@typescript-eslint/consistent-type-imports` per farlo verificare dal linter.
 </Callout>
@@ -208,7 +208,7 @@ invio e danneggiare la reputazione del tuo dominio. Vedi
 ## Cosa non fare
 
 ```tsx
-// ❌ MAI — 'use client' porta questo codice nel bundle browser
+// ❌ MAI: 'use client' porta questo codice nel bundle browser
 'use client';
 
 import { Tratto } from '@tratto/email';

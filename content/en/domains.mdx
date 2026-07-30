@@ -1,5 +1,5 @@
 ---
-title: Domains — Add, DNS Setup & Verification
+title: "Domains: Add, DNS Setup & Verification"
 description: Set up sending domains with proper DNS authentication
 ---
 
@@ -7,9 +7,9 @@ A **domain** is your verified sending identity. Before you send emails, you must
 
 ## Why Domains Matter
 
-- **Sender Authentication** — Prove you control the domain
-- **Deliverability** — SPF, DKIM, DMARC prevent spoofing and improve inbox placement
-- **Trust** — Recipients see your branded domain, not a third-party service
+- **Sender Authentication**: Prove you control the domain
+- **Deliverability**: SPF, DKIM, DMARC prevent spoofing and improve inbox placement
+- **Trust**: Recipients see your branded domain, not a third-party service
 
 ## Add a Domain
 
@@ -70,7 +70,7 @@ print(f"Domain ID: {data['id']}")
 }
 ```
 
-Domain status is `pending_verification` — waiting for DNS records.
+Domain status is `pending_verification`: waiting for DNS records.
 
 ## DNS Records Setup
 
@@ -158,9 +158,9 @@ print(f"Status: {data['status']}")
 
 **Possible responses:**
 
-- `verified` — ✅ Success! Domain is ready to send
-- `pending_verification` — ⏳ Still checking DNS records (retry in a few minutes)
-- `failed` — ❌ DNS records not found or invalid (check records, wait for DNS propagation)
+- `verified`: ✅ Success! Domain is ready to send
+- `pending_verification`: ⏳ Still checking DNS records (retry in a few minutes)
+- `failed`: ❌ DNS records not found or invalid (check records, wait for DNS propagation)
 
 ## Check Domain Status
 

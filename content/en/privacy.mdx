@@ -7,7 +7,7 @@ Tratto is built on EU infrastructure by default, not retrofitted for compliance.
 
 ## EU-Native Infrastructure
 
-Tratto runs on Google Cloud's EU region. Your data — contacts, email content, event logs — is stored and processed there, not exported to the US and synced back.
+Tratto runs on Google Cloud's EU region. Your data (contacts, email content, event logs) is stored and processed there, not exported to the US and synced back.
 
 ## Cookie Consent & Analytics
 
@@ -15,10 +15,10 @@ The Tratto marketing site loads no analytics scripts by default. Google Analytic
 
 ## One-Click Unsubscribe (RFC 8058)
 
-Every email sent through Tratto carries `List-Unsubscribe` and `List-Unsubscribe-Post` headers, so mail clients that support one-click unsubscribe (Gmail, Outlook, and others) can act on it without a landing page. Unsubscribing moves a contact to `unsubscribed` status immediately — see [Contacts](/en/docs/contacts) for the API.
+Every email sent through Tratto carries `List-Unsubscribe` and `List-Unsubscribe-Post` headers, so mail clients that support one-click unsubscribe (Gmail, Outlook, and others) can act on it without a landing page. Unsubscribing moves a contact to `unsubscribed` status immediately: see [Contacts](/en/docs/contacts) for the API.
 
 <Callout>
-Unsubscribing suppresses future sends immediately. It does not delete the contact record — see below.
+Unsubscribing suppresses future sends immediately. It does not delete the contact record: see below.
 </Callout>
 
 ## Tracking Pixel Consent (Garante Privacy Order No. 284/2026)
@@ -39,10 +39,10 @@ The notice and specific consent toward your own recipients are your responsibili
 
 Who's responsible for a data subject request depends on who sent the email:
 
-- **Tratto sent it directly** — waitlist confirmations, account/product emails, our own marketing. Tratto is the data controller. See [Data Subject Rights](#data-subject-rights-tratto-as-controller) below.
-- **A Tratto tenant sent it** — a business using Tratto's API to send their own transactional or marketing email. Tratto is the data **processor** acting on that tenant's behalf; the tenant is the data controller for their own recipients. See [If a Tenant Sent You an Email](#if-a-tenant-sent-you-an-email) below.
+- **Tratto sent it directly**: waitlist confirmations, account/product emails, our own marketing. Tratto is the data controller. See [Data Subject Rights](#data-subject-rights-tratto-as-controller) below.
+- **A Tratto tenant sent it**: a business using Tratto's API to send their own transactional or marketing email. Tratto is the data **processor** acting on that tenant's behalf; the tenant is the data controller for their own recipients. See [If a Tenant Sent You an Email](#if-a-tenant-sent-you-an-email) below.
 
-If you're not sure which applies, check who the email is *from* — that's the controller.
+If you're not sure which applies, check who the email is *from*: that's the controller.
 
 ## Data Subject Rights (Tratto as Controller)
 
@@ -50,10 +50,10 @@ For emails Tratto sends directly (waitlist, account, our own marketing), you can
 
 ## If a Tenant Sent You an Email
 
-If you received a transactional or marketing email sent *by one of Tratto's customers* through our API, Tratto processed that email on their behalf but does not control it — the sending business is the data controller and is responsible for honoring your access, rectification, or erasure request within the timeframe required by applicable law (GDPR: generally one month). Contact the sender directly, not Tratto.
+If you received a transactional or marketing email sent *by one of Tratto's customers* through our API, Tratto processed that email on their behalf but does not control it: the sending business is the data controller and is responsible for honoring your access, rectification, or erasure request within the timeframe required by applicable law (GDPR: generally one month). Contact the sender directly, not Tratto.
 
 <Callout type="warning">
-**Note for tenants**: the [Contacts API](/en/docs/contacts) currently supports suppressing a contact (`status: unsubscribed`), not deleting the record — there's no self-service erasure endpoint yet. If one of your recipients submits a GDPR erasure request, Tratto doesn't yet give you a self-service way to fully purge that contact's data. Talk to us at **privacy@tratto.email** if this is a blocker for your compliance workflow.
+**Note for tenants**: the [Contacts API](/en/docs/contacts) currently supports suppressing a contact (`status: unsubscribed`), not deleting the record: there's no self-service erasure endpoint yet. If one of your recipients submits a GDPR erasure request, Tratto doesn't yet give you a self-service way to fully purge that contact's data. Talk to us at **privacy@tratto.email** if this is a blocker for your compliance workflow.
 </Callout>
 
 ---

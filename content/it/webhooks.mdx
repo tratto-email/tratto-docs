@@ -1,5 +1,5 @@
 ---
-title: Webhook — Setup, Eventi e Verifica Firma
+title: "Webhook: Setup, Eventi e Verifica Firma"
 description: Ricevi gli eventi email in tempo reale tramite webhook
 ---
 
@@ -20,7 +20,7 @@ curl -X POST https://api.tratto.email/v1/webhooks \
   }'
 ```
 
-**Risposta** — `201 Created`:
+**Risposta**: `201 Created`:
 ```json
 {
   "data": {
@@ -236,7 +236,7 @@ Paginazione a cursore con `after` e `limit` (default 50, massimo 100).
 }
 ```
 
-`status` vale `success`, `failed` o `scheduled` — `scheduled` significa che un
+`status` vale `success`, `failed` o `scheduled`: `scheduled` significa che un
 retry è ancora in attesa. `responseBody` è troncato ai primi 1000 caratteri della
 tua risposta, ed è il modo più rapido per capire perché una consegna è stata
 rifiutata.

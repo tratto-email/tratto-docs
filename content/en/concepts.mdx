@@ -14,14 +14,14 @@ A **tenant** is your isolated workspace. Everything you create (domains, templat
 - Has separate API keys
 - Cannot access other tenants' data
 
-Think of it as your organization's "account" — completely isolated from other customers.
+Think of it as your organization's "account", completely isolated from other customers.
 
 ## API Key
 
 An **API key** is a bearer token that authenticates your requests. Tratto API keys are prefixed `tratto_live_` and are hashed when stored (we never store the raw key).
 
 **Key properties:**
-- Grant full workspace access — treat them like passwords
+- Grant full workspace access, treat them like passwords
 - Shown only once during creation
 - Can be revoked at any time
 - Should be rotated periodically for security
@@ -45,9 +45,9 @@ A **domain** is a verified sending domain. Before you send emails, you must:
 The records prove to receiving mail servers that you control the domain and are authorized to send from it.
 
 **Domain lifecycle:**
-- `pending_verification` — waiting for DNS records
-- `verified` — ready to send
-- `failed` — DNS verification failed (re-verify later)
+- `pending_verification`: waiting for DNS records
+- `verified`: ready to send
+- `failed`: DNS verification failed (re-verify later)
 
 See [Domains](/en/docs/domains) for step-by-step setup.
 
@@ -77,11 +77,11 @@ The email then flows through the delivery pipeline.
 ```
 
 **Status definitions:**
-- `queued` — Email is in the queue, will be sent shortly
-- `scheduled` — Email is scheduled for future delivery
-- `sent` — Email was sent to the mail server
-- `delivered` — Mail server confirmed delivery (bounce-free)
-- `failed` — Delivery failed (invalid domain, rate limit, etc.)
+- `queued`: Email is in the queue, will be sent shortly
+- `scheduled`: Email is scheduled for future delivery
+- `sent`: Email was sent to the mail server
+- `delivered`: Mail server confirmed delivery (bounce-free)
+- `failed`: Delivery failed (invalid domain, rate limit, etc.)
 
 See [Email Status & Lifecycle](/en/docs/email-status) for more.
 
@@ -89,17 +89,17 @@ See [Email Status & Lifecycle](/en/docs/email-status) for more.
 
 **Events** are tracking records for what happened to an email. Unlike status (the email state), events are discrete actions:
 
-- `sent` — Email was sent to mail server
-- `delivered` — Mail server confirmed receipt
-- `opened` — Recipient opened the email (pixel tracked)
-- `clicked` — Recipient clicked a link
-- `bounced` — Mail server rejected delivery
-- `complained` — Recipient marked as spam
-- `unsubscribed` — Recipient clicked unsubscribe
+- `sent`: Email was sent to mail server
+- `delivered`: Mail server confirmed receipt
+- `opened`: Recipient opened the email (pixel tracked)
+- `clicked`: Recipient clicked a link
+- `bounced`: Mail server rejected delivery
+- `complained`: Recipient marked as spam
+- `unsubscribed`: Recipient clicked unsubscribe
 
 You get events via:
-- **Webhooks** — Real-time HTTP push notifications
-- **Email events API** — `GET /v1/emails/{id}/events`
+- **Webhooks**: Real-time HTTP push notifications
+- **Email events API**: `GET /v1/emails/{id}/events`
 
 See [Webhooks](/en/docs/webhooks) for setup.
 
@@ -194,11 +194,11 @@ draft → (optional test send) → send → scheduled → sending → sent
 ```
 
 **Key properties:**
-- `name` — Campaign name
-- `templateId` — Which template to use
-- `audienceId` — Who receives it
-- `sendAt` — Schedule for later (optional)
-- `status` — Current state
+- `name`: Campaign name
+- `templateId`: Which template to use
+- `audienceId`: Who receives it
+- `sendAt`: Schedule for later (optional)
+- `status`: Current state
 
 **After sending:**
 - Get delivery stats: `GET /v1/campaigns/{id}/stats`
@@ -212,14 +212,14 @@ See [Campaigns](/en/docs/campaigns) for details.
 An **audience** is a group of contacts, created via rule-based filters or manual additions.
 
 **Rule types:**
-- `status` — `subscribed`, `unsubscribed`, `bounced`, `complained`
-- `tags` — Filter by contact tags (e.g., "vip", "newsletter")
-- `metadata` — Custom fields (e.g., `plan: "pro"`)
-- `dateRange` — Contacts created between dates
+- `status`: `subscribed`, `unsubscribed`, `bounced`, `complained`
+- `tags`: Filter by contact tags (e.g., "vip", "newsletter")
+- `metadata`: Custom fields (e.g., `plan: "pro"`)
+- `dateRange`: Contacts created between dates
 
 **Dynamic vs static:**
-- **Dynamic** — Rules re-evaluated, membership changes automatically
-- **Static** — Fixed list, doesn't update
+- **Dynamic**: Rules re-evaluated, membership changes automatically
+- **Static**: Fixed list, doesn't update
 
 **Usage:**
 - Campaigns: send to an audience

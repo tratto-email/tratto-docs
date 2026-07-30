@@ -1,5 +1,5 @@
 ---
-title: React — Server Components and Server Actions
+title: "React: Server Components and Server Actions"
 description: Send email from React using @tratto/email on the server. There is no browser SDK.
 ---
 
@@ -14,7 +14,7 @@ verified domains, read your contacts, mint new keys, delete the workspace. A key
 in the browser bundle is a key you have published.
 
 React is unusually well suited to this. Server Components give you a real
-compiler boundary — code in a server file never reaches the client bundle — so
+compiler boundary (code in a server file never reaches the client bundle), so
 the correct pattern is also the natural one.
 
 ## Install
@@ -27,7 +27,7 @@ Keep the key in the environment, without the `NEXT_PUBLIC_` prefix. That prefix
 is exactly what inlines a value into the browser bundle.
 
 ```bash
-# .env.local — gitignored
+# .env.local (gitignored)
 TRATTO_API_KEY=tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
@@ -58,7 +58,7 @@ key leaked to production. Add it before you write the first call.
 
 ## Server Action
 
-A form that submits to a Server Action never exposes the key — the function body
+A form that submits to a Server Action never exposes the key: the function body
 stays on the server and the browser only sends the form data.
 
 ```tsx
@@ -78,7 +78,7 @@ export async function sendContactMessage(formData: FormData) {
 
   try {
     await tratto.emails.send({
-      // `from` is a fixed verified address — never built from user input.
+      // `from` is a fixed verified address, never built from user input.
       from: 'Acme <hello@mail.acme.com>',
       to: 'support@acme.com',
       replyTo: email,
@@ -135,13 +135,13 @@ export default async function DashboardPage() {
 
 Pass only the values the page needs into Client Components. Anything you hand
 across that boundary is serialised into the HTML payload and is readable by the
-visitor — send `summary.delivered`, not the whole API response.
+visitor: send `summary.delivered`, not the whole API response.
 
 ## Typing data in Client Components
 
 There is no separate types package, and you do not need one. `@tratto/email`
 exports every request and response type, and `import type` is erased at compile
-time — nothing is bundled:
+time, so nothing is bundled:
 
 ```ts
 // components/status-badge.tsx
@@ -156,7 +156,7 @@ export function StatusBadge({ event }: { event: EmailEvent }) {
 
 <Callout type="warn">
 Write `import type`, not `import`. Under `verbatimModuleSyntax` TypeScript emits
-a plain import verbatim, which pulls the whole SDK — and its API key handling —
+a plain import verbatim, which pulls the whole SDK (and its API key handling)
 into the client bundle. Enable
 `@typescript-eslint/consistent-type-imports` so the linter enforces it.
 </Callout>
@@ -168,7 +168,7 @@ from the server and typing that: the browser has no reason to receive a full
 
 ## Route Handler
 
-Use a Route Handler when something other than a form calls you — a webhook
+Use a Route Handler when something other than a form calls you: a webhook
 receiver, a client-side `fetch`, or a third-party service.
 
 ```ts
@@ -198,13 +198,13 @@ export async function POST(request: Request) {
 ```
 
 Rate-limit any endpoint reachable from the public internet. Without it, a form
-that sends mail is a way for anyone to spend your sending quota — and to damage
+that sends mail is a way for anyone to spend your sending quota and damage
 your domain reputation. See [Rate Limits](/en/docs/rate-limits).
 
 ## What not to do
 
 ```tsx
-// ❌ NEVER — 'use client' puts this in the browser bundle
+// ❌ NEVER: 'use client' puts this in the browser bundle
 'use client';
 
 import { Tratto } from '@tratto/email';
@@ -254,7 +254,7 @@ await tratto.emails.send({
 });
 ```
 
-This is rendering, not sending — it runs on the server and involves no API key in
+This is rendering, not sending: it runs on the server and involves no API key in
 the browser. Tratto [Templates](/en/docs/templates) cover the same need if you
 prefer to manage content outside your codebase.
 
@@ -264,7 +264,7 @@ prefer to manage content outside your codebase.
 - [ ] The key is `TRATTO_API_KEY`, never `NEXT_PUBLIC_TRATTO_API_KEY`
 - [ ] No `'use client'` file imports `@tratto/email`
 - [ ] Public endpoints validate input and are rate-limited
-- [ ] `from` is a fixed, verified address — never built from user input
+- [ ] `from` is a fixed, verified address, never built from user input
 - [ ] Errors are logged on the server and returned as generic messages
 - [ ] `grep -r "tratto_live" .next/static` returns nothing after a production build
 
