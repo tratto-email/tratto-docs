@@ -3,7 +3,8 @@ title: Python SDK
 description: Official Python SDK for the Tratto Email API
 ---
 
-The official SDK for Python: **`tratto-email`**
+The official SDK for Python: **`tratto-email`**. No external dependencies —
+built on `urllib`. Requires Python 3.10+.
 
 ## Installation
 
@@ -14,59 +15,59 @@ pip install tratto-email
 ## Initialization
 
 ```python
-from tratto import TrattoClient
+from tratto import Tratto
 
-client = TrattoClient(api_key='tratto_live_...')
+client = Tratto('tratto_live_...')
 ```
 
 ## Send Email
 
 ```python
-email = client.emails.send(
+from tratto import SendEmailOptions
+
+result = client.emails.send(SendEmailOptions(
     from_='hello@yourdomain.com',
     to='user@example.com',
     subject='Hello!',
-    text='Welcome to Tratto',
     html='<h1>Welcome!</h1>',
-)
+    text='Welcome to Tratto',
+))
 
-print(email['id'])  # email_abc123
-print(email['status'])  # 'queued'
+print(result['id'])  # email_abc123
 ```
 
 ## Send with Template
 
 ```python
-email = client.emails.send(
+result = client.emails.send(SendEmailOptions(
     from_='hello@yourdomain.com',
     to='user@example.com',
+    subject='Welcome to Acme!',
     template_id='tmpl_abc123',
     variables={
         'firstName': 'Alice',
         'code': 'SECRET123',
     },
-)
+))
 ```
 
 ## Schedule Email
 
 ```python
-from datetime import datetime, timezone
-
-email = client.emails.send(
+result = client.emails.send(SendEmailOptions(
     from_='hello@yourdomain.com',
     to='user@example.com',
     subject='Reminder',
     text='See you tomorrow!',
-    scheduled_at=datetime(2025, 7, 1, 9, 0, 0, tzinfo=timezone.utc),
-)
+    scheduled_at='2025-07-01T09:00:00Z',
+))
 ```
 
 ## Get Email Status
 
 ```python
 email = client.emails.get('email_abc123')
-print(email['status'])  # 'delivered'
+print(email['data']['status'])  # 'delivered'
 ```
 
 ## List Emails
@@ -77,103 +78,96 @@ for email in response['data']:
     print(f"{email['id']}: {email['status']}")
 ```
 
-## Create Domain
+## Register a Domain
 
 ```python
-domain = client.domains.create(domain='hello.yourdomain.com')
-print(domain['records']['spf'])  # "v=spf1 include:..."
+domain = client.domains.add('hello.yourdomain.com')
+for record in domain['data']['records']:
+    print(record['type'], record['host'], record['value'])
 ```
 
 ## Verify Domain
 
 ```python
-verified = client.domains.verify('dom_abc123')
-print(verified['status'])  # 'verified' or 'pending_verification'
+result = client.domains.verify('dom_abc123')
+print(result['data']['status'])  # 'verified' or 'failed'
 ```
 
 ## Create Contact
 
 ```python
-contact = client.contacts.create(
+from tratto import CreateContactOptions
+
+contact = client.contacts.create(CreateContactOptions(
     email='user@example.com',
     first_name='Alice',
     last_name='Smith',
     tags=['vip', 'newsletter'],
-    metadata={'plan': 'pro'},
-)
+    custom_fields={'plan': 'pro'},
+))
 ```
 
 ## Create Campaign
 
 ```python
-campaign = client.campaigns.create(
+from tratto import CreateCampaignOptions
+
+campaign = client.campaigns.create(CreateCampaignOptions(
     name='Q3 Sale',
     template_id='tmpl_abc123',
     audience_id='aud_abc123',
-)
+    from_name='Acme Newsletter',
+    from_email='newsletter@yourdomain.com',
+    subject_a='Our top picks for Q3',
+))
 
-print(campaign['status'])  # 'draft'
+print(campaign['data']['id'])
 ```
 
 ## Send Campaign
 
 ```python
 sent = client.campaigns.send('camp_xyz789')
-print(sent['status'])  # 'sending'
+print(sent['data']['status'])  # 'sending'
 ```
 
 ## Get Campaign Stats
 
 ```python
-stats = client.campaigns.stats('camp_xyz789')
-print(stats['delivered'])  # 4950
-print(stats['rates']['openRate'])  # 0.50
+stats = client.campaigns.get_stats('camp_xyz789')
+print(stats['data']['stats']['delivered'])   # 4950
+print(stats['data']['rates']['openRate'])    # 0.50
 ```
 
 ## Register Webhook
 
 ```python
-webhook = client.webhooks.create(
+from tratto import CreateWebhookOptions
+
+webhook = client.webhooks.create(CreateWebhookOptions(
     url='https://yourapi.com/webhooks/tratto',
     events=['sent', 'delivered', 'opened', 'clicked', 'bounced'],
-)
+))
 
-print(webhook['secret'])  # whsec_xyz789...
+print(webhook['data']['secret'])  # whsec_xyz789... — returned only once
 ```
 
 ## Error Handling
 
 ```python
+from tratto import TrattoError
+
 try:
-    email = client.emails.send(
+    result = client.emails.send(SendEmailOptions(
         from_='hello@unverified.com',
         to='user@example.com',
         subject='Hello',
         text='Test',
-    )
-except TrattoException as e:
+    ))
+except TrattoError as e:
     if e.code == 'FORBIDDEN':
         # The message names the domain that is not verified.
-        print(e.message)
-```
-
-## Async Support
-
-```python
-import asyncio
-from tratto import AsyncTrattoClient
-
-async def send_email():
-    client = AsyncTrattoClient(api_key='tratto_live_...')
-    email = await client.emails.send(
-        from_='hello@yourdomain.com',
-        to='user@example.com',
-        subject='Hello!',
-        text='Async send',
-    )
-    return email
-
-asyncio.run(send_email())
+        print(e)
 ```
 
 ---
