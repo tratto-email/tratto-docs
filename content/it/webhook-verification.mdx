@@ -280,7 +280,7 @@ if (!verify_webhook($raw_body, $header, getenv('TRATTO_WEBHOOK_SECRET'))) {
 ### ❌ Firmare il solo corpo
 
 ```javascript
-// SBAGLIATO — il timestamp fa parte della stringa firmata
+// SBAGLIATO: il timestamp fa parte della stringa firmata
 const sig = hmac('sha256', rawBody, secret);
 ```
 
@@ -292,7 +292,7 @@ const sig = hmac('sha256', `${timestamp}.${rawBody}`, secret);
 ### ❌ Trattare l'header come un hash nudo
 
 ```javascript
-// SBAGLIATO — l'header è `t=…,v1=…`, non un digest esadecimale
+// SBAGLIATO: l'header è `t=…,v1=…`, non un digest esadecimale
 crypto.timingSafeEqual(computed, req.header('x-tratto-signature'));
 ```
 
@@ -301,7 +301,7 @@ Estrai prima `v1`.
 ### ❌ Firmare il JSON già parsato
 
 ```javascript
-// SBAGLIATO — la ri-serializzazione altera spazi e ordine delle chiavi
+// SBAGLIATO: la ri-serializzazione altera spazi e ordine delle chiavi
 const sig = hmac('sha256', JSON.stringify(JSON.parse(body)), secret);
 ```
 
@@ -310,7 +310,7 @@ Usa i byte grezzi esattamente come ricevuti.
 ### ❌ Confrontare con `===`
 
 ```javascript
-// SBAGLIATO — espone informazioni tramite i tempi di risposta
+// SBAGLIATO: espone informazioni tramite i tempi di risposta
 if (computed === signature) { /* … */ }
 ```
 

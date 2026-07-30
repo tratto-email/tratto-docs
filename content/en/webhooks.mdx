@@ -1,5 +1,5 @@
 ---
-title: Webhooks — Setup, Events & Signature Verification
+title: "Webhooks: Setup, Events & Signature Verification"
 description: Receive real-time email events via webhooks
 ---
 
@@ -20,7 +20,7 @@ curl -X POST https://api.tratto.email/v1/webhooks \
   }'
 ```
 
-**Response** — `201 Created`:
+**Response**: `201 Created`:
 ```json
 {
   "data": {
@@ -30,7 +30,7 @@ curl -X POST https://api.tratto.email/v1/webhooks \
 }
 ```
 
-**Save the `secret`.** It is returned only here and when you rotate it — there is
+**Save the `secret`.** It is returned only here and when you rotate it. There is
 no endpoint that gives it back. Listing webhooks returns a truncated
 `secretPrefix` for identification, not the full value.
 
@@ -68,8 +68,8 @@ Use `id` to deduplicate: retries deliver the same event more than once.
 
 ## Verify Webhook Signature
 
-Every delivery carries an `X-Tratto-Signature` header. It is **not** a bare hash
-— it holds a timestamp and the signature:
+Every delivery carries an `X-Tratto-Signature` header. It is **not** a bare hash:
+it holds a timestamp and the signature:
 
 ```http
 X-Tratto-Signature: t=1784977714054,v1=0b37dd97144dcdf176572a1b...
@@ -139,7 +139,7 @@ curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/rotate-secret \
 ```
 
 <Callout type="warn">
-Rotation takes effect **immediately** — there is no overlap window, and the
+Rotation takes effect **immediately**: there is no overlap window, and the
 previous secret stops working as soon as the new one is issued. To rotate without
 dropping deliveries, deploy an endpoint that accepts either secret first, then
 rotate, then remove the old one. See
@@ -162,7 +162,7 @@ curl -X POST https://api.tratto.email/v1/webhooks/wh_abc123/test \
 }
 ```
 
-The test is **queued**, not delivered synchronously — a `200` here means it was
+The test is **queued**, not delivered synchronously: a `200` here means it was
 accepted for dispatch, not that your endpoint answered. Check
 [Webhook Deliveries](#webhook-deliveries) for the outcome.
 
@@ -234,7 +234,7 @@ Cursor-paginated with `after` and `limit` (default 50, max 100).
 }
 ```
 
-`status` is `success`, `failed` or `scheduled` — `scheduled` means a retry is
+`status` is `success`, `failed` or `scheduled`: `scheduled` means a retry is
 still pending. `responseBody` is truncated to the first 1000 characters of your
 reply, which makes it the fastest way to debug a rejected delivery.
 

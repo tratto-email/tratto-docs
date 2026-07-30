@@ -4,7 +4,7 @@ description: Verify the X-Tratto-Signature header, which signs a timestamp toget
 ---
 
 Every webhook Tratto sends is signed with HMAC-SHA256. **Always verify the
-signature** — an unverified endpoint accepts anything anyone posts to it.
+signature.** An unverified endpoint accepts anything anyone posts to it.
 
 ## The signature header
 
@@ -83,7 +83,7 @@ function verifyWebhook(rawBody, header, secret, toleranceMs = 5 * 60_000) {
   return signatures.some((candidate) => {
     const actual = Buffer.from(candidate, 'hex');
     // timingSafeEqual takes buffers, not strings, and throws on unequal
-    // lengths — so compare lengths first.
+    // lengths, so compare lengths first.
     if (actual.length !== expected.length) return false;
     return crypto.timingSafeEqual(expected, actual);
   });
@@ -113,7 +113,7 @@ app.post('/webhooks/tratto', (req, res) => {
 
   if (!ok) return res.status(401).json({ error: 'Invalid signature' });
 
-  // Acknowledge fast, then process — Tratto retries if you time out.
+  // Acknowledge fast, then process: Tratto retries if you time out.
   res.json({ ok: true });
 
   const event = JSON.parse(req.rawBody);
@@ -280,7 +280,7 @@ if (!verify_webhook($raw_body, $header, getenv('TRATTO_WEBHOOK_SECRET'))) {
 ### ❌ Signing the body alone
 
 ```javascript
-// WRONG — the timestamp is part of the signed string
+// WRONG: the timestamp is part of the signed string
 const sig = hmac('sha256', rawBody, secret);
 ```
 
@@ -292,7 +292,7 @@ const sig = hmac('sha256', `${timestamp}.${rawBody}`, secret);
 ### ❌ Treating the header as a bare hash
 
 ```javascript
-// WRONG — the header is `t=…,v1=…`, not a hex digest
+// WRONG: the header is `t=…,v1=…`, not a hex digest
 crypto.timingSafeEqual(computed, req.header('x-tratto-signature'));
 ```
 
@@ -301,7 +301,7 @@ Parse out `v1` first.
 ### ❌ Signing parsed JSON
 
 ```javascript
-// WRONG — re-serialising changes whitespace and key order
+// WRONG: re-serialising changes whitespace and key order
 const sig = hmac('sha256', JSON.stringify(JSON.parse(body)), secret);
 ```
 
@@ -310,7 +310,7 @@ Use the raw bytes exactly as received.
 ### ❌ Comparing with `===`
 
 ```javascript
-// WRONG — leaks information through timing
+// WRONG: leaks information through timing
 if (computed === signature) { /* … */ }
 ```
 
@@ -321,7 +321,7 @@ shown in the edge example.
 
 The `t` field is covered by the signature, so it cannot be altered without
 invalidating `v1`. Rejecting timestamps outside a tolerance window is therefore
-sufficient — and it is already built into every example above.
+sufficient, and it is already built into every example above.
 
 Do not use `occurredAt` from the payload for this. It is when the *event*
 happened, not when the delivery was signed, and the two differ on retries.
@@ -349,7 +349,7 @@ Two consequences worth designing for:
 
 <Callout type="warn">
 Rotation takes effect **immediately**. There is no grace period and the previous
-secret stops working the moment the new one is issued — any delivery signed
+secret stops working the moment the new one is issued. Any delivery signed
 afterwards will fail verification until your endpoint has the new value.
 </Callout>
 

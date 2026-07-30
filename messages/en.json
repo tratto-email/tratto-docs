@@ -1,7 +1,7 @@
 {
   "meta": {
     "siteName": "Tratto Docs",
-    "titleTemplate": "{title} — Tratto Docs",
+    "titleTemplate": "{title} - Tratto Docs",
     "defaultDescription": "Documentation for the Tratto Email API: transactional email, campaigns, flows, domains and webhooks."
   },
   "nav": {

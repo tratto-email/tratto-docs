@@ -7,8 +7,8 @@ Every email in Tratto has a **status** (the state of the email) and **events** (
 
 ## Status vs Events
 
-- **Status** — The current state of the email (`queued`, `scheduled`, `sent`, `delivered`, `failed`)
-- **Events** — Discrete tracking records (opened, clicked, bounced, complained)
+- **Status**: The current state of the email (`queued`, `scheduled`, `sent`, `delivered`, `failed`)
+- **Events**: Discrete tracking records (opened, clicked, bounced, complained)
 
 **Example:** An email can have status `delivered` and also have events `opened`, `clicked`, and `clicked` again.
 
@@ -261,17 +261,17 @@ See [Webhooks](/en/docs/webhooks) for setup.
 
 ### Understanding Bounce Types
 
-**Hard Bounce** — Permanent delivery failure
+**Hard Bounce**: Permanent delivery failure
 - Invalid email address
 - Domain doesn't exist
 - User doesn't exist
 
-**Soft Bounce** — Temporary delivery failure
+**Soft Bounce**: Temporary delivery failure
 - Mailbox full
 - Server temporarily unavailable
 - Message too large
 
-**Complaint** — Recipient marked as spam (don't re-send)
+**Complaint**: Recipient marked as spam (don't re-send)
 
 ### Auto-Unsubscribe
 

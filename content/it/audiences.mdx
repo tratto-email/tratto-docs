@@ -1,5 +1,5 @@
 ---
-title: Audience — Segmentazione
+title: "Audience: Segmentazione"
 description: Crea audience basate su regole per campagne e flussi
 ---
 
@@ -43,7 +43,7 @@ Ogni regola è `{ field, operator, value }`. Operatori disponibili: `equals`, `n
 | Campo | Operatori validi | Esempio |
 |-------|-----------|---------|
 | `status` | `equals`, `not_equals` | `subscribed`, `bounced` |
-| `tags` | solo `array_contains` | L'audience ha contatti taggati "vip" — `tags` è una lista, quindi solo `array_contains` produce un match reale. `equals`/`contains` non corrispondono mai a una lista e restituiscono silenziosamente zero risultati. |
+| `tags` | solo `array_contains` | L'audience ha contatti taggati "vip": `tags` è una lista, quindi solo `array_contains` produce un match reale. `equals`/`contains` non corrispondono mai a una lista e restituiscono silenziosamente zero risultati. |
 
 `contains`/`not_contains`/`array_contains` confrontano le stringhe senza distinguere maiuscole/minuscole.
 
@@ -80,8 +80,8 @@ curl -X POST https://api.tratto.email/v1/audiences/aud_abc123/contacts \
 
 ## Dinamica vs Statica
 
-- **Dinamica** — Le regole vengono rivalutate; l'appartenenza si aggiorna quando lo status del contatto cambia
-- **Statica** — Elenco di contatti fisso; non si aggiorna automaticamente
+- **Dinamica**: Le regole vengono rivalutate; l'appartenenza si aggiorna quando lo status del contatto cambia
+- **Statica**: Elenco di contatti fisso; non si aggiorna automaticamente
 
 Per impostazione predefinita, le audience sono **dinamiche** se usi regole, **statiche** se solo aggiunte manualmente.
 
@@ -122,7 +122,7 @@ curl https://api.tratto.email/v1/audiences/aud_abc123 \
 ## Elimina un'Audience
 
 Elimina definitivamente l'audience stessa. **I contatti non vengono mai
-toccati** — eliminare un'audience rimuove solo quel raggruppamento; ogni
+toccati**: eliminare un'audience rimuove solo quel raggruppamento; ogni
 contatto che ne era membro continua a esistere intatto, con tutti i suoi dati,
 tag e stato.
 
@@ -136,7 +136,7 @@ Restituisce `204 No Content` in caso di successo.
 
 Se l'audience è ancora referenziata da una campagna che non ha finito
 l'invio (`draft`, `scheduled`, `sending` o `paused`), la richiesta viene
-rifiutata con `409 Conflict` — rimuovi prima l'audience da quelle campagne,
+rifiutata con `409 Conflict`. Rimuovi prima l'audience da quelle campagne,
 oppure aspetta che completino.
 
 ## Usare le Audience nelle Campagne

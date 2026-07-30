@@ -7,8 +7,8 @@ Ogni email in Tratto ha uno **status** (lo stato dell'email) e **eventi** (cosa 
 
 ## Status vs Eventi
 
-- **Status** — Lo stato attuale dell'email (`queued`, `scheduled`, `sent`, `delivered`, `failed`)
-- **Eventi** — Record discreti di tracciamento (opened, clicked, bounced, complained)
+- **Status**: Lo stato attuale dell'email (`queued`, `scheduled`, `sent`, `delivered`, `failed`)
+- **Eventi**: Record discreti di tracciamento (opened, clicked, bounced, complained)
 
 **Esempio:** Un'email può avere status `delivered` e anche avere eventi `opened`, `clicked`, e `clicked` di nuovo.
 
@@ -261,17 +261,17 @@ Vedi [Webhook](/it/docs/webhooks) per la configurazione.
 
 ### Comprendi i Tipi di Rimbalzo
 
-**Hard Bounce** — Fallimento permanente della consegna
+**Hard Bounce**: Fallimento permanente della consegna
 - Indirizzo email non valido
 - Dominio non esiste
 - Utente non esiste
 
-**Soft Bounce** — Fallimento temporaneo della consegna
+**Soft Bounce**: Fallimento temporaneo della consegna
 - Mailbox piena
 - Server temporaneamente non disponibile
 - Messaggio troppo grande
 
-**Complaint** — Destinatario ha segnalato come spam (non ri-inviare)
+**Complaint**: Destinatario ha segnalato come spam (non ri-inviare)
 
 ### Auto-Unsubscribe
 

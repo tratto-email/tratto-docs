@@ -1,5 +1,5 @@
 ---
-title: Contacts — Create, Import & Status
+title: "Contacts: Create, Import & Status"
 description: Manage email contacts with status, tags, and metadata
 ---
 
@@ -51,9 +51,9 @@ curl "https://api.tratto.email/v1/contacts?status=subscribed&limit=50" \
 ```
 
 **Query Parameters:**
-- `status` — Filter by status (`subscribed`, `unsubscribed`, `bounced`, `complained`)
-- `limit` — Max results per page (default 50, max 100)
-- `after` — Cursor for pagination
+- `status`: Filter by status (`subscribed`, `unsubscribed`, `bounced`, `complained`)
+- `limit`: Max results per page (default 50, max 100)
+- `after`: Cursor for pagination
 
 **Response:**
 ```json
@@ -103,10 +103,10 @@ curl -X PATCH https://api.tratto.email/v1/contacts/cont_abc123 \
 
 Use tags to organize contacts into logical groups:
 
-- `vip` — High-value customers
-- `newsletter` — Newsletter subscribers
-- `beta` — Beta program members
-- `churned` — At-risk customers
+- `vip`: High-value customers
+- `newsletter`: Newsletter subscribers
+- `beta`: Beta program members
+- `churned`: At-risk customers
 
 **Tagging use cases:**
 - Segment campaigns by tag
@@ -136,7 +136,7 @@ Use metadata to:
 ## Unsubscribe a Contact
 
 There is no delete endpoint. A contact is deactivated by moving it to the
-`unsubscribed` status, which keeps the record so it stays suppressed — a deleted
+`unsubscribed` status, which keeps the record so it stays suppressed. A deleted
 contact could be re-imported and mailed again by mistake.
 
 **cURL**
