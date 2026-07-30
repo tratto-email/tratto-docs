@@ -21,6 +21,20 @@ Every email sent through Tratto carries `List-Unsubscribe` and `List-Unsubscribe
 Unsubscribing suppresses future sends immediately. It does not delete the contact record — see below.
 </Callout>
 
+## Tracking Pixel Consent (Garante Privacy Order No. 284/2026)
+
+Italy's Data Protection Authority (Garante Privacy), Order No. 284 of 17 April 2026 (doc. web no. 10241943), sets out obligations for anyone using tracking pixels in email. If you send campaigns or flows through Tratto, three obligations apply to you as the sender:
+
+1. **Clear, transparent notice**: recipients must be told that opens and clicks are tracked.
+2. **Free, specific consent**: general newsletter sign-up consent isn't enough, tracking needs its own consent.
+3. **Granular revocation**: recipients must be able to withdraw tracking consent easily, without being forced to unsubscribe from everything.
+
+**What Tratto does technically**: the open pixel (a transparent 1×1 GIF) and click tracking only fire for emails tied to a known contact (campaigns, flows), never for pure transactional sends like a password reset, where there's no engagement purpose to justify it. The open event never carries the recipient's address, only an internal identifier resolved server-side.
+
+<Callout type="warning">
+The notice and specific consent toward your own recipients are your responsibility, not Tratto's: you're the controller for your campaigns (see below). Tratto today offers a single opt-out mechanism, full list unsubscribe, not a separate "keep emailing me but stop tracking me" toggle. If that's a blocker for your compliance workflow, write to **privacy@tratto.email**.
+</Callout>
+
 ## Controller vs. Processor
 
 Who's responsible for a data subject request depends on who sent the email:

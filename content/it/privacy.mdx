@@ -21,6 +21,20 @@ Ogni email inviata tramite Tratto include gli header `List-Unsubscribe` e `List-
 La disiscrizione sospende immediatamente gli invii futuri. Non cancella il record del contatto — vedi sotto.
 </Callout>
 
+## Consenso Tracking Pixel (Provvedimento Garante n. 284/2026)
+
+Il Garante Privacy, con il Provvedimento n. 284 del 17 aprile 2026 (doc. web n. 10241943), definisce gli obblighi per chi usa tracking pixel nelle email. Se invii campagne o flussi tramite Tratto, si applicano a te, in quanto mittente, tre obblighi:
+
+1. **Informativa chiara e trasparente**: il destinatario deve sapere che apertura e click vengono tracciati.
+2. **Consenso libero e specifico**: il consenso generico all'iscrizione alla newsletter non basta, il tracciamento richiede un consenso proprio.
+3. **Revoca granulare**: il destinatario deve poter revocare il consenso al tracciamento in modo agevole, senza dover disiscriversi da tutto.
+
+**Cosa fa Tratto tecnicamente**: il pixel di apertura (GIF trasparente 1×1) e il tracciamento click si attivano solo su email legate a un contatto noto (campagne, flussi), mai sulle transazionali pure come un reset password, dove non c'è uno scopo di engagement che lo giustifichi. L'evento di apertura non porta mai l'indirizzo del destinatario, solo un identificativo interno risolto lato server.
+
+<Callout type="warning">
+L'informativa e il consenso specifico verso i tuoi destinatari restano responsabilità tua, non di Tratto: sei tu il titolare del trattamento per le tue campagne (vedi sotto). Oggi Tratto offre un solo meccanismo di opt-out, la disiscrizione completa dalla lista, non un controllo separato per "continua a scrivermi ma smetti di tracciarmi". Se questo blocca il tuo workflow di compliance, scrivici a **privacy@tratto.email**.
+</Callout>
+
 ## Titolare vs. Responsabile del Trattamento
 
 Chi è responsabile di una richiesta dell'interessato dipende da chi ha inviato l'email:
