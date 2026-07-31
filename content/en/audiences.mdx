@@ -27,14 +27,14 @@ curl -X POST https://api.tratto.email/v1/audiences \
 ```json
 {
   "data": {
-    "id": "aud_abc123",
-    "name": "VIP Newsletter Subscribers",
-    "rules": [...],
-    "contactCount": 1250,
-    "createdAt": "2025-06-30T12:00:00Z"
+    "id": "aud_abc123"
   }
 }
 ```
+
+`rules`-based audiences are materialized asynchronously right after creation
+— fetch [`GET /v1/audiences/{id}`](#get-audience-details) a moment later for
+the resolved `contactCount`.
 
 ## Rule Types
 
@@ -78,12 +78,28 @@ curl -X POST https://api.tratto.email/v1/audiences/aud_abc123/contacts \
   }'
 ```
 
+**Response:**
+```json
+{
+  "data": {
+    "added": 2,
+    "alreadyInAudience": 0,
+    "notFound": 0
+  }
+}
+```
+
 ## Dynamic vs Static
 
-- **Dynamic**: Rules are re-evaluated; membership updates as contact status changes
-- **Static**: Fixed contact list; doesn't update automatically
+- **Dynamic** (has `rules`): membership is reconciled automatically on every
+  contact create/update/delete — a contact that starts (or stops) matching an
+  audience's rules is added to (or removed from) it right away, no manual
+  action needed.
+- **Static** (no `rules`, contacts added via the endpoint above): fixed list,
+  never changes on its own.
 
-By default, audiences are **dynamic** if you use rules, **static** if only manually added.
+An audience is **dynamic** if it has `rules`, **static** otherwise — there's
+no separate `type` field, it's inferred from whether `rules` is empty.
 
 ## List Audiences
 
@@ -111,9 +127,9 @@ curl https://api.tratto.email/v1/audiences/aud_abc123 \
   "data": {
     "id": "aud_abc123",
     "name": "VIP Newsletter Subscribers",
+    "description": "",
     "rules": [...],
     "contactCount": 1250,
-    "type": "dynamic",
     "createdAt": "2025-06-30T12:00:00Z"
   }
 }

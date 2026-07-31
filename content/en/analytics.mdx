@@ -16,31 +16,24 @@ curl "https://api.tratto.email/v1/analytics/summary?period=30d" \
 ```
 
 **Query Parameters:**
-- `period`: Time range (`7d`, `30d`, `90d`, or specific date range)
-- `templateId`: Filter by template (optional)
-- `campaignId`: Filter by campaign (optional)
+- `period`: Time range — `7d`, `30d`, `90d` (default `30d`), `180d`, or `1y`
 
 **Response:**
 ```json
 {
   "data": {
     "period": "30d",
-    "metrics": {
-      "totalSent": 50000,
-      "delivered": 49500,
-      "opened": 24750,
-      "clicked": 7425,
-      "bounced": 400,
-      "complained": 100,
-      "unsubscribed": 50
-    },
-    "rates": {
-      "deliveryRate": 0.99,
-      "openRate": 0.50,
-      "clickRate": 0.15,
-      "bounceRate": 0.008,
-      "complaintRate": 0.002
-    }
+    "totalSent": 50000,
+    "delivered": 49500,
+    "opened": 24750,
+    "clicked": 7425,
+    "bounced": 400,
+    "complained": 100,
+    "deliveryRate": 99,
+    "openRate": 50,
+    "clickRate": 15,
+    "bounceRate": 0.8,
+    "avgDeliveryLatencySeconds": 4.2
   }
 }
 ```
@@ -55,17 +48,20 @@ curl "https://api.tratto.email/v1/analytics/summary?period=30d" \
 | `clicked` | Unique recipients who clicked a link |
 | `bounced` | Mail servers rejected delivery (hard or soft bounce) |
 | `complained` | Recipients marked as spam |
-| `unsubscribed` | Recipients clicked unsubscribe link |
+| `avgDeliveryLatencySeconds` | Average time from send to delivery confirmation. `null` when no email in the period has been delivered yet |
+
+`unsubscribed` isn't part of this endpoint — it's tracked on the [contact](/en/docs/contacts), not on individual emails. Check a contact's `status` or a campaign's `stats.unsubscribed` (see [Campaigns](/en/docs/campaigns)) instead.
 
 ## Rates
+
+All rates are **percentages** (`98.5` means 98.5%, not `0.985`).
 
 | Rate | Calculation |
 |------|-------------|
 | `deliveryRate` | delivered / totalSent |
-| `openRate` | opened / delivered |
-| `clickRate` | clicked / delivered |
+| `openRate` | opened / delivered (falls back to totalSent if nothing delivered yet) |
+| `clickRate` | clicked / opened (falls back to totalSent) |
 | `bounceRate` | bounced / totalSent |
-| `complaintRate` | complained / totalSent |
 
 ## Timeseries Data
 
@@ -82,33 +78,51 @@ curl "https://api.tratto.email/v1/analytics/timeseries?period=7d" \
 {
   "data": [
     {
-      "date": "2025-06-30",
-      "totalSent": 5000,
+      "date": "2026-07-30",
+      "sent": 5000,
       "delivered": 4950,
       "opened": 2475,
-      "clicked": 742,
-      "bounced": 40,
-      "complained": 10
+      "bounced": 40
     },
     {
-      "date": "2025-06-29",
-      "totalSent": 4800,
+      "date": "2026-07-29",
+      "sent": 4800,
       "delivered": 4752,
       "opened": 2376,
-      "clicked": 713,
-      "bounced": 38,
-      "complained": 10
+      "bounced": 38
     }
   ]
 }
 ```
 
-## Analytics Limitations
+Note the narrower shape than the summary endpoint: `sent`/`delivered`/`opened`/`bounced` only, no `clicked` or `complained` per day.
 
-- **Window:** Max 90-day lookback
-- **Granularity:** Daily buckets
-- **Email-level data:** Not available in analytics endpoints (use [Email Status](/en/docs/email-status) API for individual emails)
-- **Delays:** Metrics updated with ~5 minute latency
+## Top Clicked Links
+
+Get the most-clicked links for a specific campaign.
+
+**cURL**
+```bash
+curl "https://api.tratto.email/v1/campaigns/camp_abc123/links?limit=20" \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Response:**
+```json
+{
+  "data": [
+    { "linkUrl": "https://example.com/pricing", "clicks": 142, "uniqueClicks": 98 },
+    { "linkUrl": "https://example.com/docs", "clicks": 37, "uniqueClicks": 30 }
+  ]
+}
+```
+
+`limit` is optional, 1-50, defaults to 20.
+
+## Data Windows: Firestore vs BigQuery
+
+- **`7d`/`30d`/`90d`** are served from Firestore in real time — no aggregation delay, but Firestore only retains email documents for 90 days.
+- **`180d`/`1y`** are served from a nightly BigQuery aggregate instead. That aggregation runs once per day (around 02:30 UTC) — very recent data (today, and sometimes yesterday depending on when you check) won't be reflected yet for these two longer windows. Use `90d` or shorter if you need same-day numbers.
 
 ## Best Practices
 
@@ -117,7 +131,7 @@ curl "https://api.tratto.email/v1/analytics/timeseries?period=7d" \
 Target 99%+. Lower rates indicate domain or list hygiene issues.
 
 ```javascript
-if (data.rates.deliveryRate < 0.95) {
+if (data.deliveryRate < 95) {
   alert('Low delivery rate detected');
 }
 ```
@@ -133,18 +147,9 @@ Low rates suggest content or timing issues.
 ### 3. Monitor Bounce & Complaint Rates
 
 - **Bounce rate:** < 2% acceptable (< 5% is OK)
-- **Complaint rate:** < 0.1% acceptable
+- **Complaint rate:** `complained / totalSent` — keep it under 0.1%
 
 High rates damage sender reputation and deliverability.
-
-### 4. Segment Analysis
-
-Filter by template or campaign to identify underperforming sends:
-
-```bash
-curl "https://api.tratto.email/v1/analytics/summary?period=30d&templateId=tmpl_abc123" \
-  -H "Authorization: Bearer tratto_live_..."
-```
 
 ---
 
