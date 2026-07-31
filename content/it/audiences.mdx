@@ -27,14 +27,14 @@ curl -X POST https://api.tratto.email/v1/audiences \
 ```json
 {
   "data": {
-    "id": "aud_abc123",
-    "name": "Iscritti Newsletter VIP",
-    "rules": [...],
-    "contactCount": 1250,
-    "createdAt": "2025-06-30T12:00:00Z"
+    "id": "aud_abc123"
   }
 }
 ```
+
+Le audience con `rules` vengono materializzate in modo asincrono subito dopo
+la creazione — chiama [`GET /v1/audiences/{id}`](#ottieni-dettagli-dellaudience)
+poco dopo per ottenere il `contactCount` risolto.
 
 ## Tipi di Regole
 
@@ -78,12 +78,28 @@ curl -X POST https://api.tratto.email/v1/audiences/aud_abc123/contacts \
   }'
 ```
 
+**Risposta:**
+```json
+{
+  "data": {
+    "added": 2,
+    "alreadyInAudience": 0,
+    "notFound": 0
+  }
+}
+```
+
 ## Dinamica vs Statica
 
-- **Dinamica**: Le regole vengono rivalutate; l'appartenenza si aggiorna quando lo status del contatto cambia
-- **Statica**: Elenco di contatti fisso; non si aggiorna automaticamente
+- **Dinamica** (ha `rules`): l'appartenenza viene riconciliata automaticamente
+  a ogni create/update/delete di un contatto — un contatto che inizia (o
+  smette) a corrispondere alle regole di un'audience vi entra (o ne esce)
+  subito, senza azione manuale.
+- **Statica** (nessuna `rules`, contatti aggiunti tramite l'endpoint sopra):
+  elenco fisso, non cambia mai da solo.
 
-Per impostazione predefinita, le audience sono **dinamiche** se usi regole, **statiche** se solo aggiunte manualmente.
+Un'audience è **dinamica** se ha `rules`, **statica** altrimenti — non esiste
+un campo `type` separato, viene dedotto da se `rules` è vuoto o no.
 
 ## Elenca le Audience
 
@@ -111,9 +127,9 @@ curl https://api.tratto.email/v1/audiences/aud_abc123 \
   "data": {
     "id": "aud_abc123",
     "name": "Iscritti Newsletter VIP",
+    "description": "",
     "rules": [...],
     "contactCount": 1250,
-    "type": "dynamic",
     "createdAt": "2025-06-30T12:00:00Z"
   }
 }
