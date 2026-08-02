@@ -1,216 +1,271 @@
 ---
-title: Flussi e Automazione
-description: Crea flussi email automatizzati con trigger e step
+title: "Flussi: trigger e step di automazione"
+description: Crea sequenze email automatizzate che reagiscono a eventi su contatti ed email
 ---
 
-Un **flusso** è un motore di automazione che iscrive i contatti ed esegue una sequenza di step in base ai trigger.
+Un **flusso** iscrive automaticamente i contatti e li fa passare attraverso una sequenza di step — invia un'email, attendi, dividi in base a una condizione, aggiorna il contatto, chiama un webhook — in base a un trigger che definisci. I flussi vivono all'interno di un tenant, girano interamente lato server e non richiedono polling: iscrizione e ogni step sono guidati da eventi.
 
-## Fondamenti del Flusso
+<Callout type="info">
+Questa pagina documenta il motore dei flussi così come si comporta davvero in produzione, inclusi quali tipi di trigger sono collegati oggi e quali sono riservati a una release futura. Configurare un flusso su un trigger non ancora attivo non genera errori — semplicemente non iscriverà mai nessuno, in silenzio. Vedi [Tipi di Trigger](#tipi-di-trigger) qui sotto.
+</Callout>
+
+## Come Funziona
+
+Un flusso ha tre parti: un **trigger** (cosa avvia l'iscrizione), un **array di step** (cosa succede a un contatto iscritto, in ordine) e uno **status** (`draft`, `active`, `inactive`).
 
 ```
-Trigger (es., contatto si unisce audience)
+Succede qualcosa (es. un tag viene aggiunto a un contatto)
   ↓
-Step 1 (es., invia email)
+Ogni flusso active il cui trigger corrisponde viene trovato
   ↓
-Step 2 (es., attendi 3 giorni)
+Il contatto viene iscritto (idempotente — lo stesso evento non iscrive mai due volte)
   ↓
-Step 3 (es., invia un'altra email)
+Lo step 0 viene eseguito
   ↓
-Step 4 (es., branchia su condizione)
-  ├─ Percorso vero → invia email
-  └─ Percorso falso → non fare nulla
+Lo step 1 viene eseguito (subito, o dopo il ritardo di uno step wait)
+  ↓
+...
+  ↓
+L'iscrizione si completa
+```
+
+Sotto il cofano, sono due Cloud Function che comunicano tramite Pub/Sub e Cloud Tasks:
+
+1. **Valutazione del trigger** — qualsiasi azione che fa scattare un trigger (es. un cambio di tag) pubblica un messaggio. Una funzione interroga ogni flusso `active` il cui `trigger.type` corrisponde, controlla la config del trigger contro l'evento, e crea un'iscrizione per ogni corrispondenza. Gli ID di iscrizione sono deterministici (un hash di tenant + flusso + contatto + contesto del trigger), quindi lo stesso evento non può mai iscrivere due volte lo stesso contatto.
+2. **Esecuzione degli step** — ogni step gira come un proprio Cloud Task. Uno step `wait` non tiene aperta una funzione; pianifica il task dello step *successivo* con un ritardo e ritorna subito. Questo significa che un flusso con un'attesa di 14 giorni non costa nulla mentre attende, e sopravvive a deploy, riavvii, tutto.
+
+Un contatto viene saltato (non fallito) se il suo status è `unsubscribed`, `bounced`, o `complained` al momento dell'invio — controllato di nuovo a ogni step `send_email`, non solo all'iscrizione.
+
+## Tipi di Trigger
+
+| Trigger | Stato | Iscrive quando |
+|---|---|---|
+| `contact_tag_added` | **Disponibile** | Un tag specifico viene aggiunto a un contatto |
+| `contact_tag_removed` | **Disponibile** | Un tag specifico viene rimosso da un contatto |
+| `contact_joins_audience` | Riservato | *(lo schema esiste; nulla pubblica ancora questo evento)* |
+| `email_event` | Riservato | *(lo schema esiste; nulla pubblica ancora questo evento)* |
+| `manual` | Riservato | *(lo schema esiste; non esiste ancora un endpoint di iscrizione)* |
+
+<Callout type="warn">
+Solo `contact_tag_added` e `contact_tag_removed` iscrivono davvero i contatti oggi. Gli altri tre tipi di trigger sono valori validi che l'API accetta — un flusso che li usa si salva senza problemi, si attiva senza problemi, mostra `0` iscrizioni per sempre, e non ti dice mai perché. Se ti serve "iscrivi quando succede X" e X non è un cambio di tag, fai tu stesso il tagging: aggiorna i tag del contatto tramite [`PATCH /v1/contacts/:id`](/it/docs/contacts) dal tuo codice nel momento in cui l'evento reale accade, e fai scattare il trigger su quel tag.
+</Callout>
+
+### Configurazione del trigger
+
+La config del trigger è un oggetto piatto `{ chiave: valore }`, solo valori stringa. Una chiave di config vuota o assente significa "corrispondi a qualsiasi cosa", non "non corrispondere a nulla" — omettila deliberatamente.
+
+| Tipo di trigger | Chiave config | Comportamento se impostata | Comportamento se omessa |
+|---|---|---|---|
+| `contact_tag_added` / `contact_tag_removed` | `tagName` | Iscrive solo per quel tag esatto | Iscrive su **qualsiasi** cambio di tag — quasi mai quello che vuoi |
+| `contact_joins_audience` | `audienceId` | Limita a un'audience | Corrisponde a qualsiasi ingresso in audience |
+| `email_event` | `eventType`, `emailId` | Limita a un tipo di evento e/o una email specifica | Corrisponde in modo ampio |
+
+```json
+{
+  "type": "contact_tag_added",
+  "config": { "tagName": "waitlist-confirmed" }
+}
 ```
 
 ## Crea un Flusso
 
-Crea un flusso con un trigger e una sequenza di step.
+Creare è in due step: l'API permette solo di dare un nome al flusso in creazione — trigger e step si impostano dopo con `PATCH`. Rispecchia il builder della dashboard, che crea una bozza vuota nel momento in cui clicchi "Nuovo flow" e ti lascia collegare tutto sul canvas.
 
-**cURL**
+**1. Crea**
 ```bash
 curl -X POST https://api.tratto.email/v1/flows \
   -H "Authorization: Bearer tratto_live_..." \
   -H "Content-Type: application/json" \
+  -d '{"name": "Nurturing waitlist"}'
+```
+
+```json
+{ "data": { "id": "flow_8f3ZqXnryVtC5k2Wm7B9e4" } }
+```
+
+**2. Configura trigger + step**
+```bash
+curl -X PATCH https://api.tratto.email/v1/flows/flow_8f3ZqXnryVtC5k2Wm7B9e4 \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
   -d '{
-    "name":"Serie di Benvenuto",
-    "trigger":{"type":"contact_joins_audience","audienceId":"aud_abc123"},
-    "steps":[
-      {"type":"send_email","templateId":"tmpl_welcome"},
-      {"type":"wait","duration":"3d"},
-      {"type":"send_email","templateId":"tmpl_follow_up"}
+    "trigger": {
+      "type": "contact_tag_added",
+      "config": { "tagName": "waitlist-confirmed" }
+    },
+    "steps": [
+      { "id": "s0", "type": "send_email", "config": { "templateId": "tmpl_welcome", "subject": "Sei dentro", "from": "hello@tuodominio.com", "fromName": "La tua azienda" } },
+      { "id": "s1", "type": "wait", "config": { "delay": "2", "unit": "hours" } },
+      { "id": "s2", "type": "send_email", "config": { "templateId": "tmpl_nurture_1", "subject": "Cosa stiamo costruendo", "from": "hello@tuodominio.com", "fromName": "La tua azienda" } }
     ]
   }'
 ```
 
-## Tipi di Trigger
-
-| Trigger | Descrizione |
-|---------|-------------|
-| `contact_joins_audience` | Iscrive quando contatto corrisponde alle regole audience |
-| `contact_tag_added` | Iscrive quando tag è aggiunto al contatto |
-| `contact_tag_removed` | Iscrive quando tag è rimosso dal contatto |
-| `email_event` | Iscrive quando email è aperta/cliccata/rimbalzata/segnalata |
-| `manual` | Iscrive tramite API o dashboard (no auto-trigger) |
-
-### Esempio: Email Event Trigger
-
-```json
-{
-  "type": "email_event",
-  "event": "opened",
-  "templateId": "tmpl_abc123"
-}
-```
-
-Iscrive i contatti che aprono un template specifico.
+Un flusso viene creato in `draft` e ci resta — senza iscrivere nessuno — finché non lo attivi. Massimo 20 step per flusso. Gli `id` degli step sono stringhe a tua scelta; devono solo essere univoci all'interno del flusso.
 
 ## Tipi di Step
 
-### send_email
+Il `config` di ogni step è `{ chiave: stringa }`, come i trigger — l'API non converte i tipi, quindi numeri e booleani entrano come stringhe.
 
-Invia un'email (immediatamente o con ritardo).
+### `send_email`
+
+| Chiave config | Obbligatoria | Note |
+|---|---|---|
+| `templateId` | Sì, per renderizzare qualcosa | ID di un template — vedi [Template](/it/docs/templates) |
+| `subject` | Consigliata | Se omessa, resta vuota |
+| `from` | Consigliata | Se omessa, resta vuota — i destinatari vedranno un mittente vuoto |
+| `fromName` | No | Nome visualizzato abbinato a `from` |
 
 ```json
-{
-  "type": "send_email",
-  "templateId": "tmpl_abc123",
-  "delay": "1h"
-}
+{ "id": "s0", "type": "send_email", "config": { "templateId": "tmpl_abc123", "subject": "Benvenuto", "from": "hello@tuodominio.com", "fromName": "La tua azienda" } }
 ```
 
-### wait
+**Variabili disponibili nel template:** `email`, `firstName`, `lastName` del contatto, e ogni chiave nei `customFields` del contatto vengono passate automaticamente come `{{token}}` — non serve dichiararle sullo step. Se un contatto ha `customFields: { "position": "42" }`, un template contenente `{{position}}` renderizza `42` per quell'invio, senza configurazione aggiuntiva.
 
-Pausa per una durata prima del prossimo step.
+### `wait`
+
+| Chiave config | Obbligatoria | Note |
+|---|---|---|
+| `delay` | Sì | Un intero positivo, come stringa, es. `"2"` |
+| `unit` | No, default `minutes` | Uno tra `seconds`, `minutes`, `hours`, `days` |
 
 ```json
-{
-  "type": "wait",
-  "duration": "3d"
-}
+{ "id": "s1", "type": "wait", "config": { "delay": "14", "unit": "days" } }
 ```
 
-Durate: `1h`, `2d`, `1w`, ecc.
+Il puntatore di step dell'iscrizione avanza subito; è il task dello step *successivo* a essere ritardato. Controllare un'iscrizione a metà attesa mostra correttamente che è già sullo step successivo, solo non ancora dovuto.
 
-### branch
+### `branch`
 
-Branchia condizionale basata su eventi email o proprietà contatto.
+Valuta una condizione sui campi del contatto stesso (non `customFields` — campi di primo livello come `status`) e salta a un indice di step diverso in base al risultato.
+
+| Chiave config | Obbligatoria | Note |
+|---|---|---|
+| `conditionField` | Sì | Nome di un campo sul documento del contatto |
+| `conditionOperator` | No, default `equals` | `equals`, `not_equals`, `exists`, `not_exists`, `contains` |
+| `conditionValue` | Per `equals`/`not_equals`/`contains` | Valore da confrontare |
+| `trueNextStep` | No, default lo step successivo | Indice di step a cui saltare se la condizione è vera |
+| `falseNextStep` | No, default termina il flusso | Indice di step a cui saltare se la condizione è falsa |
 
 ```json
 {
+  "id": "s2",
   "type": "branch",
-  "condition": "email_opened",
-  "truePath": [
-    {"type": "send_email", "templateId": "tmpl_engaged"}
-  ],
-  "falsePath": [
-    {"type": "send_email", "templateId": "tmpl_re_engage"}
-  ]
-}
-```
-
-### update_contact
-
-Aggiorna status contatto, tag, o metadata.
-
-```json
-{
-  "type": "update_contact",
-  "updates": {
-    "status": "unsubscribed",
-    "tags": ["completed_flow"]
+  "config": {
+    "conditionField": "status",
+    "conditionOperator": "equals",
+    "conditionValue": "subscribed",
+    "trueNextStep": "3",
+    "falseNextStep": "5"
   }
 }
 ```
 
-### webhook_call
+`trueNextStep`/`falseNextStep` sono **indici nell'array `steps`** (come stringhe), non ID di step — pianifica l'ordine dell'array prima di collegare i branch.
 
-Chiama un webhook esterno.
+<Callout type="warn">
+Lo step branch del builder nella dashboard espone al momento una coppia campo/valore semplificata che non corrisponde alle chiavi di config qui sopra. Configura gli step `branch` via API finché il builder non viene aggiornato.
+</Callout>
+
+### `update_contact`
+
+| Chiave config | Obbligatoria | Note |
+|---|---|---|
+| `action` | No, default `set_field` | `set_field`, `add_tag`, `remove_tag` |
+| `field`, `value` | Per `set_field` | Imposta un campo arbitrario sul contatto |
+| `tag` | Per `add_tag`/`remove_tag` | Nome del tag da aggiungere o rimuovere |
 
 ```json
-{
-  "type": "webhook_call",
-  "url": "https://tuoapi.com/webhook",
-  "method": "POST",
-  "body": {"contactId": "{{contactId}}", "event": "flow_completed"}
-}
+{ "id": "s3", "type": "update_contact", "config": { "action": "add_tag", "tag": "nurtured" } }
 ```
 
-## Attiva un Flusso
+### `webhook_call`
 
-Attiva un flusso in modo che inizi a iscrivere i contatti.
+Notifica un URL esterno. Il corpo della richiesta è fisso — `{ "tenantId", "enrollmentId", "stepId" }` — non è un template che compili tu.
 
-**cURL**
+| Chiave config | Obbligatoria | Note |
+|---|---|---|
+| `url` | Sì | Deve essere `http`/`https` e un indirizzo pubblico — IP privati/riservati (`127.0.0.1`, `10.x`, `192.168.x`, ecc.) sono rifiutati |
+| `method` | No, default `POST` | Qualsiasi metodo HTTP |
+| `secret` | No | Se impostato, firma la richiesta con `X-Tratto-Signature` (HMAC-SHA256) — stesso schema dei [webhook normali](/it/docs/webhook-verification) |
+
+```json
+{ "id": "s4", "type": "webhook_call", "config": { "url": "https://tuaapi.com/hooks/flow-completed", "secret": "whsec_..." } }
+```
+
+Timeout di 10 secondi; i fallimenti vengono loggati ma non fermano il flusso.
+
+## Attivare, Disattivare, Modificare
+
 ```bash
+# Attiva — inizia a iscrivere
 curl -X POST https://api.tratto.email/v1/flows/flow_abc123/activate \
   -H "Authorization: Bearer tratto_live_..."
-```
 
-## Disattiva un Flusso
-
-Interrompi un flusso dall'iscrivere nuovi contatti (le iscrizioni esistenti continuano).
-
-**cURL**
-```bash
+# Disattiva — ferma le nuove iscrizioni, quelle in corso continuano
 curl -X POST https://api.tratto.email/v1/flows/flow_abc123/deactivate \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
-## Elenca i Flussi
+<Callout type="warn">
+Non puoi fare `PATCH` degli `steps` di un flusso `active` — disattiva prima, modifica, riattiva. `trigger` e `name` si possono ancora cambiare mentre è attivo.
+</Callout>
 
-Ottieni tutti i flussi.
+## Elenca, Recupera, Elimina
 
-**cURL**
 ```bash
 curl https://api.tratto.email/v1/flows \
   -H "Authorization: Bearer tratto_live_..."
-```
 
-## Ottieni Dettagli Flusso
-
-Recupera un flusso specifico.
-
-**cURL**
-```bash
 curl https://api.tratto.email/v1/flows/flow_abc123 \
   -H "Authorization: Bearer tratto_live_..."
-```
 
-## Elimina un Flusso
-
-Rimuovi un flusso.
-
-**cURL**
-```bash
 curl -X DELETE https://api.tratto.email/v1/flows/flow_abc123 \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
-## Best Practice per i Flussi
+Eliminare un flusso `active` è bloccato allo stesso modo in cui lo è modificarne gli step — disattiva prima.
 
-### 1. Inizia Semplice
+## Testare un Flusso
 
-Inizia con un trigger di base + 1-2 step. Itera in base ai risultati.
+Non esiste oggi una scorciatoia di iscrizione manuale via API (vedi [Tipi di Trigger](#tipi-di-trigger)). Per testare un flusso `contact_tag_added`/`contact_tag_removed` end to end:
 
-### 2. Usa Nomi Significativi
+1. Attiva il flusso.
+2. Crea o riusa un contatto di test.
+3. Aggiungi il tag esatto per cui il trigger è configurato, via [`PATCH /v1/contacts/:id`](/it/docs/contacts).
+4. Controlla `GET /v1/flows/flow_abc123` — `enrollments` dovrebbe incrementare, e il contatto di test dovrebbe ricevere il primo step `send_email` entro pochi secondi.
 
-✅ `Follow-up Post-Acquisto 7 Giorni`  
-❌ `Flusso 1`
+## Perché Costruire un Flusso
 
-### 3. Test con Trigger Manuale
+Qualsiasi cosa del tipo "quando succede X a un contatto, fai Y nel tempo" — senza dover scrivere e ospitare tu la logica di scheduling.
 
-Usa il tipo di trigger `manual` per testare la logica del flusso prima dei auto-trigger.
+**Nurturing di iscrizione / waitlist.** Tagga un contatto `waitlist-confirmed` nel momento in cui completa il double opt-in, e lascia che un flusso mandi subito un'email di benvenuto, poi un breve drip (cosa stai costruendo, perché è prezzato in un certo modo, un'anteprima prodotto, un'offerta early-access) distanziato di giorni o settimane — è esattamente lo schema su cui gira la waitlist di Tratto stessa.
 
-### 4. Monitora le Iscrizioni
+**Re-engagement / win-back.** Esegui un tuo controllo di inattività (ultima apertura email, ultimo login, qualsiasi segnale che dica "sparito") su uno schedule, tagga i contatti corrispondenti `inactive-30d`, e lascia che un flusso mandi una sequenza di recupero — un primo tocco, poi uno sconto o un aggiornamento prodotto, poi una notifica finale "smetteremo di scriverti" abbinata a uno step `update_contact` che li disiscrive se ancora non hanno interagito.
 
-Controlla quanti contatti si stanno iscrivendo e progredendo attraverso gli step.
+**Checklist di onboarding.** Tagga un contatto quando si iscrive al tuo prodotto; fai un drip di qualche giorno con "hai già provato X", ognuna che punta a una feature diversa, con step `wait` che danno il tempo di andare davvero a provarla prima del prossimo sollecito.
 
-### 5. Usa gli Step Wait Strategicamente
+**Passaggio alle vendite su alto intento.** Tagga un contatto `pricing-page-viewed-3x` (dal tuo tracking) e usa uno step `webhook_call` per avvisare un canale Slack o il CRM nel momento in cui succede — il flusso diventa il trigger per un processo umano, non solo altra email.
 
-Non spammare. Consenti tempo tra le email per l'engagement.
+**Igiene dei dati.** Tagga i contatti che entrano in uno stato specifico (`trial-expired`, `payment-failed`) e usa step `update_contact` per normalizzare un campo `lifecycle_stage`, così la segmentazione altrove nel prodotto (audience, campagne) resta coerente senza un passaggio di pulizia manuale.
+
+## Best Practice
+
+**Progetta intorno all'unico trigger davvero attivo.** Finché `contact_joins_audience`/`email_event`/`manual` non sono collegati, ogni flusso parte di fatto da un cambio di tag. Prendi l'abitudine di taggare i contatti dal tuo codice applicativo nei momenti che contano — è quello il vero punto di ingresso.
+
+**Imposta `tagName` esplicitamente.** Un trigger su tag vuoto corrisponde a ogni cambio di tag su ogni contatto. Compilalo sempre.
+
+**Dai ai flussi nomi che descrivono cosa fanno, non cosa sono.** `Follow-up post-acquisto 7 giorni`, non `Flusso 3`.
+
+**Disattiva prima di modificare gli step.** Non puoi evitarlo — lo impone l'API — quindi prendi l'abitudine presto invece di trovarti l'errore a metà modifica.
+
+**Distanzia gli invii con criterio.** Gli step `wait` sono gratuiti e asincroni — non c'è pressione di costo per comprimere una sequenza. Dai ai contatti il tempo di leggere e agire su un'email prima che arrivi la successiva.
 
 ---
 
 ## Prossimi Passi
 
-- **Tracciare gli eventi del flusso?** Configura [Webhook](/it/docs/webhooks)
-- **Inviare via API?** Vedi [Invia Email](/it/docs/send-email)
-- **Usare template nei flussi?** Vai a [Template](/it/docs/templates)
+- **Tracciare le email inviate dai flussi?** Configura i [Webhook](/it/docs/webhooks)
+- **Inviare via API direttamente?** Vedi [Invia Email](/it/docs/send-email)
+- **Costruire i template che un flusso invia?** Vai a [Template](/it/docs/templates)
+- **Gestire i tag dei contatti?** Vedi [Contatti](/it/docs/contacts)
