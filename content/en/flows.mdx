@@ -1,216 +1,271 @@
 ---
-title: Flows & Automation
-description: Build automated email workflows with triggers and steps
+title: "Flows: Automation Triggers & Steps"
+description: Build automated email sequences that react to contact and email events
 ---
 
-A **flow** is an automation engine that enrolls contacts and executes a sequence of steps based on triggers.
+A **flow** enrolls contacts automatically and runs them through a sequence of steps — send an email, wait, branch, update the contact, call a webhook — based on a trigger you define. Flows live under a tenant, run entirely server-side, and don't require polling: enrollment and every step are event-driven.
 
-## Flow Basics
+<Callout type="info">
+This page documents the flow engine as it actually behaves in production, including which trigger types are wired up today and which are reserved for a later release. Configuring a flow around a trigger that isn't live yet won't error — it will just never enroll anyone, silently. See [Trigger Types](#trigger-types) below.
+</Callout>
+
+## How It Works
+
+A flow has three parts: a **trigger** (what starts enrollment), a **steps array** (what happens to an enrolled contact, in order), and a **status** (`draft`, `active`, `inactive`).
 
 ```
-Trigger (e.g., contact joins audience)
+Something happens (e.g. a tag is added to a contact)
   ↓
-Step 1 (e.g., send email)
+Every active flow whose trigger matches is found
   ↓
-Step 2 (e.g., wait 3 days)
+Contact is enrolled (idempotent — same event never double-enrolls)
   ↓
-Step 3 (e.g., send another email)
+Step 0 runs
   ↓
-Step 4 (e.g., branch on condition)
-  ├─ True path → send email
-  └─ False path → do nothing
+Step 1 runs (immediately, or after a wait step's delay)
+  ↓
+...
+  ↓
+Enrollment completes
 ```
 
-## Create a Flow
+Under the hood, this is two Cloud Functions talking through Pub/Sub and Cloud Tasks:
 
-Create a flow with a trigger and step sequence.
+1. **Trigger evaluation** — whatever action fires a trigger (e.g. a tag change) publishes a message. A function queries every `active` flow whose `trigger.type` matches, checks the trigger's own config against the event, and creates an enrollment for each match. Enrollment IDs are deterministic (a hash of tenant + flow + contact + trigger context), so the same event can never enroll a contact twice.
+2. **Step execution** — each step runs as its own Cloud Task. A `wait` step doesn't hold a function open; it schedules the *next* step's task with a delay and returns immediately. This means a flow with a 14-day wait costs nothing while it waits, and survives deploys, restarts, everything.
 
-**cURL**
+A contact is skipped (not failed) if their status is `unsubscribed`, `bounced`, or `complained` at send time — checked fresh on every `send_email` step, not just at enrollment.
+
+## Trigger Types
+
+| Trigger | Status | Enrolls when |
+|---|---|---|
+| `contact_tag_added` | **Available** | A specific tag is added to a contact |
+| `contact_tag_removed` | **Available** | A specific tag is removed from a contact |
+| `contact_joins_audience` | Reserved | *(schema exists; nothing publishes this event yet)* |
+| `email_event` | Reserved | *(schema exists; nothing publishes this event yet)* |
+| `manual` | Reserved | *(schema exists; no enrollment endpoint exists yet)* |
+
+<Callout type="warn">
+Only `contact_tag_added` and `contact_tag_removed` actually enroll contacts today. The other three trigger types are valid values the API will accept — a flow using them saves fine, activates fine, shows `0` enrollments forever, and never tells you why. If you need "enroll when X happens" and X isn't a tag change, do the tagging yourself: update the contact's tags via [`PATCH /v1/contacts/:id`](/en/docs/contacts) from your own code whenever the real-world event happens, and trigger off that tag.
+</Callout>
+
+### Trigger config
+
+Trigger config is a flat `{ key: value }` object, string values only. An empty/missing config key means "match any", not "match nothing" — omit it deliberately.
+
+| Trigger type | Config key | Behavior when set | Behavior when omitted |
+|---|---|---|---|
+| `contact_tag_added` / `contact_tag_removed` | `tagName` | Only enrolls for that exact tag | Enrolls on **any** tag change — almost never what you want |
+| `contact_joins_audience` | `audienceId` | Scopes to one audience | Matches any audience join |
+| `email_event` | `eventType`, `emailId` | Scopes to an event type and/or one specific email | Matches broadly |
+
+```json
+{
+  "type": "contact_tag_added",
+  "config": { "tagName": "waitlist-confirmed" }
+}
+```
+
+## Creating a Flow
+
+Creating is two steps: the API only lets you name a flow on creation — trigger and steps are set afterward with `PATCH`. This mirrors the dashboard builder, which creates an empty draft the moment you click "New flow" and lets you wire it up on the canvas.
+
+**1. Create**
 ```bash
 curl -X POST https://api.tratto.email/v1/flows \
   -H "Authorization: Bearer tratto_live_..." \
   -H "Content-Type: application/json" \
+  -d '{"name": "Waitlist nurturing"}'
+```
+
+```json
+{ "data": { "id": "flow_8f3ZqXnryVtC5k2Wm7B9e4" } }
+```
+
+**2. Configure trigger + steps**
+```bash
+curl -X PATCH https://api.tratto.email/v1/flows/flow_8f3ZqXnryVtC5k2Wm7B9e4 \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
   -d '{
-    "name":"Welcome Series",
-    "trigger":{"type":"contact_joins_audience","audienceId":"aud_abc123"},
-    "steps":[
-      {"type":"send_email","templateId":"tmpl_welcome"},
-      {"type":"wait","duration":"3d"},
-      {"type":"send_email","templateId":"tmpl_follow_up"}
+    "trigger": {
+      "type": "contact_tag_added",
+      "config": { "tagName": "waitlist-confirmed" }
+    },
+    "steps": [
+      { "id": "s0", "type": "send_email", "config": { "templateId": "tmpl_welcome", "subject": "You are in", "from": "hello@yourdomain.com", "fromName": "Your Company" } },
+      { "id": "s1", "type": "wait", "config": { "delay": "2", "unit": "hours" } },
+      { "id": "s2", "type": "send_email", "config": { "templateId": "tmpl_nurture_1", "subject": "What we are building", "from": "hello@yourdomain.com", "fromName": "Your Company" } }
     ]
   }'
 ```
 
-## Trigger Types
-
-| Trigger | Description |
-|---------|-------------|
-| `contact_joins_audience` | Enrolls when contact matches audience rules |
-| `contact_tag_added` | Enrolls when tag is added to contact |
-| `contact_tag_removed` | Enrolls when tag is removed from contact |
-| `email_event` | Enrolls when email is opened/clicked/bounced/complained |
-| `manual` | Enrolls via API or dashboard (no auto-trigger) |
-
-### Example: Email Event Trigger
-
-```json
-{
-  "type": "email_event",
-  "event": "opened",
-  "templateId": "tmpl_abc123"
-}
-```
-
-Enrolls contacts that open a specific template.
+A flow is created in `draft` and stays there — enrolling nobody — until you activate it. Max 20 steps per flow. Step `id`s are your own strings; they only need to be unique within the flow.
 
 ## Step Types
 
-### send_email
+Every step's `config` is `{ key: string }`, same as triggers — the API doesn't coerce types, so numbers and booleans go in as strings.
 
-Send an email (immediately or with delay).
+### `send_email`
+
+| Config key | Required | Notes |
+|---|---|---|
+| `templateId` | Yes, to render anything | ID of a template — see [Templates](/en/docs/templates) |
+| `subject` | Recommended | Falls back to empty if omitted |
+| `from` | Recommended | Falls back to empty if omitted — recipients will see a blank sender |
+| `fromName` | No | Display name paired with `from` |
 
 ```json
-{
-  "type": "send_email",
-  "templateId": "tmpl_abc123",
-  "delay": "1h"
-}
+{ "id": "s0", "type": "send_email", "config": { "templateId": "tmpl_abc123", "subject": "Welcome", "from": "hello@yourdomain.com", "fromName": "Your Company" } }
 ```
 
-### wait
+**Variables available in the template:** the contact's `email`, `firstName`, `lastName`, and every key in the contact's `customFields` are automatically passed in as `{{tokens}}` — no need to declare them on the step. If a contact has `customFields: { "position": "42" }`, a template containing `{{position}}` renders `42` for that send, no extra config required.
 
-Pause for a duration before next step.
+### `wait`
+
+| Config key | Required | Notes |
+|---|---|---|
+| `delay` | Yes | A positive integer, as a string, e.g. `"2"` |
+| `unit` | No, defaults to `minutes` | One of `seconds`, `minutes`, `hours`, `days` |
 
 ```json
-{
-  "type": "wait",
-  "duration": "3d"
-}
+{ "id": "s1", "type": "wait", "config": { "delay": "14", "unit": "days" } }
 ```
 
-Durations: `1h`, `2d`, `1w`, etc.
+The enrollment's step pointer advances immediately; the *next* step's task is what's delayed. Checking an enrollment mid-wait correctly shows it's already on the following step index, just not due to run yet.
 
-### branch
+### `branch`
 
-Conditional branching based on email events or contact properties.
+Evaluates one condition against the contact's own fields (not `customFields` — top-level fields like `status`) and jumps to a different step index depending on the result.
+
+| Config key | Required | Notes |
+|---|---|---|
+| `conditionField` | Yes | A field name on the contact document |
+| `conditionOperator` | No, defaults to `equals` | `equals`, `not_equals`, `exists`, `not_exists`, `contains` |
+| `conditionValue` | For `equals`/`not_equals`/`contains` | Value to compare against |
+| `trueNextStep` | No, defaults to the next step | Step index to jump to if the condition is true |
+| `falseNextStep` | No, defaults to ending the flow | Step index to jump to if the condition is false |
 
 ```json
 {
+  "id": "s2",
   "type": "branch",
-  "condition": "email_opened",
-  "truePath": [
-    {"type": "send_email", "templateId": "tmpl_engaged"}
-  ],
-  "falsePath": [
-    {"type": "send_email", "templateId": "tmpl_re_engage"}
-  ]
-}
-```
-
-### update_contact
-
-Update contact status, tags, or metadata.
-
-```json
-{
-  "type": "update_contact",
-  "updates": {
-    "status": "unsubscribed",
-    "tags": ["completed_flow"]
+  "config": {
+    "conditionField": "status",
+    "conditionOperator": "equals",
+    "conditionValue": "subscribed",
+    "trueNextStep": "3",
+    "falseNextStep": "5"
   }
 }
 ```
 
-### webhook_call
+`trueNextStep`/`falseNextStep` are step **indices into the `steps` array** (as strings), not step IDs — plan the array order before wiring branches.
 
-Call an external webhook.
+<Callout type="warn">
+The dashboard builder's branch step currently exposes a simpler field/value pair that doesn't map onto the config keys above. Configure `branch` steps via the API until the builder catches up.
+</Callout>
+
+### `update_contact`
+
+| Config key | Required | Notes |
+|---|---|---|
+| `action` | No, defaults to `set_field` | `set_field`, `add_tag`, `remove_tag` |
+| `field`, `value` | For `set_field` | Sets an arbitrary field on the contact |
+| `tag` | For `add_tag`/`remove_tag` | Tag name to add or remove |
 
 ```json
-{
-  "type": "webhook_call",
-  "url": "https://yourapi.com/webhook",
-  "method": "POST",
-  "body": {"contactId": "{{contactId}}", "event": "flow_completed"}
-}
+{ "id": "s3", "type": "update_contact", "config": { "action": "add_tag", "tag": "nurtured" } }
 ```
 
-## Activate a Flow
+### `webhook_call`
 
-Activate a flow so it starts enrolling contacts.
+Notifies an external URL. The request body is fixed — `{ "tenantId", "enrollmentId", "stepId" }` — it isn't a template you fill in.
 
-**cURL**
+| Config key | Required | Notes |
+|---|---|---|
+| `url` | Yes | Must be `http`/`https` and a public address — private/reserved IPs (`127.0.0.1`, `10.x`, `192.168.x`, etc.) are rejected |
+| `method` | No, defaults to `POST` | Any HTTP method |
+| `secret` | No | If set, signs the request with `X-Tratto-Signature` (HMAC-SHA256) — same scheme as [regular webhooks](/en/docs/webhook-verification) |
+
+```json
+{ "id": "s4", "type": "webhook_call", "config": { "url": "https://yourapi.com/hooks/flow-completed", "secret": "whsec_..." } }
+```
+
+10-second timeout; failures are logged but don't stop the flow.
+
+## Activating, Deactivating, Editing
+
 ```bash
+# Activate — starts enrolling
 curl -X POST https://api.tratto.email/v1/flows/flow_abc123/activate \
   -H "Authorization: Bearer tratto_live_..."
-```
 
-## Deactivate a Flow
-
-Stop a flow from enrolling new contacts (existing enrollments continue).
-
-**cURL**
-```bash
+# Deactivate — stops new enrollments, in-progress ones keep running
 curl -X POST https://api.tratto.email/v1/flows/flow_abc123/deactivate \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
-## List Flows
+<Callout type="warn">
+You cannot `PATCH` the `steps` of an `active` flow — deactivate first, edit, reactivate. `trigger` and `name` can still be changed while active.
+</Callout>
 
-Get all flows.
+## List, Get, Delete
 
-**cURL**
 ```bash
 curl https://api.tratto.email/v1/flows \
   -H "Authorization: Bearer tratto_live_..."
-```
 
-## Get Flow Details
-
-Retrieve a specific flow.
-
-**cURL**
-```bash
 curl https://api.tratto.email/v1/flows/flow_abc123 \
   -H "Authorization: Bearer tratto_live_..."
-```
 
-## Delete a Flow
-
-Remove a flow.
-
-**cURL**
-```bash
 curl -X DELETE https://api.tratto.email/v1/flows/flow_abc123 \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
-## Flow Best Practices
+Deleting an `active` flow is blocked the same way editing its steps is — deactivate first.
 
-### 1. Start Simple
+## Testing a Flow
 
-Begin with a basic trigger + 1-2 steps. Iterate based on results.
+There's no `manual` enroll-via-API shortcut today (see [Trigger Types](#trigger-types)). To test a `contact_tag_added`/`contact_tag_removed` flow end to end:
 
-### 2. Use Meaningful Names
+1. Activate the flow.
+2. Create or reuse a throwaway test contact.
+3. Add the exact tag the trigger is configured for, via [`PATCH /v1/contacts/:id`](/en/docs/contacts).
+4. Check `GET /v1/flows/flow_abc123` — `enrollments` should increment, and the test contact should receive the first `send_email` step within seconds.
 
-✅ `Post-Purchase 7-Day Follow-up`  
-❌ `Flow 1`
+## Why Build a Flow
 
-### 3. Test with Manual Trigger
+Anything that's "when X happens to a contact, do Y over time" — without you writing and hosting the scheduling logic yourself.
 
-Use `manual` trigger type to test flow logic before auto-triggers.
+**Signup / waitlist nurturing.** Tag a contact `waitlist-confirmed` the moment they double-opt-in, and let a flow run a welcome email immediately, then a short drip (what you're building, why it's priced the way it is, a product preview, an early-access offer) spaced days or weeks apart — this exact pattern is what Tratto's own waitlist runs on.
 
-### 4. Monitor Enrollments
+**Re-engagement / win-back.** Run your own inactivity check (last email open date, last login, whatever signals "gone quiet") on a schedule, tag matching contacts `inactive-30d`, and let a flow send a win-back sequence — one nudge, then a discount or feature update, then a final "we'll stop emailing you" notice paired with an `update_contact` step that unsubscribes them if they still haven't engaged.
 
-Check how many contacts are enrolling and progressing through steps.
+**Onboarding checklist.** Tag a contact when they sign up for your product; drip a few days of "have you tried X yet" emails, each pointing at a different feature, with `wait` steps giving them time to actually go try it before the next nudge.
 
-### 5. Use Wait Steps Strategically
+**Sales handoff on high intent.** Tag a contact `pricing-page-viewed-3x` (from your own tracking) and use a `webhook_call` step to ping a Slack channel or CRM the moment it happens — the flow becomes the trigger for a human process, not just more email.
 
-Don't spam. Allow time between emails for engagement.
+**Data hygiene.** Tag contacts entering a specific state (`trial-expired`, `payment-failed`) and use `update_contact` steps to normalize a `lifecycle_stage` field, so segmentation elsewhere in the product (audiences, campaigns) stays consistent without a manual cleanup pass.
+
+## Best Practices
+
+**Design around the one live trigger.** Until `contact_joins_audience`/`email_event`/`manual` are wired up, every flow effectively starts from a tag change. Get comfortable tagging contacts from your own application code at the moments that matter — that's the real entry point.
+
+**Set `tagName` explicitly.** An empty tag trigger matches every tag change on every contact. Always fill it in.
+
+**Name flows for what they do, not what they are.** `Post-purchase 7-day follow-up`, not `Flow 3`.
+
+**Deactivate before editing steps.** You can't avoid this — the API enforces it — so build the habit early rather than hitting the error mid-edit.
+
+**Space sends deliberately.** `wait` steps are free and asynchronous — there's no cost pressure to compress a sequence. Give contacts time to actually read and act on one email before the next arrives.
 
 ---
 
 ## Next Steps
 
-- **Track flow events?** Set up [Webhooks](/en/docs/webhooks)
-- **Send via API?** See [Send Email](/en/docs/send-email)
-- **Use templates in flows?** Go to [Templates](/en/docs/templates)
+- **Track flow-sent emails?** Set up [Webhooks](/en/docs/webhooks)
+- **Send via API directly?** See [Send Email](/en/docs/send-email)
+- **Build the templates a flow sends?** Go to [Templates](/en/docs/templates)
+- **Manage contact tags?** See [Contacts](/en/docs/contacts)
