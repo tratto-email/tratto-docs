@@ -35,7 +35,10 @@ errors add a `details` array: see below.
 | `CONFLICT` | 409 | The resource already exists | Fetch or update the existing one instead |
 | `VALIDATION_ERROR` | 422 | The request body failed validation | Read `details` for the offending fields |
 | `RATE_LIMITED` | 429 | More than 500 requests in a minute | Back off exponentially and retry |
-| `QUOTA_EXCEEDED` | 429 | Monthly email quota reached | Upgrade the plan or wait for the reset |
+| `QUOTA_EXCEEDED` | 429 | Monthly email quota reached (or the daily test-mode cap) | Upgrade the plan or wait for the reset |
+| `TEST_MODE_NOT_SUPPORTED` | 403 | The endpoint reaches real recipients and rejects test keys | Use a live key (`tratto_live_...`) — see [Test mode](/en/docs/test-mode) |
+| `IDEMPOTENCY_CONFLICT` | 409 | The `Idempotency-Key` was reused with a different payload | Use a fresh key for a different request |
+| `IDEMPOTENCY_IN_PROGRESS` | 409 | A request with this `Idempotency-Key` is still being processed | Wait for the original request to finish, then retry |
 | `INTERNAL_ERROR` | 500 | Something failed on our side | Retry with backoff; contact support if it persists |
 
 <Callout type="warn">
