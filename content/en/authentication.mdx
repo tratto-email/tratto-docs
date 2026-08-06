@@ -11,11 +11,17 @@ Tratto API keys follow this format:
 
 ```
 tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+tratto_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-- Prefix: `tratto_live_`
+- Prefix: `tratto_live_` (real delivery) or `tratto_test_` (simulated —
+  see [Test mode](/en/docs/test-mode))
 - Followed by 32 random characters
 - Used as a bearer token in the `Authorization` header
+
+The environment is baked into the key: a test key runs the full pipeline
+without sending real email, sees only test data, and is rejected by
+endpoints that reach real recipients.
 
 ## Authentication Header
 

@@ -90,11 +90,27 @@ Use **UUID v4** (RFC 4122):
 550e8400-e29b-41d4-a716-446655440000
 ```
 
-Any unique string is technically valid, but UUID v4 is recommended.
+Any unique string up to **256 characters** works (longer keys are rejected
+with `422`), but UUID v4 is recommended. Keys are scoped per environment:
+a test-mode replay can never return a live response, and vice versa.
 
-## Cache Duration
+## Replay Semantics
 
-Idempotency keys are cached for **24 hours**. Retry within 24 hours and get the same response. After 24 hours, the key expires.
+| Situation | Result |
+|---|---|
+| Same key, same payload, within 24h | The original response is returned — nothing is sent again |
+| Same key, **different payload** | `409 IDEMPOTENCY_CONFLICT` — a key identifies one request, not a slot |
+| Same key, while the first request is still running | `409 IDEMPOTENCY_IN_PROGRESS` — retry after it completes |
+| The first request failed | The key is released immediately — retry right away with the same key |
+
+## Cache Duration and Guarantees
+
+Idempotency keys are cached for **24 hours**. After 24 hours, the key expires.
+
+Idempotency is **best-effort**: it is backed by a fast in-memory store, and if
+that store is briefly unavailable the request proceeds *without* idempotency
+rather than failing your send. Design retries accordingly — treat the
+guarantee as strong in practice but not absolute.
 
 ## Best Practices
 

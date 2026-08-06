@@ -1,0 +1,72 @@
+---
+title: Test Mode
+description: Develop and test the full email flow — statuses, timeline, webhooks — without sending real email
+updatedAt: 2026-08-06
+---
+
+Every workspace has two key environments, Stripe-style:
+
+| | Test — `tratto_test_...` | Live — `tratto_live_...` |
+|---|---|---|
+| Delivery | **Simulated** — nothing is ever sent | Real, via our sending infrastructure |
+| Sender domain | Any syntactically valid address | Must be a verified domain |
+| Monthly quota | Untouched (own cap: 100 test sends/day) | Counts against your plan |
+| Statuses, timeline, webhooks | Identical to live | — |
+| Data visibility | A test key sees only test data | A live key sees only live data |
+| Retention | Test emails deleted after 7 days | Per plan retention |
+
+The point: your integration — sending, status polling, webhook handling,
+bounce handling — runs against the exact same pipeline as production, before
+any DNS work and with zero risk of emailing a real person.
+
+## Simulator addresses
+
+The recipient address picks the simulated outcome:
+
+| Recipient | Outcome |
+|------|-------|
+| any address | `delivered` event, email ends `delivered` |
+| `bounced@simulator.tratto.email` | permanent bounce — email ends `failed`, `bounced` event with `type: "Permanent"` |
+| `soft-bounced@simulator.tratto.email` | transient bounce — `bounced` event with `type: "Transient"` |
+| `complained@simulator.tratto.email` | spam complaint — `complained` event |
+
+The `simulator.tratto.email` domain never receives mail; it exists only as a
+selector.
+
+## The `livemode` flag
+
+Everything a test key touches is marked:
+
+- `POST /v1/emails` responses include `"livemode": false`
+- webhook payloads include `"livemode": false` (live events carry
+  `"livemode": true`) — key on this field, not on heuristics
+- the dashboard shows a **Test mode** banner and TEST badges when the
+  Live/Test toggle is on Test
+
+## Environment isolation
+
+Test and live are separate views of your workspace:
+
+- `GET /v1/emails` with a test key lists only test emails; with a live key,
+  only live ones
+- fetching, canceling or rescheduling an email of the other environment
+  returns `404` — indistinguishable from a missing id
+- idempotency keys are scoped per environment
+
+## What test keys cannot do
+
+Endpoints that reach real recipients reject test keys with
+`403 TEST_MODE_NOT_SUPPORTED`:
+
+- sending or scheduling a campaign
+- campaign and template test-sends (they deliver real email)
+- activating a flow
+
+Simulated events also never touch your analytics, your contacts' suppression
+status, or campaign statistics.
+
+## Going live
+
+Swap the key. That's it — same request shape, same webhook signature scheme.
+A live key requires a [verified sender domain](/en/docs/domains) and counts
+against your plan quota.
