@@ -58,6 +58,7 @@ export function GET(): Response {
     '',
     '## Reference',
     '',
+    `- [Full documentation as one file](${absoluteUrl('/llms-full.txt')}): every page above, inlined — fetch this instead of crawling page by page.`,
     `- [API reference](${absoluteUrl('/en/docs/api-reference')}): every endpoint, generated from the OpenAPI spec.`,
     `- [OpenAPI specification](${absoluteUrl('/openapi.json')}): the machine-readable contract, kept in sync with the API at build time.`,
     '',
