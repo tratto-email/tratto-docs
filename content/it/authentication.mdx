@@ -33,16 +33,41 @@ curl https://api.tratto.email/v1/emails \
 
 Senza l'header, riceverai `401 Unauthorized`.
 
+## Permessi
+
+Ogni chiave porta con sé un insieme di permessi, applicati ad ogni richiesta: una chiave a cui manca il permesso richiesto da un endpoint riceve `403 Forbidden`, indipendentemente dal workspace a cui appartiene.
+
+| Permesso | Consente |
+| --- | --- |
+| `emails:send` | Inviare email, programmare, annullare, riprogrammare |
+| `emails:read` | Leggere il log email e gli eventi di consegna |
+| `contacts:read` / `contacts:write` | Leggere / creare, aggiornare, importare contatti e audience |
+| `domains:read` / `domains:write` | Leggere / aggiungere, verificare, rimuovere domini di invio |
+| `templates:read` / `templates:write` | Leggere / creare e modificare template |
+| `campaigns:read` / `campaigns:write` | Leggere / creare e inviare campagne e flow |
+| `webhooks:read` / `webhooks:write` | Leggere / registrare, modificare, ruotare endpoint webhook |
+| `api-keys:read` / `api-keys:write` | Leggere / creare, modificare, revocare API key |
+| `billing:read` / `billing:write` | Leggere piano e consumi / avviare checkout e portale fatturazione |
+| `workspace:write` | Modificare le impostazioni del workspace, mittente predefinito incluso |
+| `members:write` | Invitare, rimuovere e cambiare ruolo ai membri del workspace |
+| `*` | Accesso completo — tutti i permessi sopra, inclusi quelli futuri |
+
+Concedi l'insieme più ristretto che basta allo scopo. Una chiave che invia solo email transazionali ha bisogno di `emails:send` e nient'altro; se rispecchia anche le iscrizioni nella tua lista contatti serve pure `contacts:write`.
+
+`*` viene memorizzato da solo: elencarlo insieme ai permessi granulari è ridondante, dato che li copre già.
+
 ## Crea una API Key
 
-Genera una nuova API key tramite l'API. Questo è l'unico modo per creare chiavi, dato che non c'è un'interfaccia dashboard per ora.
+Genera una nuova API key tramite l'API, oppure da **Impostazioni → API key** nella dashboard.
+
+`name`, `env` e `permissions` sono tutti obbligatori. Ometterne `permissions` (o passare un array vuoto) restituisce `422`.
 
 **cURL**
 ```bash
 curl -X POST https://api.tratto.email/v1/api-keys \
   -H "Authorization: Bearer tratto_live_CHIAVE_ESISTENTE" \
   -H "Content-Type: application/json" \
-  -d '{"name":"production"}'
+  -d '{"name":"production","env":"live","permissions":["emails:send"]}'
 ```
 
 **Node.js**
@@ -53,7 +78,7 @@ const response = await fetch('https://api.tratto.email/v1/api-keys', {
     'Authorization': 'Bearer tratto_live_CHIAVE_ESISTENTE',
     'Content-Type': 'application/json',
   },
-  body: JSON.stringify({ name: 'production' }),
+  body: JSON.stringify({ name: 'production', env: 'live', permissions: ['emails:send'] }),
 });
 const { data } = await response.json();
 console.log('Nuova API Key:', data.key);
@@ -69,7 +94,7 @@ response = requests.post(
     'Authorization': 'Bearer tratto_live_CHIAVE_ESISTENTE',
     'Content-Type': 'application/json',
   },
-  json={'name': 'production'},
+  json={'name': 'production', 'env': 'live', 'permissions': ['emails:send']},
 )
 api_key = response.json()['data']['key']
 print(f"Nuova API Key: {api_key}")
@@ -150,6 +175,60 @@ for key in keys:
 ```
 
 Nota: La chiave completa non è mai restituita dopo la creazione, solo il prefisso (primi e ultimi 4 caratteri).
+
+## Modifica i permessi di una chiave
+
+Cambia i permessi di una chiave esistente, senza revocarla né ruotare il segreto. Il valore della chiave non cambia, quindi nulla di ciò che la usa va rideployato — i permessi vengono letti ad ogni richiesta e il nuovo insieme vale già dalla successiva.
+
+**cURL**
+```bash
+curl -X PATCH https://api.tratto.email/v1/api-keys/key_abc123 \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"permissions":["emails:send","contacts:write"]}'
+```
+
+**Node.js**
+```javascript
+const response = await fetch('https://api.tratto.email/v1/api-keys/key_abc123', {
+  method: 'PATCH',
+  headers: {
+    'Authorization': 'Bearer tratto_live_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ permissions: ['emails:send', 'contacts:write'] }),
+});
+const { data } = await response.json();
+console.log('Permessi:', data.permissions);
+```
+
+**Python**
+```python
+import requests
+
+response = requests.patch(
+  'https://api.tratto.email/v1/api-keys/key_abc123',
+  headers={
+    'Authorization': 'Bearer tratto_live_...',
+    'Content-Type': 'application/json',
+  },
+  json={'permissions': ['emails:send', 'contacts:write']},
+)
+print(f"Permessi: {response.json()['data']['permissions']}")
+```
+
+`permissions` **sostituisce** l'insieme precedente, non ci si fonde. Invia la lista completa che vuoi ottenere.
+
+Richiede `api-keys:write`. Altre risposte:
+
+| Stato | Quando |
+| --- | --- |
+| `409` | La chiave è revocata — i permessi non sono più modificabili. Creane una nuova. |
+| `422` | Permesso sconosciuto, lista vuota, o tentativo di rimuovere `api-keys:write` dalla chiave che sta facendo la richiesta. |
+
+<Callout type="warning">
+Non puoi togliere `api-keys:write` dalla chiave con cui ti stai autenticando: nessun altro endpoint potrebbe restituirtelo, quindi resteresti chiuso fuori dalla gestione delle chiavi. Rimuoverlo da una chiave *diversa* è consentito — quello è recuperabile.
+</Callout>
 
 ## Revoca una API Key
 
@@ -282,7 +361,19 @@ Controlla `lastUsedAt` nelle risposte di elenco per identificare chiavi non util
 }
 ```
 
-**Nota:** Attualmente, tutte le API key hanno accesso completo al workspace. Questo errore è riservato per il futuro scoping dei permessi.
+La risposta nomina il permesso mancante, così sai quale aggiungere:
+
+```json
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "Missing required permission: contacts:write",
+    "suggestion": "Create a new API key with the 'contacts:write' permission."
+  }
+}
+```
+
+Si risolve concedendo quel permesso alla chiave — vedi [Modifica i permessi di una chiave](#modifica-i-permessi-di-una-chiave) — oppure usando una chiave che lo ha già. Controlla i permessi correnti con `GET /v1/api-keys`.
 
 ## Header di Idempotenza
 
