@@ -10,6 +10,7 @@
     "---Invio Email---",
     "send-email",
     "templates",
+    "branding",
     "domains",
     "idempotency",
     "rate-limits",
