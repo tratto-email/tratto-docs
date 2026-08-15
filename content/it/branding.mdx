@@ -1,0 +1,70 @@
+---
+title: Footer Email & Branding
+description: Quando Tratto aggiunge un footer alle tue email — il badge "Sent using Tratto" sul piano free, e come i piani a pagamento possono scegliere di mantenerlo.
+---
+
+Tratto può aggiungere un piccolo footer alla versione HTML delle email che invii. Esistono due varianti:
+
+- **Footer branded** — un badge "Sent using Tratto", più un link di disiscrizione quando l'invio è legato a un contatto.
+- **Footer plain di disiscrizione** — solo il link di disiscrizione, senza badge.
+
+Quale dei due riceve un'email dipende dal tuo piano e da un'unica impostazione di workspace.
+
+## Piano free
+
+Sul piano free, **ogni email HTML porta il footer branded "Sent using Tratto"** — campagne, invii transazionali e test dei template, senza eccezioni. Fa parte del piano free e non può essere disattivato.
+
+- Campagne ed email transazionali legate a un contatto: footer branded **con** link di disiscrizione.
+- Email transazionali non legate a un contatto e test dei template: footer branded **senza** link di disiscrizione.
+
+## Piani a pagamento
+
+Sui piani a pagamento il badge è disattivato di default:
+
+- **Campagne**: footer plain di disiscrizione (le email di marketing devono sempre offrire un opt-out).
+- **Email transazionali e test**: nessun footer — il tuo HTML viene consegnato così com'è.
+
+### Mantenere il badge (opt-in)
+
+Un workspace a pagamento può scegliere di mantenere il footer branded con l'impostazione di workspace `keepTrattoBranding`. Quando è attiva, ogni invio HTML riceve il footer branded, esattamente come sul piano free:
+
+```
+footer branded  =  piano "free"              (sempre, non configurabile)
+                oppure keepTrattoBranding è true
+```
+
+Puoi cambiare l'impostazione in due modi:
+
+- **Dashboard** — il toggle branding in **Settings → Workspace**.
+- **API** — `PATCH /v1/workspace`:
+
+```bash
+curl -X PATCH https://api.tratto.email/v1/workspace \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"keepTrattoBranding": true}'
+```
+
+Il campo è restituito da `GET /v1/workspace` ed è documentato nell'[API Reference](/it/docs/api-reference).
+
+Da sapere:
+
+- `keepTrattoBranding` è accettato su **qualsiasi** piano. Sul piano free non ha effetto — lì il footer branded è comunque obbligatorio.
+- L'impostazione **persiste ai cambi di piano**: fare downgrade a free e poi tornare a un piano a pagamento non azzera la tua scelta.
+- Supporto SDK: l'SDK Node.js (`@tratto/email`) accetterà `keepTrattoBranding` nella chiamata di aggiornamento del workspace a partire dalla **versione 1.1.0**, non ancora pubblicata. Fino ad allora, usa la dashboard o chiama direttamente l'endpoint HTTP.
+
+## Il comportamento in sintesi
+
+| Piano | `keepTrattoBranding` | Campagna | Transazionale legata a un contatto | Transazionale / test, senza contatto |
+|-------|----------------------|----------|------------------------------------|--------------------------------------|
+| Free | qualsiasi valore (ignorato) | Branded + disiscrizione | Branded + disiscrizione | Branded, senza link di disiscrizione |
+| Paid | `true` | Branded + disiscrizione | Branded + disiscrizione | Branded, senza link di disiscrizione |
+| Paid | `false` / non impostato (default) | Plain disiscrizione | Nessun footer | Nessun footer |
+
+Indipendentemente dal footer, ogni email inviata tramite Tratto porta gli header di disiscrizione one-click RFC 8058 — vedi [Privacy & Compliance](/it/docs/privacy).
+
+## Prossimi Passi
+
+- **Primo invio?** Vedi [Invia Email](/it/docs/send-email)
+- **Campagne?** Vedi [Campagne](/it/docs/campaigns)
+- **Meccanica della disiscrizione?** Vedi [Privacy & Compliance](/it/docs/privacy)
