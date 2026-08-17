@@ -102,6 +102,41 @@ Email clients show `html` if supported; fall back to `text` otherwise.
 
 Depending on your plan, Tratto may append a footer to the HTML version — the "Sent using Tratto" badge on the free plan (optional on paid plans). See [Email Footer & Branding](/en/docs/branding).
 
+## Send with Markdown
+
+Pass a `markdown` body instead of `html` and Tratto renders it server-side
+into responsive, email-safe HTML (plus a plain-text part) using the
+[emailmd format](/en/docs/emailmd-templates):
+
+```bash
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "hello@yourdomain.com",
+    "to": "user@example.com",
+    "subject": "Welcome!",
+    "markdown": "# Welcome, {{firstName}}!\n\nThanks for signing up.\n\n[Open your dashboard](https://app.yourdomain.com){button}",
+    "variables": {"firstName": "Alice"}
+  }'
+```
+
+Rules and behavior:
+
+- `markdown` and `html` are **mutually exclusive** — sending both fails with
+  422 (`"markdown and html are mutually exclusive — provide one or the other."`).
+- At least one of `html`, `text`, `markdown`, or `templateId` is required, and
+  an empty `markdown` fails with 422 (`"markdown must not be empty."`).
+- The markdown is rendered **once, at request time**; the resulting HTML and
+  text are stored on the email, so delivery retries never re-render.
+- An explicit `text` field wins over the render-generated plain-text part.
+- `{{variables}}` are substituted at delivery, after the render — same as
+  every other send.
+- Raw HTML inside the markdown is escaped to literal text, and `javascript:` /
+  `data:` links are never linkified. See
+  [Markdown Templates](/en/docs/emailmd-templates) for the syntax and the
+  security model.
+
 ## Send with a Template
 
 Instead of composing HTML in code, use a template with variable substitution.
@@ -229,7 +264,8 @@ Later, filter emails by tags or use them in webhooks.
 | `bcc` | string[] | | Blind carbon copy recipients |
 | `subject` | string | ✓ (if not using template) | Email subject line |
 | `text` | string | | Plain text content (used as fallback) |
-| `html` | string | | HTML content |
+| `html` | string | | HTML content (mutually exclusive with `markdown`) |
+| `markdown` | string | | [emailmd markdown](/en/docs/emailmd-templates), rendered server-side (mutually exclusive with `html`, max 100,000 chars) |
 | `templateId` | string | | Template ID (instead of `subject`/`text`/`html`) |
 | `variables` | object | | Variables to interpolate in template |
 | `attachments` | array | | Array of attachment objects |

@@ -102,6 +102,43 @@ I client email mostrano `html` se supportato; ricadere a `text` altrimenti.
 
 A seconda del tuo piano, Tratto può aggiungere un footer alla versione HTML — il badge "Sent using Tratto" sul piano free (opzionale sui piani a pagamento). Vedi [Footer Email & Branding](/it/docs/branding).
 
+## Invia con Markdown
+
+Passa un corpo `markdown` invece di `html` e Tratto lo renderizza lato server
+in HTML responsive ed email-safe (più una parte in testo semplice) usando il
+[formato emailmd](/it/docs/emailmd-templates):
+
+```bash
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "hello@tuodominio.it",
+    "to": "user@example.com",
+    "subject": "Benvenuto!",
+    "markdown": "# Benvenuto, {{firstName}}!\n\nGrazie per esserti registrato.\n\n[Apri la dashboard](https://app.tuodominio.it){button}",
+    "variables": {"firstName": "Alice"}
+  }'
+```
+
+Regole e comportamento:
+
+- `markdown` e `html` sono **mutuamente esclusivi** — inviarli entrambi
+  fallisce con 422
+  (`"markdown and html are mutually exclusive — provide one or the other."`).
+- Almeno uno tra `html`, `text`, `markdown` o `templateId` è obbligatorio, e
+  un `markdown` vuoto fallisce con 422 (`"markdown must not be empty."`).
+- Il markdown viene renderizzato **una volta, alla richiesta**; l'HTML e il
+  testo risultanti vengono memorizzati sull'email, quindi i retry di consegna
+  non ri-renderizzano mai.
+- Un campo `text` esplicito vince sulla parte testuale generata dal render.
+- Le `{{variabili}}` vengono sostituite alla consegna, dopo il render — come
+  per ogni altro invio.
+- L'HTML raw dentro il markdown viene escapato a testo letterale, e i link
+  `javascript:` / `data:` non diventano mai link. Vedi
+  [Template Markdown](/it/docs/emailmd-templates) per la sintassi e il modello
+  di sicurezza.
+
 ## Invia con un Template
 
 Invece di comporre HTML nel codice, usa un template con sostituzione di variabili.
@@ -229,7 +266,8 @@ Successivamente, filtra le email per tag o usali nei webhook.
 | `bcc` | string[] | | Destinatari di copia carbone nascosta |
 | `subject` | string | ✓ (se non usi template) | Riga di oggetto dell'email |
 | `text` | string | | Contenuto testo semplice (usato come fallback) |
-| `html` | string | | Contenuto HTML |
+| `html` | string | | Contenuto HTML (mutuamente esclusivo con `markdown`) |
+| `markdown` | string | | [Markdown emailmd](/it/docs/emailmd-templates), renderizzato lato server (mutuamente esclusivo con `html`, max 100.000 caratteri) |
 | `templateId` | string | | Template ID (al posto di `subject`/`text`/`html`) |
 | `variables` | object | | Variabili da interpolate nel template |
 | `attachments` | array | | Array di oggetti allegati |

@@ -65,6 +65,20 @@ prodotto dal validatore dello schema, che identifica ogni campo non valido:
 }
 ```
 
+### Validazione markdown (emailmd)
+
+Il [supporto markdown](/it/docs/emailmd-templates) su `POST /v1/emails` e sui
+template aggiunge due casi di `VALIDATION_ERROR` (422) da conoscere:
+
+- **`markdown` e `html` insieme.** I due campi sono mutuamente esclusivi
+  ovunque. Su `POST /v1/emails` il messaggio è
+  `"markdown and html are mutually exclusive — provide one or the other."`;
+  sui template, `html` viene rifiutato del tutto per `format: "emailmd"`
+  (`"html is not accepted when format is 'emailmd' — the HTML is derived from
+  the markdown render."`) e `markdown` richiede quel formato.
+- **Markdown vuoto.** Un campo `markdown` vuoto o di soli spazi fallisce con
+  `"markdown must not be empty."` — il render non gira mai su input vuoto.
+
 ## Due codici condividono il 429
 
 `RATE_LIMITED` e `QUOTA_EXCEEDED` restituiscono entrambi 429, ma richiedono

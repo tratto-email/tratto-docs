@@ -11,6 +11,8 @@
     "---Sending Email---",
     "send-email",
     "templates",
+    "emailmd-templates",
+    "emailmd-dashboard",
     "branding",
     "domains",
     "idempotency",

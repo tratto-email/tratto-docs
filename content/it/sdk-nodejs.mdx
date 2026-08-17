@@ -49,6 +49,33 @@ const email = await client.emails.send({
 });
 ```
 
+## Invia con Markdown
+
+<Callout type="info">
+Il campo `markdown` arriva nella versione **1.1.0** dell'SDK, non ancora
+pubblicata. Sulla release 1.0.0 attuale questi esempi non compilano — nel
+frattempo usa direttamente la [REST API](/it/docs/send-email#invia-con-markdown).
+</Callout>
+
+Invia [markdown emailmd](/it/docs/emailmd-templates) e lascia che il server
+renderizzi HTML responsive per email — `markdown` è mutuamente esclusivo con
+`html`:
+
+```typescript
+// In arrivo nella 1.1.0
+const email = await client.emails.send({
+  from: 'hello@tuodominio.it',
+  to: 'user@example.com',
+  subject: 'Benvenuto!',
+  markdown: '# Benvenuto, {{firstName}}!',
+  variables: { firstName: 'Alice' },
+});
+```
+
+La stessa release aggiunge `markdown` a `templates.create` /
+`templates.update` (creando template `format: 'emailmd'`) ed espone `format`,
+`source` e `renderWarnings` sul tipo di risposta `Template`.
+
 ## Programma Email
 
 ```typescript

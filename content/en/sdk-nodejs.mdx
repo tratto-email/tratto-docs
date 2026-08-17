@@ -50,6 +50,32 @@ const email = await client.emails.send({
 });
 ```
 
+## Send with Markdown
+
+<Callout type="info">
+The `markdown` field ships in SDK version **1.1.0**, which is not published
+yet. On the current 1.0.0 release these examples do not compile — until then,
+call the [REST API directly](/en/docs/send-email#send-with-markdown).
+</Callout>
+
+Send [emailmd markdown](/en/docs/emailmd-templates) and let the server render
+responsive email HTML — `markdown` is mutually exclusive with `html`:
+
+```typescript
+// Coming in 1.1.0
+const email = await client.emails.send({
+  from: 'hello@yourdomain.com',
+  to: 'user@example.com',
+  subject: 'Welcome!',
+  markdown: '# Welcome, {{firstName}}!',
+  variables: { firstName: 'Alice' },
+});
+```
+
+The same release adds `markdown` to `templates.create` / `templates.update`
+(creating `format: 'emailmd'` templates) and exposes `format`, `source` and
+`renderWarnings` on the `Template` response type.
+
 ## Schedule Email
 
 ```typescript
