@@ -1,0 +1,126 @@
+---
+title: "Markdown Templates in the Dashboard"
+description: Create and edit emailmd markdown templates from the Tratto dashboard, with a live server-rendered preview.
+---
+
+The [Tratto dashboard](https://app.tratto.email) has a dedicated markdown
+editor for `emailmd` templates: source on the left, live preview on the right,
+no HTML required. This page walks the whole flow — no screenshots needed, the
+UI matches what is described here.
+
+For the markdown syntax itself (frontmatter, directives, buttons, variables),
+see the [Markdown templates guide](/en/docs/emailmd-templates).
+
+## Create a markdown template
+
+1. Go to **Templates** in the sidebar (`/templates`).
+2. Click **New template**.
+3. In the dialog, give the template a name and pick a **Format**:
+   - **HTML** — "Write or paste email HTML directly."
+   - **Markdown** — "Write markdown — responsive HTML is rendered for you."
+4. Select **Markdown** and click **Create and open editor**.
+
+<Callout type="warn">
+The format is **permanent**. A template created as Markdown can never be
+switched to HTML, or vice versa — the choice in this dialog is the only place
+it is made. To change format, create a new template.
+</Callout>
+
+In the template list, markdown templates carry an **MD** badge next to their
+name so you can tell the two formats apart at a glance.
+
+## The starter content
+
+A new markdown template is not empty: it is seeded with a small starter that
+doubles as a syntax tour, so the first thing you see in the editor is what
+emailmd can do:
+
+```markdown
+---
+preheader: "A short preview line shown next to the subject"
+---
+
+# Hello {{firstName}}
+
+Write **markdown**, get responsive email HTML — no table soup.
+
+::: callout
+Use callout blocks for the part people must not miss.
+:::
+
+[Open your dashboard](https://app.tratto.email)
+
+::: footer
+Sent with [Tratto](https://tratto.email) · [Unsubscribe]({{unsubscribe_url}})
+:::
+```
+
+Each piece is there on purpose:
+
+- The **frontmatter** block sets `preheader` — the preview text inboxes show
+  next to the subject line.
+- `{{firstName}}` is a **variable**: it stays literal in the preview and is
+  filled in at send time (the test-send dialog asks you for a value).
+- The **`::: callout`** block renders as a highlighted card.
+- The plain **link** shows standard markdown working unchanged.
+- The **`::: footer`** block renders as the muted bottom band;
+  `{{unsubscribe_url}}` is substituted per recipient at delivery.
+
+Replace it all with your own content — it is just a starting point.
+
+## The editor: source left, preview right
+
+The editor is a split view:
+
+- **Left pane** — a monospace textarea with the markdown source.
+- **Right pane** — a live preview of the rendered email.
+
+The preview is rendered **server-side** by the same renderer that runs when
+the template is saved (the `render-preview` API endpoint), so what you see is
+exactly what will be sent — not an approximation. It refreshes about half a
+second after you stop typing. While a refresh is in flight you may briefly see
+"Rendering…"; if a refresh fails (e.g. you are offline), the editor keeps the
+last good preview and tells you it couldn't refresh.
+
+The preview is displayed inside a sandboxed frame, so nothing in it can run
+scripts or interact with the dashboard.
+
+### Raw HTML is escaped
+
+Markdown templates are rendered with HTML input disabled: any raw HTML you
+type (`<b>`, `<script>`, anything in angle brackets) shows up in the preview
+as **literal text**, not as markup — and it will render the same way in the
+sent email. That is a security feature, not a bug. If you need hand-written
+HTML, create an HTML-format template instead.
+
+### Render warnings
+
+If the render finds non-fatal problems — an unknown directive parameter, an
+invalid frontmatter value that fell back to the default, and so on — they
+appear as a **warnings banner** above the preview, one short message per
+issue. Warnings never block saving or sending: the ones present at the last
+save are stored with the template (`renderWarnings` in the API). Aim for an
+empty banner before publishing.
+
+## Saving, versions, test send
+
+Everything else works exactly as for HTML templates:
+
+- **Autosave** — the editor saves your draft periodically and on exit; the
+  header shows "Saving…" / "Saved". Each saved change re-renders the markdown
+  and pins fresh HTML.
+- **Versions** — every content change creates a new version. **Versions**
+  opens the history with a line-by-line diff (markdown diffs read especially
+  well) and lets you restore an older version.
+- **Send test** — opens a dialog asking for a recipient and a value for each
+  `{{variable}}` found in the source, then delivers a real email to your
+  inbox. What arrives is the rendered HTML with your test values substituted —
+  the definitive check before publishing.
+- **Publish** — makes the template usable in sends, campaigns and flows, same
+  as any template. See [Templates](/en/docs/templates).
+
+## Next Steps
+
+- **Markdown syntax reference:** [Markdown templates](/en/docs/emailmd-templates)
+- **Template lifecycle (publish, versions):** [Templates](/en/docs/templates)
+- **Use it in a campaign:** [Campaigns](/en/docs/campaigns)

@@ -5,6 +5,24 @@ description: Manage versioned email templates with variable substitution
 
 **Templates** are reusable email templates with placeholder variables. Instead of composing HTML in code every time, define a template once and send it hundreds of times with different variables.
 
+## Two Formats: HTML and Markdown
+
+Every template has a `format`, chosen at creation and **immutable afterwards**:
+
+- **`html`** (default) — you provide the email HTML yourself. Everything on
+  this page uses this format.
+- **`emailmd`** — you provide markdown in a `markdown` field; the server
+  renders it into responsive, email-safe HTML at save time and stores the
+  markdown as `source`. The `html` field of the response is the rendered
+  output and cannot be set directly (sending `html` for this format fails with
+  422). A stateless `POST /v1/templates/render-preview` endpoint renders
+  markdown without saving.
+
+Markdown templates get their own guide — syntax, security model, end-to-end
+flow: [Markdown Templates (emailmd)](/en/docs/emailmd-templates). Responses on
+this page omit the `format` field for brevity; templates created before
+formats existed are `html`.
+
 ## Create a Template
 
 Create a template with subject, text, and HTML with placeholders.
@@ -109,6 +127,11 @@ curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
 ```
 
 The new version (2) is in `draft` status. Publish it before using it in sends.
+
+For `emailmd` templates, update the `markdown` field instead — every change
+re-renders the HTML and increments the version the same way. `html` and
+`markdown` are mutually exclusive in a PATCH, and each one is only accepted by
+a template of the matching format (422 otherwise).
 
 ## Version History
 
@@ -250,5 +273,6 @@ Always test-send a template before publishing to catch rendering issues.
 ## Next Steps
 
 - **Send with a template?** See [Send Email](/en/docs/send-email)
+- **Write templates in markdown?** See [Markdown Templates](/en/docs/emailmd-templates)
 - **Use templates in campaigns?** Go to [Campaigns](/en/docs/campaigns)
 - **Use templates in flows?** See [Flows](/en/docs/flows)

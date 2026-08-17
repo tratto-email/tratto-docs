@@ -5,6 +5,24 @@ description: Gestisci template email versionati con sostituzione di variabili
 
 I **template** sono template email riutilizzabili con variabili placeholder. Invece di comporre HTML nel codice ogni volta, definisci un template una volta e invialo centinaia di volte con variabili diverse.
 
+## Due Formati: HTML e Markdown
+
+Ogni template ha un `format`, scelto alla creazione e **immutabile dopo**:
+
+- **`html`** (default) — l'HTML dell'email lo fornisci tu. Tutto in questa
+  pagina usa questo formato.
+- **`emailmd`** — fornisci markdown nel campo `markdown`; il server lo
+  renderizza in HTML responsive ed email-safe al salvataggio e memorizza il
+  markdown come `source`. Il campo `html` della risposta è l'output
+  renderizzato e non può essere impostato direttamente (inviare `html` per
+  questo formato fallisce con 422). Un endpoint stateless
+  `POST /v1/templates/render-preview` renderizza il markdown senza salvare.
+
+I template markdown hanno una guida dedicata — sintassi, modello di sicurezza,
+flusso end-to-end: [Template Markdown (emailmd)](/it/docs/emailmd-templates).
+Le risposte in questa pagina omettono il campo `format` per brevità; i
+template creati prima dell'esistenza dei formati sono `html`.
+
 ## Crea un Template
 
 Crea un template con subject, text e HTML con placeholder.
@@ -109,6 +127,11 @@ curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
 ```
 
 La nuova versione (2) è in status `draft`. Pubblicala prima di usarla negli invii.
+
+Per i template `emailmd`, aggiorna invece il campo `markdown` — ogni modifica
+ri-renderizza l'HTML e incrementa la versione allo stesso modo. `html` e
+`markdown` sono mutuamente esclusivi in una PATCH, e ciascuno è accettato solo
+da un template del formato corrispondente (422 altrimenti).
 
 ## Cronologia delle Versioni
 
@@ -250,5 +273,6 @@ Sempre fai un test-send di un template prima di pubblicarlo per catturare proble
 ## Prossimi Passi
 
 - **Inviare con un template?** Vedi [Invia Email](/it/docs/send-email)
+- **Scrivere template in markdown?** Vedi [Template Markdown](/it/docs/emailmd-templates)
 - **Usare i template nelle campagne?** Vai a [Campagne](/it/docs/campaigns)
 - **Usare i template nei flussi?** Vedi [Flussi](/it/docs/flows)

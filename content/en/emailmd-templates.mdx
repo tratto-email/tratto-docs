@@ -1,0 +1,301 @@
+---
+title: "Markdown Templates (emailmd)"
+description: Write email templates in markdown and let Tratto render responsive, email-safe HTML for you.
+---
+
+Tratto templates come in two formats: **`html`** (you provide the HTML) and
+**`emailmd`** (you write markdown, Tratto renders it into responsive,
+email-safe HTML — dark mode, Outlook fixes and a plain-text part included).
+The markdown dialect is [emailmd](https://www.emailmd.dev), an open-source
+markdown-to-email renderer.
+
+With an `emailmd` template:
+
+- The **markdown is the source of truth** — it lives in the template's `source`
+  field. The `html` field is derived from it by the server at save time and
+  cannot be set directly.
+- Rendering happens **when you save**, not when you send. The rendered HTML is
+  pinned to the template (and to each version), so delivery is byte-stable.
+- `{{variables}}` pass through the render untouched and are substituted **at
+  send time**, exactly like in HTML templates — including inside link URLs.
+
+Prefer clicking to reading? The dashboard has a full markdown editor with live
+preview — see [Markdown templates in the dashboard](/en/docs/emailmd-dashboard).
+
+## Syntax
+
+Everything below is standard markdown plus a few email-specific additions.
+Regular markdown works as you expect:
+
+```markdown
+## A heading
+
+Some **bold** text, a [link](https://example.com), and a list:
+
+- First item
+- Second item
+```
+
+### Frontmatter
+
+An optional YAML block at the top sets email metadata and theme options:
+
+```markdown
+---
+preheader: "Your order has shipped. Track it now"
+theme: auto
+---
+```
+
+- **`preheader`** — the preview text email clients show next to the subject in
+  the inbox list. It is embedded invisibly in the email body.
+- **`theme`** — `light` (default), `dark`, or `auto` (renders light but adapts
+  to readers whose mail client is in dark mode).
+
+Other emailmd frontmatter keys (`brand_color`, `button_color`, `font_family`,
+…) pass through to the render as well — see the
+[emailmd frontmatter reference](https://www.emailmd.dev/docs/frontmatter) for
+the full list. Invalid values never break the render; they surface as
+[render warnings](#render-warnings) instead.
+
+### Directives
+
+Directives are fenced blocks that control email layout:
+
+```markdown
+::: header
+# Acme Monthly
+:::
+
+## Product updates
+
+We shipped **three** improvements this month.
+
+::: callout
+Early-bird pricing ends **Friday**.
+:::
+
+::: footer
+Acme Inc — Milano
+[Unsubscribe]({{unsubscribe_url}})
+:::
+```
+
+- **`::: header`** — a band above the main content area, typically a logo or
+  brand name. Centered by default; accepts `left` / `right`.
+- **`::: callout`** — a highlighted card for the part people must not miss.
+  Space-separated parameters tune it: `center` / `left` / `right` for
+  alignment, `compact` / `spacious` for padding — e.g.
+  `::: callout center compact`.
+- **`::: footer`** — smaller, muted text at the bottom for legal text,
+  unsubscribe links and company information.
+
+### Buttons
+
+Turn any link into a call-to-action button with the `{button}` attribute:
+
+```markdown
+[Confirm email](https://app.example.com/confirm?token={{token}}){button}
+
+[Learn more](https://example.com){button.secondary}
+```
+
+### Variables
+
+Use `{{variableName}}` placeholders anywhere — headings, prose, link URLs.
+They survive the markdown render intact and are substituted when the email is
+**sent**, with the `variables` you pass to `POST /v1/emails` or a test send.
+This is why the saved template's HTML still contains the literal placeholders:
+that is by design.
+
+## Security: raw HTML is escaped
+
+Markdown templates are rendered with HTML input disabled. Anything that looks
+like raw HTML in the markdown (`<script>`, `<img onerror=…>`, any tag) is
+**escaped and shown as literal text**, and `javascript:` / `data:` links are
+never turned into links. If you need hand-written HTML, create a template with
+`format: "html"` instead — the two formats cannot be mixed in one template.
+
+## End-to-end: markdown → template → test send → campaign
+
+### 1. Create the template
+
+Send `format: "emailmd"` and a `markdown` field. Do **not** send `html` — for
+this format it is derived, and providing it fails validation (422).
+
+```bash
+curl -X POST https://api.tratto.email/v1/templates \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Welcome Email",
+    "format": "emailmd",
+    "markdown": "---\npreheader: Your account is ready\n---\n\n# Welcome, {{firstName}}!\n\nThanks for signing up.\n\n[Confirm email](https://app.example.com/confirm?token={{token}}){button}"
+  }'
+```
+
+**Response** (`201`):
+
+```json
+{
+  "data": {
+    "id": "tmpl_abc123",
+    "name": "Welcome Email",
+    "status": "draft",
+    "format": "emailmd",
+    "source": "---\npreheader: Your account is ready\n---\n\n# Welcome, {{firstName}}!...",
+    "html": "<!doctype html><html>...</html>",
+    "renderWarnings": [],
+    "version": 1,
+    "createdAt": "2026-08-17T12:00:00Z",
+    "updatedAt": "2026-08-17T12:00:00Z"
+  }
+}
+```
+
+`html` is the complete rendered document, ready to send. The render also
+produces a plain-text part that is delivered as the email's `text/plain`
+alternative. The markdown source is capped at 100,000 characters.
+
+### 2. Preview without saving
+
+`POST /v1/templates/render-preview` renders markdown statelessly — it is what
+powers the dashboard's live preview:
+
+```bash
+curl -X POST https://api.tratto.email/v1/templates/render-preview \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"markdown": "# Hello {{firstName}}"}'
+```
+
+**Response** (`200`): `{ "data": { "html": "...", "text": "...", "warnings": [] } }`
+
+It requires the same `templates:write` permission as saving, and has a
+tighter rate limit of **60 requests per minute** (the render is CPU-bound).
+
+### 3. Iterate: update re-renders
+
+`PATCH` with a new `markdown` re-renders and creates a new version. Sending
+`html` to an `emailmd` template — or `markdown` to an `html` template — fails
+with 422. **The format itself is fixed at creation and can never be changed.**
+
+```bash
+curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"markdown": "# Welcome back, {{firstName}}!"}'
+```
+
+### 4. Test send, publish, send
+
+From here on, an `emailmd` template behaves exactly like an HTML one:
+
+```bash
+# Test send to your own inbox, with sample variable values
+curl -X POST https://api.tratto.email/v1/templates/tmpl_abc123/test-send \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"to": "you@example.com", "variables": {"firstName": "Alice", "token": "TEST"}}'
+
+# Publish
+curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"status": "published"}'
+
+# Send a transactional email with it
+curl -X POST https://api.tratto.email/v1/emails \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "hello@yourdomain.com",
+    "to": "user@example.com",
+    "subject": "Welcome!",
+    "templateId": "tmpl_abc123",
+    "variables": {"firstName": "Alice", "token": "abc123"}
+  }'
+```
+
+Campaigns work the same way: pick the template in the
+[campaign builder](/en/docs/campaigns) and the campaign uses the pinned HTML —
+click tracking, open pixel and the unsubscribe footer are applied at delivery
+exactly as for HTML templates.
+
+## Sending markdown without a template
+
+`POST /v1/emails` also accepts a one-off `markdown` body — no template
+involved. See [Send Email](/en/docs/send-email#send-with-markdown).
+
+## Render warnings
+
+The render never fails on imperfect input — problems degrade gracefully and
+are reported as warnings. On a saved template they are stored in
+`renderWarnings`; on `render-preview` they come back in `warnings`. Treat them
+as a checklist, not as errors: the template still saved and still sends.
+
+Only two situations reject the request outright, both with
+`VALIDATION_ERROR` (422):
+
+- **Empty markdown** — `"markdown must not be empty."`
+- **Conflicting fields** — `markdown` together with `html`, on templates or on
+  `POST /v1/emails`.
+
+See [Error Codes](/en/docs/error-codes#validation-errors) for the payloads.
+
+## Using the SDKs
+
+<Callout type="info">
+Markdown support ships in SDK version **1.1.0**, which is not published yet —
+the examples below are a preview of that release. On the current 1.0.0 SDKs,
+use the REST API directly as shown above.
+</Callout>
+
+**Node.js (`@tratto/email` — coming in 1.1.0)**
+
+```typescript
+// One-off markdown email — no template
+const email = await client.emails.send({
+  from: 'hello@yourdomain.com',
+  to: 'user@example.com',
+  subject: 'Welcome!',
+  markdown: '# Welcome, {{firstName}}!',
+  variables: { firstName: 'Alice' },
+});
+
+// Create an emailmd template
+const template = await client.templates.create({
+  name: 'Welcome Email',
+  markdown: '# Welcome, {{firstName}}!',
+});
+console.log(template.format);          // 'emailmd'
+console.log(template.renderWarnings);  // []
+```
+
+**Python (`tratto-email` — coming in 1.1.0)**
+
+```python
+from tratto import SendEmailOptions, CreateTemplateOptions
+
+# One-off markdown email — no template
+client.emails.send(SendEmailOptions(
+    from_='hello@yourdomain.com',
+    to='user@example.com',
+    subject='Welcome!',
+    markdown='# Welcome, {{firstName}}!',
+    variables={'firstName': 'Alice'},
+))
+
+# Create an emailmd template
+template = client.templates.create(CreateTemplateOptions(
+    name='Welcome Email',
+    markdown='# Welcome, {{firstName}}!',
+))
+```
+
+## Next Steps
+
+- **Prefer the dashboard?** See [Markdown templates in the dashboard](/en/docs/emailmd-dashboard)
+- **Template basics** (publish, versions, test send): [Templates](/en/docs/templates)
+- **Send one-off markdown:** [Send Email](/en/docs/send-email#send-with-markdown)
+- **Use the template in a campaign:** [Campaigns](/en/docs/campaigns)

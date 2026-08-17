@@ -51,6 +51,32 @@ result = client.emails.send(SendEmailOptions(
 ))
 ```
 
+## Send with Markdown
+
+<Callout type="info">
+The `markdown` field ships in SDK version **1.1.0**, which is not published
+yet. On the current 1.0.0 release these examples fail — until then, call the
+[REST API directly](/en/docs/send-email#send-with-markdown).
+</Callout>
+
+Send [emailmd markdown](/en/docs/emailmd-templates) and let the server render
+responsive email HTML — `markdown` is mutually exclusive with `html`:
+
+```python
+# Coming in 1.1.0
+result = client.emails.send(SendEmailOptions(
+    from_='hello@yourdomain.com',
+    to='user@example.com',
+    subject='Welcome!',
+    markdown='# Welcome, {{firstName}}!',
+    variables={'firstName': 'Alice'},
+))
+```
+
+The same release adds `markdown` to `templates.create` / `templates.update`
+(creating `format: 'emailmd'` templates), with `format`, `source` and
+`renderWarnings` in the template responses.
+
 ## Schedule Email
 
 ```python
