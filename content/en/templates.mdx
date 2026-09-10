@@ -297,21 +297,32 @@ above.
 ### 1. Use Semantic Variable Names
 
 ✅ `{{firstName}}`, `{{orderID}}`, `{{confirmationCode}}`  
-❌ `{{x}}`, `{{var1}}`, `{{v`
+❌ `{{x}}`, `{{var1}}`, `{{v}}`
 
 ### 2. Always Pass Every Variable
 
-A missing variable does **not** fail the send. The placeholder is left in the
-message exactly as written, and the recipient reads
-`Hello {{firstName}}, welcome to {{companyName}}!` in their inbox.
+A missing variable does **not** fail the send: the placeholder is replaced
+with an **empty string**. This template
 
 ```html
 <p>Hello {{firstName}}, welcome to {{companyName}}!</p>
 ```
 
-Nothing on the server will catch this for you, so pass every placeholder the
-template uses on every send — an empty string is a better default than a
-visible `{{firstName}}`.
+sent without `firstName` or `companyName` arrives as `Hello , welcome to !` —
+the punctuation is left stranded, but the recipient never sees the name of
+your variable.
+
+This applies to the subject and the body, in HTML and in emailmd, on
+transactional sends and campaigns alike. `null` substitutes to empty too: the
+strings `null` and `undefined` never reach an inbox.
+
+None of which is an invitation to pass fewer variables. A sentence with a hole
+in it is still a wrong sentence, and nothing flags it at send time — so pass
+every placeholder the template uses. What the dashboard does check is a
+different and sneakier case: write `{{firstname}}` where the field is called
+`firstName` and the typo is flagged while you are still in draft (the
+`unknown_variable` advisory), because a variable that does not exist is a
+variable that will always substitute to nothing.
 
 ### 3. Use Templates for Bulk Sends
 
