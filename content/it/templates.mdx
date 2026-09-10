@@ -317,13 +317,21 @@ Vale per l'oggetto e per il corpo, in HTML e in emailmd, sia sugli invii
 transazionali che sulle campagne. Anche `null` sostituisce vuoto: non
 comparirà mai la stringa `null` o `undefined` in un'email.
 
-Non è un invito a passare meno variabili. Una frase con un buco resta una
-frase sbagliata, e all'invio non te lo segnala nessuno — quindi passa sempre
-tutti i placeholder che il template usa. Quello che la dashboard controlla è
-un caso diverso e più subdolo: se scrivi `{{firstname}}` dove il campo si
-chiama `firstName`, il refuso viene segnalato in bozza (avviso
-`unknown_variable`), perché una variabile che non esiste non verrà mai
-sostituita da niente.
+Non è un invito a passare meno variabili — al contrario. Una frase con un
+buco resta una frase sbagliata, e ora **niente te lo segnala**: né all'invio,
+né prima. Con il placeholder visibile un refuso come `{{firstname}}` al posto
+di `{{firstName}}` almeno si notava nell'anteprima; con la sostituzione vuota
+sparisce senza lasciare traccia.
+
+Il controllo automatico esiste solo per le **campagne**, dove Tratto conosce
+l'insieme delle variabili disponibili (`email`, `firstName`, `lastName`,
+`unsubscribe_url`) e può quindi segnalare in bozza quelle che non ne fanno
+parte. Per un template non è possibile: le variabili arrivano da chi chiama
+`POST /v1/emails`, quindi non esiste un insieme contro cui verificarle e ogni
+controllo sarebbe un'ipotesi.
+
+Su un template, quindi, l'unica difesa è passare a ogni invio tutti i
+placeholder che il template usa.
 
 ### 3. Usa Template per Invii Bulk
 
