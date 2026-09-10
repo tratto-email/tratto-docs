@@ -1,9 +1,13 @@
 ---
 title: Node.js / TypeScript SDK
 description: SDK ufficiale Node.js per Tratto Email API
+updatedAt: 2026-09-10
 ---
 
 SDK ufficiale per Node.js e TypeScript: **`@tratto/email`**
+
+Ogni esempio di questa pagina è scritto sulla release pubblicata **1.1.0** e
+compila contro di essa.
 
 ## Installazione
 
@@ -13,18 +17,30 @@ npm install @tratto/email
 
 ## Inizializzazione
 
-```typescript
-import { TrattoClient } from '@tratto/email';
+La classe esportata è `Tratto`, e la chiave API è un **argomento posizionale**,
+non un oggetto di opzioni:
 
-const client = new TrattoClient({
-  apiKey: process.env.TRATTO_API_KEY,
+```typescript
+import { Tratto } from '@tratto/email';
+
+const tratto = new Tratto(process.env.TRATTO_API_KEY!);
+```
+
+Un secondo argomento facoltativo sovrascrive la base URL:
+
+```typescript
+const tratto = new Tratto(process.env.TRATTO_API_KEY!, {
+  baseUrl: 'https://api.tratto.email',
 });
 ```
 
 ## Invia Email
 
+`emails.send` risolve a `{ id }`, nient'altro. Per leggere lo status, rileggi
+l'email.
+
 ```typescript
-const email = await client.emails.send({
+const { id } = await tratto.emails.send({
   from: 'hello@tuodominio.it',
   to: 'user@example.com',
   subject: 'Ciao!',
@@ -32,15 +48,25 @@ const email = await client.emails.send({
   html: '<h1>Benvenuto!</h1>',
 });
 
-console.log(email.id); // email_abc123
+console.log(id); // email_abc123
+```
+
+La chiave di idempotenza è il secondo argomento:
+
+```typescript
+await tratto.emails.send(
+  { from: 'hello@tuodominio.it', to: 'user@example.com', subject: 'Ciao', text: 'Ciao' },
+  'ordine-4711-conferma',
+);
 ```
 
 ## Invia con Template
 
 ```typescript
-const email = await client.emails.send({
+const { id } = await tratto.emails.send({
   from: 'hello@tuodominio.it',
   to: 'user@example.com',
+  subject: 'Benvenuta, Alice!',
   templateId: 'tmpl_abc123',
   variables: {
     firstName: 'Alice',
@@ -49,21 +75,19 @@ const email = await client.emails.send({
 });
 ```
 
-## Invia con Markdown
-
 <Callout type="info">
-Il campo `markdown` arriva nella versione **1.1.0** dell'SDK, non ancora
-pubblicata. Sulla release 1.0.0 attuale questi esempi non compilano — nel
-frattempo usa direttamente la [REST API](/it/docs/send-email#invia-con-markdown).
+`subject` è obbligatorio su ogni invio, con o senza template. Un template non
+ha un oggetto proprio — vedi [Template](/it/docs/templates).
 </Callout>
+
+## Invia con Markdown
 
 Invia [markdown emailmd](/it/docs/emailmd-templates) e lascia che il server
 renderizzi HTML responsive per email — `markdown` è mutuamente esclusivo con
 `html`:
 
 ```typescript
-// In arrivo nella 1.1.0
-const email = await client.emails.send({
+const { id } = await tratto.emails.send({
   from: 'hello@tuodominio.it',
   to: 'user@example.com',
   subject: 'Benvenuto!',
@@ -72,65 +96,219 @@ const email = await client.emails.send({
 });
 ```
 
-La stessa release aggiunge `markdown` a `templates.create` /
-`templates.update` (creando template `format: 'emailmd'`) ed espone `format`,
-`source` e `renderWarnings` sul tipo di risposta `Template`.
+Anche `templates.create` e `templates.update` accettano `markdown`, e il tipo
+di risposta `Template` espone `format`, `source` e `renderWarnings`.
 
-## Programma Email
+## Programma un'Email
 
 ```typescript
-const email = await client.emails.send({
+const { id } = await tratto.emails.send({
   from: 'hello@tuodominio.it',
   to: 'user@example.com',
   subject: 'Promemoria',
   text: 'Ci vediamo domani!',
-  scheduledAt: new Date('2025-07-01T09:00:00Z'),
+  scheduledAt: new Date('2026-10-01T09:00:00Z'),
 });
 ```
 
-## Ottieni Status Email
+Annullare o riprogrammare un'email programmata si fa via
+[HTTP](/it/docs/sdk-http): non esiste ancora un metodo SDK — vedi
+[Cosa la 1.1.0 non copre](#cosa-la-110-non-copre-ancora).
+
+## Leggi lo Status di un'Email
 
 ```typescript
-const email = await client.emails.get('email_abc123');
+const email = await tratto.emails.get('email_abc123');
 console.log(email.status); // 'delivered'
+console.log(email.events); // timeline completa
 ```
 
-## Crea Dominio
+## Elenca le Email
 
 ```typescript
-const domain = await client.domains.create({
-  domain: 'hello.tuodominio.it',
+const emails = await tratto.emails.list({
+  limit: 50,
+  after: 'cursor_value', // per la paginazione
+});
+
+emails.data.forEach((email) => {
+  console.log(`${email.id}: ${email.status}`);
 });
 ```
 
-## Verifica Dominio
+## Aggiungi un Dominio
+
+Il metodo è `add` e prende il dominio come **stringa**:
 
 ```typescript
-const verified = await client.domains.verify('dom_abc123');
-console.log(verified.status); // 'verified'
+const domain = await tratto.domains.add('hello.tuodominio.it');
+
+// `records` è un array di record DNS, non un oggetto con una chiave per tipo
+for (const record of domain.records) {
+  console.log(`${record.type} ${record.host} → ${record.value}`);
+}
 ```
 
-## Crea Campagna
+## Verifica un Dominio
 
 ```typescript
-const campaign = await client.campaigns.create({
+const verified = await tratto.domains.verify('dom_abc123');
+console.log(verified.status); // 'pending' | 'verified' | 'failed'
+```
+
+## Crea un Contatto
+
+Le proprietà personalizzate stanno in `customFields`. Il campo `metadata` non
+esiste:
+
+```typescript
+const { id } = await tratto.contacts.create({
+  email: 'user@example.com',
+  firstName: 'Alice',
+  lastName: 'Smith',
+  tags: ['vip', 'newsletter'],
+  customFields: { plan: 'pro' },
+});
+```
+
+## Crea una Campagna
+
+`CreateCampaignParams` nella 1.1.0 richiede `templateId`, `audienceId`,
+`fromName`, `fromEmail` e `subjectA`. `create` risolve a `{ id }`:
+
+```typescript
+const { id } = await tratto.campaigns.create({
   name: 'Saldi Q3',
   templateId: 'tmpl_abc123',
   audienceId: 'aud_abc123',
+  fromName: 'Acme',
+  fromEmail: 'hello@tuodominio.it',
+  subjectA: 'I saldi estivi iniziano oggi',
+  subjectB: 'Saldi estivi: 30% di sconto, solo oggi', // oggetto A/B, facoltativo
+});
+
+const campaign = await tratto.campaigns.get(id);
+console.log(campaign.status); // 'draft'
+```
+
+<Callout type="info">
+L'API è più permissiva dei tipi della 1.1.0: accetta `html` inline al posto di
+un `templateId`, e interpreta un `audienceId` omesso come «tutti i contatti del
+workspace». Nessuna delle due cose è esprimibile con l'SDK: per quelle usa
+[HTTP](/it/docs/sdk-http).
+</Callout>
+
+## Invia una Campagna
+
+```typescript
+const sent = await tratto.campaigns.send('camp_xyz789');
+console.log(sent.status); // 'sending'
+```
+
+Per programmarla, passa una data:
+
+```typescript
+await tratto.campaigns.send('camp_xyz789', {
+  scheduledAt: new Date('2026-10-01T09:00:00Z'),
 });
 ```
 
-## Registra Webhook
+## Statistiche di una Campagna
+
+Il metodo è `getStats`. **I tassi sono percentuali**: `50` significa 50%, non
+`0.5` — la stessa scala di [Analytics](/it/docs/analytics).
 
 ```typescript
-const webhook = await client.webhooks.create({
+const stats = await tratto.campaigns.getStats('camp_xyz789');
+
+console.log(stats.stats.delivered);   // 4950
+console.log(stats.rates.openRate);    // 50 → 50%
+console.log(stats.rates.deliveryRate) // 99 → 99%
+```
+
+<Callout type="warn">
+Un alert scritto come `rates.deliveryRate < 0.95` non scatterà mai. Il
+confronto giusto è `< 95`.
+</Callout>
+
+## Registra un Webhook
+
+```typescript
+const webhook = await tratto.webhooks.create({
   url: 'https://tuoapi.com/webhooks/tratto',
   events: ['sent', 'delivered', 'opened', 'clicked', 'bounced'],
 });
+
+console.log(webhook.secret); // whsec_xyz789...
 ```
+
+## Analytics
+
+`AnalyticsPeriod` nella 1.1.0 è `'7d' | '30d' | '90d'`:
+
+```typescript
+const summary = await tratto.analytics.getSummary('30d');
+console.log(summary.delivered);
+```
+
+L'API accetta anche `180d` e `1y`, che però non sono ancora nel tipo dell'SDK:
+per quelli usa [HTTP](/it/docs/sdk-http).
+
+## Gestione degli Errori
+
+`TrattoError` espone `code`, `statusCode` e `docs`:
+
+```typescript
+import { Tratto, TrattoError } from '@tratto/email';
+
+const tratto = new Tratto(process.env.TRATTO_API_KEY!);
+
+try {
+  await tratto.emails.send({
+    from: 'hello@nonverificato.it', // non verificato
+    to: 'user@example.com',
+    subject: 'Ciao',
+    text: 'Test',
+  });
+} catch (error) {
+  if (error instanceof TrattoError) {
+    // Il messaggio nomina il dominio non verificato.
+    console.error(error.code, error.statusCode, error.message);
+  }
+}
+```
+
+Vedi [Codici di Errore](/it/docs/error-codes) per l'elenco completo.
+
+## Cosa la 1.1.0 non copre ancora
+
+Questi endpoint esistono nell'API e **non hanno un metodo SDK** nella 1.1.0.
+Chiamali via [HTTP](/it/docs/sdk-http) finché l'SDK non li recupera:
+
+| Funzionalità | HTTP |
+|---|---|
+| Annullare un'email programmata | `DELETE /v1/emails/{id}` |
+| Riprogrammare un'email | `PATCH /v1/emails/{id}` |
+| Leggere un singolo contatto | `GET /v1/contacts/{id}` |
+| Modificare / eliminare una campagna | `PATCH`, `DELETE /v1/campaigns/{id}` |
+| Togliere la programmazione a una campagna | `POST /v1/campaigns/{id}/unschedule` |
+| Click sui link di una campagna | `GET /v1/campaigns/{id}/links` |
+| Modificare / eliminare / ricalcolare un'audience | `PATCH`, `DELETE`, `POST …/refresh` su `/v1/audiences/{id}` |
+| Elencare o rimuovere i contatti di un'audience | `GET`, `DELETE` su `/v1/audiences/{id}/contacts` |
+| Anteprima di rendering del markdown | `POST /v1/templates/render-preview` |
+| Gestione delle chiavi API | `/v1/api-keys` |
+| Logo del marchio di workspace | `PUT`, `DELETE /v1/workspace/brand/logo` |
+
+Mancano dai tipi della 1.1.0 anche alcuni campi di risposta più recenti:
+`Workspace` non ha `limits` né `brand`, `Contact` non ha `trackingOptOut`,
+`ListContactsParams` non ha `q`, e `CampaignStats` non ha `skipped`,
+`untracked` né `variants`. L'API li restituisce; i tipi non li descrivono
+ancora.
 
 ---
 
-**Links:**
-- npm: https://www.npmjs.com/package/@tratto/email
-- GitHub: https://github.com/tratto-email/tratto-node
+## Link
+
+- **npm:** https://www.npmjs.com/package/@tratto/email
+- **GitHub:** https://github.com/tratto-email/tratto-node
+- **API Docs:** [Riferimento API](/it/docs/api-reference)

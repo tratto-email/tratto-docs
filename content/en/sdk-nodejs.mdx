@@ -1,9 +1,13 @@
 ---
 title: Node.js / TypeScript SDK
 description: Official Node.js SDK for the Tratto Email API
+updatedAt: 2026-09-10
 ---
 
 The official SDK for Node.js and TypeScript: **`@tratto/email`**
+
+Every example on this page is written against the published **1.1.0** release
+and typechecks against it.
 
 ## Installation
 
@@ -13,18 +17,30 @@ npm install @tratto/email
 
 ## Initialization
 
-```typescript
-import { TrattoClient } from '@tratto/email';
+The exported class is `Tratto`, and the API key is a **positional argument**,
+not an options object:
 
-const client = new TrattoClient({
-  apiKey: process.env.TRATTO_API_KEY,
+```typescript
+import { Tratto } from '@tratto/email';
+
+const tratto = new Tratto(process.env.TRATTO_API_KEY!);
+```
+
+An optional second argument overrides the base URL:
+
+```typescript
+const tratto = new Tratto(process.env.TRATTO_API_KEY!, {
+  baseUrl: 'https://api.tratto.email',
 });
 ```
 
 ## Send Email
 
+`emails.send` resolves to `{ id }` — nothing else. To read the status, fetch
+the email back.
+
 ```typescript
-const email = await client.emails.send({
+const { id } = await tratto.emails.send({
   from: 'hello@yourdomain.com',
   to: 'user@example.com',
   subject: 'Hello!',
@@ -32,16 +48,25 @@ const email = await client.emails.send({
   html: '<h1>Welcome!</h1>',
 });
 
-console.log(email.id); // email_abc123
-console.log(email.status); // 'queued'
+console.log(id); // email_abc123
+```
+
+Pass an idempotency key as the second argument:
+
+```typescript
+await tratto.emails.send(
+  { from: 'hello@yourdomain.com', to: 'user@example.com', subject: 'Hi', text: 'Hi' },
+  'order-4711-confirmation',
+);
 ```
 
 ## Send with Template
 
 ```typescript
-const email = await client.emails.send({
+const { id } = await tratto.emails.send({
   from: 'hello@yourdomain.com',
   to: 'user@example.com',
+  subject: 'Welcome, Alice!',
   templateId: 'tmpl_abc123',
   variables: {
     firstName: 'Alice',
@@ -50,20 +75,18 @@ const email = await client.emails.send({
 });
 ```
 
-## Send with Markdown
-
 <Callout type="info">
-The `markdown` field ships in SDK version **1.1.0**, which is not published
-yet. On the current 1.0.0 release these examples do not compile — until then,
-call the [REST API directly](/en/docs/send-email#send-with-markdown).
+`subject` is required on every send, template or not. A template carries no
+subject of its own — see [Templates](/en/docs/templates).
 </Callout>
+
+## Send with Markdown
 
 Send [emailmd markdown](/en/docs/emailmd-templates) and let the server render
 responsive email HTML — `markdown` is mutually exclusive with `html`:
 
 ```typescript
-// Coming in 1.1.0
-const email = await client.emails.send({
+const { id } = await tratto.emails.send({
   from: 'hello@yourdomain.com',
   to: 'user@example.com',
   subject: 'Welcome!',
@@ -72,102 +95,144 @@ const email = await client.emails.send({
 });
 ```
 
-The same release adds `markdown` to `templates.create` / `templates.update`
-(creating `format: 'emailmd'` templates) and exposes `format`, `source` and
-`renderWarnings` on the `Template` response type.
+`templates.create` and `templates.update` take `markdown` too, and the
+`Template` response type carries `format`, `source` and `renderWarnings`.
 
 ## Schedule Email
 
 ```typescript
-const email = await client.emails.send({
+const { id } = await tratto.emails.send({
   from: 'hello@yourdomain.com',
   to: 'user@example.com',
   subject: 'Reminder',
   text: 'See you tomorrow!',
-  scheduledAt: new Date('2025-07-01T09:00:00Z'),
+  scheduledAt: new Date('2026-10-01T09:00:00Z'),
 });
 ```
+
+Canceling or rescheduling a scheduled email is available over
+[HTTP](/en/docs/sdk-http) but has no SDK method yet — see
+[What 1.1.0 does not cover](#what-110-does-not-cover-yet).
 
 ## Get Email Status
 
 ```typescript
-const email = await client.emails.get('email_abc123');
+const email = await tratto.emails.get('email_abc123');
 console.log(email.status); // 'delivered'
+console.log(email.events); // full timeline
 ```
 
 ## List Emails
 
 ```typescript
-const emails = await client.emails.list({
+const emails = await tratto.emails.list({
   limit: 50,
   after: 'cursor_value', // for pagination
 });
 
-emails.data.forEach(email => {
+emails.data.forEach((email) => {
   console.log(`${email.id}: ${email.status}`);
 });
 ```
 
-## Create Domain
+## Add a Domain
+
+The method is `add`, and it takes the domain as a **string**:
 
 ```typescript
-const domain = await client.domains.create({
-  domain: 'hello.yourdomain.com',
-});
+const domain = await tratto.domains.add('hello.yourdomain.com');
 
-console.log(domain.records.spf); // "v=spf1 include:..."
+// `records` is an array of DNS records, not an object keyed by type
+for (const record of domain.records) {
+  console.log(`${record.type} ${record.host} → ${record.value}`);
+}
 ```
 
 ## Verify Domain
 
 ```typescript
-const verified = await client.domains.verify('dom_abc123');
-console.log(verified.status); // 'verified' or 'pending_verification'
+const verified = await tratto.domains.verify('dom_abc123');
+console.log(verified.status); // 'pending' | 'verified' | 'failed'
 ```
 
 ## Create Contact
 
+Custom properties live in `customFields`. There is no `metadata` field:
+
 ```typescript
-const contact = await client.contacts.create({
+const { id } = await tratto.contacts.create({
   email: 'user@example.com',
   firstName: 'Alice',
   lastName: 'Smith',
   tags: ['vip', 'newsletter'],
-  metadata: { plan: 'pro' },
+  customFields: { plan: 'pro' },
 });
 ```
 
 ## Create Campaign
 
+`CreateCampaignParams` in 1.1.0 requires `templateId`, `audienceId`,
+`fromName`, `fromEmail` and `subjectA`. `create` resolves to `{ id }`:
+
 ```typescript
-const campaign = await client.campaigns.create({
+const { id } = await tratto.campaigns.create({
   name: 'Q3 Sale',
   templateId: 'tmpl_abc123',
   audienceId: 'aud_abc123',
+  fromName: 'Acme',
+  fromEmail: 'hello@yourdomain.com',
+  subjectA: 'Our summer sale starts today',
+  subjectB: 'Summer sale: 30% off, today only', // optional A/B subject
 });
 
+const campaign = await tratto.campaigns.get(id);
 console.log(campaign.status); // 'draft'
 ```
+
+<Callout type="info">
+The API itself is more permissive than the 1.1.0 types: it accepts inline
+`html` instead of a `templateId`, and treats an omitted `audienceId` as "every
+contact in the workspace". Neither is expressible through the SDK yet — use
+[HTTP](/en/docs/sdk-http) for those.
+</Callout>
 
 ## Send Campaign
 
 ```typescript
-const sent = await client.campaigns.send('camp_xyz789');
+const sent = await tratto.campaigns.send('camp_xyz789');
 console.log(sent.status); // 'sending'
+```
+
+Schedule it instead by passing a date:
+
+```typescript
+await tratto.campaigns.send('camp_xyz789', {
+  scheduledAt: new Date('2026-10-01T09:00:00Z'),
+});
 ```
 
 ## Get Campaign Stats
 
+The method is `getStats`. **Rates are percentages**: `50` means 50%, not
+`0.5` — the same scale as [Analytics](/en/docs/analytics).
+
 ```typescript
-const stats = await client.campaigns.stats('camp_xyz789');
-console.log(stats.delivered); // 4950
-console.log(stats.rates.openRate); // 0.50
+const stats = await tratto.campaigns.getStats('camp_xyz789');
+
+console.log(stats.stats.delivered);   // 4950
+console.log(stats.rates.openRate);    // 50 → 50%
+console.log(stats.rates.deliveryRate) // 99 → 99%
 ```
+
+<Callout type="warn">
+An alert written as `rates.deliveryRate < 0.95` will never fire. The
+comparison you want is `< 95`.
+</Callout>
 
 ## Register Webhook
 
 ```typescript
-const webhook = await client.webhooks.create({
+const webhook = await tratto.webhooks.create({
   url: 'https://yourapi.com/webhooks/tratto',
   events: ['sent', 'delivered', 'opened', 'clicked', 'bounced'],
 });
@@ -175,39 +240,68 @@ const webhook = await client.webhooks.create({
 console.log(webhook.secret); // whsec_xyz789...
 ```
 
-## Error Handling
+## Analytics
+
+`AnalyticsPeriod` in 1.1.0 is `'7d' | '30d' | '90d'`:
 
 ```typescript
+const summary = await tratto.analytics.getSummary('30d');
+console.log(summary.delivered);
+```
+
+The API also accepts `180d` and `1y`; those two are not in the SDK type yet,
+so reach for [HTTP](/en/docs/sdk-http) if you need them.
+
+## Error Handling
+
+`TrattoError` carries `code`, `statusCode` and `docs`:
+
+```typescript
+import { Tratto, TrattoError } from '@tratto/email';
+
+const tratto = new Tratto(process.env.TRATTO_API_KEY!);
+
 try {
-  const email = await client.emails.send({
+  await tratto.emails.send({
     from: 'hello@unverified.com', // not verified
     to: 'user@example.com',
     subject: 'Hello',
     text: 'Test',
   });
 } catch (error) {
-  if (error.code === 'FORBIDDEN') {
+  if (error instanceof TrattoError) {
     // The message names the domain that is not verified.
-    console.error(error.message);
+    console.error(error.code, error.statusCode, error.message);
   }
 }
 ```
 
-## Async/Await
+See [Error Codes](/en/docs/error-codes) for the full list.
 
-All SDK methods are async:
+## What 1.1.0 does not cover yet
 
-```typescript
-async function sendWelcome() {
-  const email = await client.emails.send({
-    from: 'hello@yourdomain.com',
-    to: 'user@example.com',
-    subject: 'Welcome!',
-    text: 'Thanks for signing up',
-  });
-  return email;
-}
-```
+These endpoints exist in the API and have **no SDK method** in 1.1.0. Call
+them over [HTTP](/en/docs/sdk-http) until the SDK catches up:
+
+| Capability | HTTP |
+|---|---|
+| Cancel a scheduled email | `DELETE /v1/emails/{id}` |
+| Reschedule an email | `PATCH /v1/emails/{id}` |
+| Get one contact | `GET /v1/contacts/{id}` |
+| Update / delete a campaign | `PATCH`, `DELETE /v1/campaigns/{id}` |
+| Unschedule a campaign | `POST /v1/campaigns/{id}/unschedule` |
+| Campaign link clicks | `GET /v1/campaigns/{id}/links` |
+| Update / delete / refresh an audience | `PATCH`, `DELETE`, `POST …/refresh` on `/v1/audiences/{id}` |
+| List or remove audience contacts | `GET`, `DELETE` on `/v1/audiences/{id}/contacts` |
+| Render a markdown preview | `POST /v1/templates/render-preview` |
+| API key management | `/v1/api-keys` |
+| Workspace brand logo | `PUT`, `DELETE /v1/workspace/brand/logo` |
+
+Some newer response fields are likewise absent from the 1.1.0 types:
+`Workspace` has no `limits` or `brand`, `Contact` has no `trackingOptOut`,
+`ListContactsParams` has no `q`, and `CampaignStats` has no `skipped`,
+`untracked` or `variants`. The API returns them; the types do not describe
+them yet.
 
 ---
 

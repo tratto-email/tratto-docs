@@ -162,7 +162,7 @@ print(sent['data']['status'])  # 'sending'
 ```python
 stats = client.campaigns.get_stats('camp_xyz789')
 print(stats['data']['stats']['delivered'])   # 4950
-print(stats['data']['rates']['openRate'])    # 0.50
+print(stats['data']['rates']['openRate'])    # 50 → 50%, rates are percentages
 ```
 
 ## Register Webhook
