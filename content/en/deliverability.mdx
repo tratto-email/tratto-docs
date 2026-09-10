@@ -87,9 +87,11 @@ curl "https://api.tratto.email/v1/analytics/summary?period=7d" \
 
 High rates damage sender reputation. Take action immediately.
 
-## 8. IP Warming
+## 8. Ramping Volume
 
-If using a dedicated IP, warm it up gradually. See [IP Warming](/en/docs/ip-warming).
+Tratto sends over a shared pool; there are no dedicated IPs. Increase new
+volume in steps anyway — see
+[Ramping Up Sending Volume](/en/docs/ip-warming).
 
 ## Deliverability Checklist
 
@@ -100,8 +102,9 @@ If using a dedicated IP, warm it up gradually. See [IP Warming](/en/docs/ip-warm
 - [ ] Sending frequency appropriate
 - [ ] Content avoids spam triggers
 - [ ] Bounce & complaint rates monitored
-- [ ] IP warmed (if dedicated)
+- [ ] New volume ramped in steps, not in one jump
 
 ---
 
-See [IP Warming](/en/docs/ip-warming) for warming new IPs.
+See [Ramping Up Sending Volume](/en/docs/ip-warming) for how to increase
+volume safely.
