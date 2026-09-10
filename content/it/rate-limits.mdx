@@ -3,9 +3,23 @@ title: Rate Limit e Quote
 description: Comprendi i rate limit dell'API e pianifica la tua integrazione
 ---
 
-## Rate Limit Globale
+## Due Rate Limit
 
-**500 richieste al minuto** per tenant. Il limite vale per tutti gli endpoint dell'API considerati insieme.
+Ogni richiesta viene contata due volte, su due limiti indipendenti. Entrambi
+restituiscono `429 RATE_LIMITED`.
+
+| Limite | Conteggiato per | Si applica a |
+|---|---|---|
+| **100 richieste / secondo** | **chiave API** | ogni endpoint autenticato |
+| **500 richieste / minuto** | **IP client** | ogni endpoint, autenticato o no |
+
+Il limite per chiave è quello che un'integrazione incontra per primo: un ciclo
+che invia senza pause tocca le 100/s molto prima delle 500/min. Il messaggio
+d'errore nomina il limite — `Rate limit exceeded: 100 requests/second per API key.`
+
+Il limite al minuto è **per IP client, non per tenant**. Due workspace che
+chiamano dallo stesso IP di uscita lo condividono; un workspace che chiama da
+più IP ha un'allowance per ciascun IP.
 
 ## Header di Rate Limit
 
@@ -20,6 +34,13 @@ x-ratelimit-reset: 47
 `x-ratelimit-reset` è il numero di **secondi rimanenti** nella finestra corrente,
 non un timestamp Unix. In caso di 429 la risposta include anche l'header
 `retry-after`, in secondi.
+
+<Callout type="info">
+Questi header descrivono soltanto il limite di **500/minuto per IP**. Il limite
+per chiave, 100/secondo, non vi compare: puoi essere a
+`x-ratelimit-remaining: 400` e ricevere comunque un 429 per aver mandato 100
+richieste nello stesso secondo.
+</Callout>
 
 ## Verificare lo Stato del Rate Limit
 
@@ -70,20 +91,62 @@ async function sendWithRetry(request, maxRetries = 3) {
 }
 ```
 
-## Quote di Volume Email
+## Limiti di Piano
 
-Limiti per piano (finestra mobile di 30 giorni):
+I piani sono tre, e ciascuno ha due tetti:
 
-| Piano | Email Mensili | Limite Giornaliero |
-|------|---|---|
-| Free | 1.000 | 33 |
-| Starter | 10.000 | 333 |
-| Growth | 100.000 | 3.333 |
-| Pro | Illimitate | Illimitato |
+| Piano | Email al mese | Domini verificati |
+|---|---|---|
+| Free | 3.000 | 1 |
+| Starter | 75.000 | 5 |
+| Growth | 500.000 | illimitati |
 
-Se superi la quota le richieste falliscono con `QUOTA_EXCEEDED`, anch'esso 429.
-A differenza di `RATE_LIMITED` non si risolve riprovando: vedi
+**Non esiste un tetto giornaliero** legato al piano. L'unico limite giornaliero
+del prodotto è quello del test mode — 100 invii di test al giorno, vedi
+[Test Mode](/it/docs/test-mode).
+
+Se superi la quota mensile le richieste falliscono con `QUOTA_EXCEEDED`,
+anch'esso 429. A differenza di `RATE_LIMITED` non si risolve riprovando: vedi
 [Codici di Errore](/it/docs/error-codes).
+
+### Leggi i tuoi limiti dall'API
+
+Non scrivere a mano i numeri qui sopra. `GET /v1/workspace` restituisce i
+limiti realmente applicati al tuo workspace, dove `null` significa nessun
+limite:
+
+```bash
+curl https://api.tratto.email/v1/workspace \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+```json
+{
+  "data": {
+    "plan": "free",
+    "limits": { "emailsPerMonth": 3000, "domains": 1 }
+  }
+}
+```
+
+È la stessa tabella che legge l'enforcement, quindi non può discordare da ciò
+che ti è davvero permesso inviare.
+
+### Il mese è il mese di calendario UTC
+
+La quota **non** è una finestra mobile di 30 giorni. Il contatore è indicizzato
+sul mese di calendario UTC (`2026-09`) e rotola al **primo invio del mese
+nuovo**: non c'è nessun job schedulato di reset. Un workspace che a ottobre non
+invia nulla riparte comunque da zero a novembre, al primo invio di novembre.
+
+<Callout type="warn">
+**Non esiste un piano "Pro", né alcun piano illimitato.** `free`, `starter` e
+`growth` sono gli unici tre. Alcuni workspace dei primi tempi conservano ancora
+un valore legacy `pro`; non è riconosciuto e quindi ricade su **free** — 3.000
+email al mese e 1 dominio verificato — sia in ciò che viene applicato sia in
+ciò che `GET /v1/workspace` riporta (per un workspace così quell'endpoint
+risponde `"plan": "free"`, non `"pro"`).
+</Callout>
 
 ## Comportamento nei Picchi
 
