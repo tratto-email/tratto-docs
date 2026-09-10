@@ -1,9 +1,9 @@
 ---
 title: Riferimento Codici di Errore
-description: Gli otto codici di errore restituiti dall'API Tratto, e cosa fare per ciascuno.
+description: I quindici codici di errore restituiti dall'API Tratto, e cosa fare per ciascuno.
 ---
 
-L'API restituisce **otto** codici di errore. Sono volutamente generici: il codice
+L'API restituisce **quindici** codici di errore. Sono volutamente generici: il codice
 indica la *classe* del problema e lo stato HTTP, mentre `message` contiene il
 dettaglio specifico.
 
@@ -33,9 +33,16 @@ Gli errori di validazione aggiungono un array `details`: vedi sotto.
 | `FORBIDDEN` | 403 | La chiave non ha i permessi per questa risorsa | Usa una chiave con i permessi corretti |
 | `NOT_FOUND` | 404 | La risorsa non esiste | Verifica l'ID: potrebbe appartenere a un altro workspace |
 | `CONFLICT` | 409 | La risorsa esiste già | Recuperala o aggiornala invece di crearla |
-| `VALIDATION_ERROR` | 422 | Il corpo della richiesta non ha superato la validazione | Leggi `details` per i campi errati |
-| `RATE_LIMITED` | 429 | Più di 500 richieste in un minuto | Applica un backoff esponenziale e riprova |
-| `QUOTA_EXCEEDED` | 429 | Quota mensile di email esaurita | Passa a un piano superiore o attendi il reset |
+| `VALIDATION_ERROR` | 422 | Il corpo è stato letto ma non rispetta lo schema | Leggi `details` per i campi errati |
+| `BAD_REQUEST` | 400 | La richiesta non è arrivata a un handler: il corpo non è interpretabile (JSON malformato) | Correggi la sintassi del corpo: il payload non è mai arrivato allo schema |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 | Il `Content-Type` non è fra quelli che l'endpoint sa leggere | Usa il tipo atteso (`application/json` nella maggior parte dei casi, `text/csv` per l'import contatti, `image/png` o `image/jpeg` per il logo del marchio) |
+| `INVALID_TOKEN` | 400 | Un link firmato (disiscrizione, pagina preferenze) non è valido | Non c'è nulla da riprovare: serve un link nuovo |
+| `RATE_LIMITED` | 429 | Troppe richieste: 100 al secondo per chiave API, o 500 al minuto per IP client | Applica un backoff esponenziale e riprova |
+| `PAYLOAD_TOO_LARGE` | 413 | Il corpo della richiesta supera la dimensione massima | Spezza il payload (per l'import contatti, carica meno righe per richiesta) |
+| `QUOTA_EXCEEDED` | 429 | Quota mensile di email esaurita (o tetto giornaliero del test mode) | Passa a un piano superiore o attendi il reset |
+| `TEST_MODE_NOT_SUPPORTED` | 403 | L'endpoint raggiunge destinatari reali e rifiuta le chiavi di test | Usa una chiave live (`tratto_live_...`) — vedi [Test mode](/it/docs/test-mode) |
+| `IDEMPOTENCY_CONFLICT` | 409 | La stessa `Idempotency-Key` è stata riusata con un payload diverso | Usa una chiave nuova per una richiesta diversa |
+| `IDEMPOTENCY_IN_PROGRESS` | 409 | Una richiesta con questa `Idempotency-Key` è ancora in elaborazione | Attendi che la prima finisca, poi riprova |
 | `INTERNAL_ERROR` | 500 | Errore dalla nostra parte | Riprova con backoff; contatta il supporto se persiste |
 
 <Callout type="warn">
@@ -44,9 +51,33 @@ inesistente e una campagna inesistente restituiscono tutti `NOT_FOUND`: la
 risorsa è indicata in `message`, non in `code`.
 </Callout>
 
+## `BAD_REQUEST` (400) e `VALIDATION_ERROR` (422)
+
+Entrambi significano «la tua richiesta è sbagliata», ma falliscono in due
+momenti diversi:
+
+- **`BAD_REQUEST` (400)** — la richiesta non è mai arrivata a un handler. Il
+  corpo non è stato interpretabile: JSON malformato, payload troncato, un
+  `Content-Type` che dichiara JSON su qualcosa che non lo è. Non c'è array
+  `details`, perché nessuno schema è stato eseguito.
+- **`VALIDATION_ERROR` (422)** — il corpo è stato letto e poi ha fallito lo
+  schema. È questo a dirti *quale campo* è sbagliato.
+
+<Callout type="info">
+**Cambiato il 2026-09-04.** Tre casi rispondevano `500 INTERNAL_ERROR` e non lo
+fanno più: un **corpo vuoto inviato con `Content-Type: application/json`** — la
+forma che curl e Postman producono di default per una mutazione senza campi,
+come `POST /v1/campaigns/{id}/pause`, `POST /v1/campaigns/{id}/unschedule` o
+qualunque `DELETE` — ora va a buon fine normalmente (200/204/409); il **JSON
+malformato** ora risponde `400 BAD_REQUEST`; un **`Content-Type` non gestito**
+ora risponde `415 UNSUPPORTED_MEDIA_TYPE`. Se il tuo client tratta i 5xx come
+riprovabili e i 4xx come definitivi, per questi tre casi la classificazione ora
+è corretta.
+</Callout>
+
 ## Errori di validazione
 
-`VALIDATION_ERROR` restituisce **422**, non 400, e include un array `details`
+`VALIDATION_ERROR` restituisce **422** e include un array `details`
 prodotto dal validatore dello schema, che identifica ogni campo non valido:
 
 ```json

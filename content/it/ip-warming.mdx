@@ -1,70 +1,76 @@
 ---
-title: Guida all'IP Warming
-description: Riscalda gli IP di invio per volumi elevati
+title: Aumentare il Volume di Invio
+description: Come funziona la reputazione sul pool di invio condiviso di Tratto, e come far crescere i volumi senza danneggiarla
+updatedAt: 2026-09-10
 ---
 
-L'**IP warming** è il processo di aumento graduale del volume di email su un nuovo IP, per costruirne la reputazione.
+L'**IP warming** è la pratica di aumentare gradualmente il volume di email su
+un IP nuovo, così che i server di posta possano costruirne la reputazione
+invece di trattare un'ondata improvvisa come un attacco.
 
-## Perché l'IP Warming è Importante
+<Callout type="warn">
+**Su Tratto non riscaldi nessun IP: non hai un IP tuo.** Tutti gli invii
+passano da un pool condiviso gestito da Tratto. Gli IP dedicati non sono
+disponibili, e non esiste alcuna automazione di warming per workspace: nulla
+sorveglia il tuo volume né lo dosa al posto tuo. Quello che segue è ciò che
+devi fare **tu**, e non è facoltativo.
+</Callout>
 
-I server di posta valutano la reputazione del mittente **per singolo IP**. Un IP nuovo non ha reputazione, quindi i server:
-- Rallentano il recapito (ramp-up graduale)
-- Indirizzano più messaggi in spam (controlli più severi)
-- Possono rifiutare del tutto (server molto conservativi)
+## Cosa significa per te
 
-Il warming dimostra che l'IP è legittimo e migliora la deliverability.
+La reputazione del pool è condivisa da tutti i workspace che ci inviano
+attraverso. Vale in entrambe le direzioni:
 
-## L'IP Warming Automatico di Tratto
+- **Erediti una reputazione che non hai costruito.** Un workspace nuovo non
+  parte da zero come farebbe un IP dedicato nuovo: il pool ha già credito
+  presso i principali provider di posta.
+- **Puoi danneggiare una reputazione che non è solo tua.** Una lista di scarsa
+  qualità inviata a volume alza i tassi di bounce e di reclamo che i provider
+  misurano sull'intero pool. Le conseguenze ricadono su ogni workspace che lo
+  usa, compreso il tuo.
 
-Se sei su un **pool di IP condivisi**, Tratto gestisce il warming automaticamente: non devi fare nulla.
+La salita graduale resta quindi compito tuo. Riguarda però la reputazione del
+*tuo dominio* e il *tuo* effetto sul pool, non un IP di tua proprietà.
 
-**Per gli IP dedicati** il riscaldamento è a tuo carico. Ecco il procedimento.
+## Far Crescere i Volumi
 
-## Calendario di Warming (Tipico)
+Se stai per inviare sensibilmente più di quanto hai inviato finora — la prima
+campagna su una lista appena importata, una migrazione da un altro fornitore,
+un picco stagionale — aumenta a scalini invece che in un colpo solo, e
+controlla le metriche fra uno scalino e l'altro.
 
-Nell'arco di **30 giorni**, aumenta gradualmente il volume giornaliero:
+Una forma ragionevole: parti da qualche centinaio dei destinatari più
+coinvolti, poi raddoppia circa a ogni invio finché bounce rate e complaint
+rate restano nelle fasce indicate sotto. Torna indietro di uno scalino appena
+escono. Non esiste un calendario giusto per tutte le liste: decidono le
+metriche, non il calendario.
 
-| Settimana | Volume Giornaliero | Totale |
-|------|---|---|
-| Settimana 1 | 100-500 email | 500 email |
-| Settimana 2 | 1.000-5.000 email | 10.000 email |
-| Settimana 3 | 5.000-10.000 email | 50.000 email |
-| Settimana 4 | 10.000-50.000 email | 200.000 email |
-
-Il calendario esatto dipende dal monitoraggio degli ISP.
-
-## Cosa Fa Tratto in Automatico
-
-La nostra Cloud Function `warmingMonitor`:
-1. Traccia il volume giornaliero inviato per ciascun IP
-2. Rileva il throttling (soft rejection)
-3. Regola automaticamente la velocità di invio
-4. Monitora le metriche di reputazione
-
-## Cosa Devi Fare Tu
-
-### 1. Parti in Piccolo
+### 1. Parti dai Destinatari Migliori
 
 Invia prima ai **destinatari più coinvolti**:
+
 - Clienti che hanno aperto le email precedenti
 - Team interno (aperture garantite)
 - Beta user con alto engagement
 
 Evita:
+
 - ❌ Liste fredde
-- ❌ Destinatari sconosciuti
-- ❌ Indirizzi non verificati
+- ❌ Indirizzi comprati o raccolti da terzi
+- ❌ Indirizzi che non hai mai contattato e che non puoi verificare
 
 ### 2. Mantieni la Qualità della Lista
 
-Durante il warming **ogni bounce pesa**:
+Durante la salita **ogni bounce pesa**:
+
 - Verifica gli indirizzi prima dell'invio
-- Rimuovi subito i bounce
+- Rimuovi subito gli indirizzi in bounce — Tratto li sopprime già per te, e un
+  contatto passato a `bounced` o `complained` non può essere riportato indietro
 - Rimuovi gli indirizzi inattivi dopo 6 mesi
 
 ### 3. Monitora le Metriche
 
-Controlla le analytics ogni settimana:
+Controlla le analytics fra uno scalino e l'altro:
 
 ```bash
 curl "https://api.tratto.email/v1/analytics/summary?period=7d" \
@@ -72,13 +78,18 @@ curl "https://api.tratto.email/v1/analytics/summary?period=7d" \
 ```
 
 Tieni d'occhio:
+
 - Delivery rate stabile al 99%+ (buon segno)
 - Bounce rate sotto il 2% (buon segno)
 - Complaint rate sotto lo 0,1% (critico)
 
+I tassi restituiti da questo endpoint sono **percentuali**: `98.5` significa
+98,5%.
+
 ### 4. Invia con Costanza
 
-Invia regolarmente, possibilmente ogni giorno. Gli ISP premiano la costanza:
+Invia regolarmente, possibilmente ogni giorno. I provider di posta premiano la
+costanza:
 
 ✅ 100 email al giorno, tutti i giorni  
 ❌ 7.000 email il lunedì, poi nulla per una settimana
@@ -86,21 +97,15 @@ Invia regolarmente, possibilmente ogni giorno. Gli ISP premiano la costanza:
 ## Segnali di Throttling
 
 Se i server di posta stanno applicando throttling noterai:
+
 - Delivery rate sotto il 95%
 - Soft bounce in aumento
 - Tempi di invio più lenti
 
-**Cosa fare:** rallenta l'aumento di volume per qualche giorno, poi riprendi la salita più gradualmente.
-
-## Dopo il Warming
-
-Quando l'IP ha una buona reputazione (dalla quarta settimana):
-- Bounce rate stabilmente sotto il 2%
-- Complaint rate stabilmente sotto lo 0,1%
-- Delivery rate costantemente al 99%+
-
-Puoi aumentare il volume più rapidamente, ma continua a monitorare le metriche.
+**Cosa fare:** smetti di aumentare, resta per qualche giorno all'ultimo livello
+che funzionava, poi riprendi la salita più gradualmente.
 
 ---
 
-Vedi [Deliverability](/it/docs/deliverability) per le best practice.
+Vedi [Deliverability](/it/docs/deliverability) per autenticazione, contenuti e
+gestione delle liste.

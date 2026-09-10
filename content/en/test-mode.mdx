@@ -1,7 +1,7 @@
 ---
 title: Test Mode
 description: Develop and test the full email flow — statuses, timeline, webhooks — without sending real email
-updatedAt: 2026-08-06
+updatedAt: 2026-09-10
 ---
 
 Every workspace has two key environments, Stripe-style:
@@ -53,14 +53,42 @@ Test and live are separate views of your workspace:
   returns `404` — indistinguishable from a missing id
 - idempotency keys are scoped per environment
 
+### Campaigns
+
+A campaign belongs to the environment of the key that created it:
+`POST /v1/campaigns` stamps `livemode` from the key, never from the request
+body. **Every** campaign endpoint then checks it — reading a campaign,
+`PATCH`, `DELETE`, `/stats`, `/links`, `/send`, `/pause`, `/unschedule` and
+`/test-send`. A test key that addresses a live campaign gets `404`, on all of
+them.
+
+<Callout type="warn">
+This is stricter than it was before 2026-09-04. `POST /v1/campaigns/{id}/pause`
+and `POST /v1/campaigns/{id}/unschedule` used to act on a live campaign when
+called with a test key. **They now return `404` and do nothing.** If a script
+pauses live campaigns, it needs a live key.
+</Callout>
+
+**`404`, not `403`** — deliberately. A campaign belonging to the other
+environment answers exactly like one that does not exist, so an id cannot be
+probed across environments.
+
+A campaign created before the field existed carries no `livemode` and counts as
+**live**.
+
 ## What test keys cannot do
 
 Endpoints that reach real recipients reject test keys with
-`403 TEST_MODE_NOT_SUPPORTED`:
+`403 TEST_MODE_NOT_SUPPORTED`, whichever environment the resource is in:
 
-- sending or scheduling a campaign
+- sending or scheduling a campaign (`POST /v1/campaigns/{id}/send`)
 - campaign and template test-sends (they deliver real email)
 - activating a flow
+
+Everything else on a campaign is available to a test key — but only on a
+**test** campaign. On a live one it is a `404`, per the rule above. Since a
+test campaign can never be dispatched, `/pause` and `/unschedule` have nothing
+to act on in test mode: they exist there, they just never have work to do.
 
 Simulated events also never touch your analytics, your contacts' suppression
 status, or campaign statistics.

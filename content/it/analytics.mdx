@@ -50,7 +50,7 @@ curl "https://api.tratto.email/v1/analytics/summary?period=30d" \
 | `complained` | Destinatari hanno segnalato come spam |
 | `avgDeliveryLatencySeconds` | Tempo medio tra invio e conferma di consegna. `null` se nessuna email nel periodo è ancora stata consegnata |
 
-`unsubscribed` non fa parte di questo endpoint — è tracciato sul [contatto](/it/docs/contacts), non sulla singola email. Controlla lo `status` di un contatto o `stats.unsubscribed` di una campagna (vedi [Campagne](/it/docs/campaigns)).
+`unsubscribed` non fa parte di questo endpoint — è tracciato sul [contatto](/it/docs/contacts), non sulla singola email. Controlla lo `status` di un contatto. Nemmeno una campagna ha un conteggio `unsubscribed`: la cosa più vicina è `stats.skipped`, gli invii annullati perché il contatto si è disiscritto fra il dispatch e la consegna (vedi [Campagne](/it/docs/campaigns)).
 
 ## Tassi
 

@@ -1,70 +1,75 @@
 ---
-title: IP Warming Guide
-description: Warm up sending IPs for high-volume senders
+title: Ramping Up Sending Volume
+description: How reputation works on Tratto's shared sending pool, and how to ramp new volume without damaging it
+updatedAt: 2026-09-10
 ---
 
-**IP warming** is the process of gradually increasing email volume on a new IP to establish reputation.
+**IP warming** is the practice of increasing email volume on a new IP
+gradually, so mail servers can build a reputation for it instead of treating a
+sudden flood as an attack.
 
-## Why IP Warming Matters
+<Callout type="warn">
+**On Tratto you do not warm an IP — you have no IP of your own.** All sending
+goes over a shared pool that Tratto operates. Dedicated IPs are not available,
+and there is no per-workspace warming automation: nothing watches your volume
+or paces it for you. What follows is what *you* have to do, and it is not
+optional.
+</Callout>
 
-Mail servers track sender reputation **per IP**. A brand new IP has no reputation, so they:
-- Throttle delivery (slow ramp-up)
-- Send more to spam folder (higher scrutiny)
-- May reject outright (very conservative servers)
+## What this means for you
 
-Warming proves the IP is legitimate and improves deliverability.
+The pool's reputation is shared by every workspace sending through it. That
+cuts both ways:
 
-## Tratto's Automatic IP Warming
+- **You inherit a reputation you did not build.** A new workspace does not
+  start from zero the way a new dedicated IP does — the pool already has
+  standing with the major mailbox providers.
+- **You can damage a reputation that is not only yours.** A bad list sent at
+  volume raises the bounce and complaint rates the mailbox providers measure
+  across the pool. The consequences land on every workspace on it, including
+  yours.
 
-Tratto manages IP warming automatically if you're on a **shared IP pool**. You don't need to do anything.
+So the ramp is still your job. It is just about *your domain's* reputation and
+*your* effect on the pool, not about an IP you own.
 
-**For dedicated IPs:** You manage the warm-up. Here's the process.
+## Ramping New Volume
 
-## Warming Schedule (Typical)
+If you are about to send materially more than you have been sending — a first
+campaign to a list you imported, a migration from another provider, a seasonal
+peak — increase in steps rather than in one jump, and watch the metrics between
+steps.
 
-Over **30 days**, gradually increase daily volume:
+A reasonable shape: start with a few hundred of your most engaged recipients,
+then roughly double per send while bounce and complaint rates stay in the
+bands below. Back off a step the moment they don't. There is no schedule that
+is right for every list; the metrics decide, not the calendar.
 
-| Week | Daily Volume | Total |
-|------|---|---|
-| Week 1 | 100-500 emails | 500 emails |
-| Week 2 | 1,000-5,000 emails | 10,000 emails |
-| Week 3 | 5,000-10,000 emails | 50,000 emails |
-| Week 4 | 10,000-50,000 emails | 200,000 emails |
+### 1. Start With Your Best Recipients
 
-The exact schedule depends on your ISP monitoring.
+Send to your **most engaged recipients first**:
 
-## What Tratto Does Automatically
-
-Our `warmingMonitor` Cloud Function:
-1. Tracks daily send volume per IP
-2. Detects throttling (soft rejections)
-3. Auto-adjusts sending rate
-4. Monitors reputation metrics
-
-## What You Need to Do
-
-### 1. Start Small
-
-Send to your **best engaged recipients first**:
 - Customers who opened past emails
 - Internal team (guaranteed opens)
 - Beta users with high engagement
 
 Avoid:
+
 - ❌ Cold lists
-- ❌ Unknown recipients
-- ❌ Unverified addresses
+- ❌ Purchased or scraped addresses
+- ❌ Addresses you have never mailed and cannot verify
 
 ### 2. Maintain List Quality
 
-During warming, **every bounce matters**:
+While ramping, **every bounce matters**:
+
 - Verify email addresses before sending
-- Remove bounces immediately
+- Remove bounced addresses immediately — Tratto suppresses them for you, and
+  a contact moved to `bounced` or `complained` cannot be moved back
 - Remove unengaged addresses after 6 months
 
 ### 3. Monitor Metrics
 
-Check analytics weekly:
+Check analytics between steps:
 
 ```bash
 curl "https://api.tratto.email/v1/analytics/summary?period=7d" \
@@ -72,35 +77,32 @@ curl "https://api.tratto.email/v1/analytics/summary?period=7d" \
 ```
 
 Watch for:
+
 - Delivery rate staying 99%+ (good sign)
 - Bounce rate < 2% (good sign)
 - Complaint rate < 0.1% (critical)
 
-### 4. Consistent Sending
+Rates from this endpoint are **percentages**: `98.5` means 98.5%.
 
-Send regularly (daily, if possible). ISPs like consistency:
+### 4. Send Consistently
+
+Send regularly — daily if you can. Mailbox providers reward consistency:
 
 ✅ 100 emails/day, every day  
 ❌ 7,000 emails Monday, then nothing for a week
 
 ## Throttling Signs
 
-If mail servers are throttling, you'll see:
+If mailbox providers are throttling you, you'll see:
+
 - Delivery rate dropping below 95%
 - Soft bounces increasing
 - Slower send times
 
-**Action:** Slow down volume increase for a few days, then ramp more gradually.
-
-## After Warming
-
-Once your IP has good reputation (week 4+):
-- Bounce rate stays < 2%
-- Complaint rate stays < 0.1%
-- Delivery rate is consistently 99%+
-
-You can increase volume faster, but monitor metrics continuously.
+**Action:** stop increasing volume, hold at the last level that was healthy for
+a few days, then resume more gradually.
 
 ---
 
-See [Deliverability](/en/docs/deliverability) for best practices.
+See [Deliverability](/en/docs/deliverability) for authentication, content and
+list practices.

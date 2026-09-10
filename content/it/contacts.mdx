@@ -1,6 +1,7 @@
 ---
 title: "Contatti: Crea, Importa e Status"
-description: Gestisci contatti email con status, tag e metadata
+description: Gestisci contatti email con status, tag e campi personalizzati
+updatedAt: 2026-09-10
 ---
 
 I **contatti** sono i destinatari delle tue email. Creali individualmente, importali in massa da CSV, gestisci il loro status e traccia rimbalzi/reclami.
@@ -20,25 +21,25 @@ curl -X POST https://api.tratto.email/v1/contacts \
     "lastName":"Smith",
     "status":"subscribed",
     "tags":["vip","newsletter"],
-    "metadata":{"plan":"pro","signupDate":"2025-01-01"}
+    "customFields":{"plan":"pro","signupDate":"2025-01-01"}
   }'
 ```
 
-**Risposta:**
+**Risposta:** la creazione restituisce solo l'id.
 ```json
 {
   "data": {
-    "id": "cont_abc123",
-    "email": "user@example.com",
-    "firstName": "Alice",
-    "lastName": "Smith",
-    "status": "subscribed",
-    "tags": ["vip", "newsletter"],
-    "metadata": { "plan": "pro", "signupDate": "2025-01-01" },
-    "createdAt": "2025-06-30T12:00:00Z"
+    "id": "cont_abc123"
   }
 }
 ```
+
+<Callout type="warn">
+**Il campo è `customFields`, non `metadata`.** I campi sconosciuti vengono
+scartati in silenzio: se mandi `metadata` ricevi un `201`, nessun errore, e
+nessuno dei tuoi dati salvato. Rileggi il contatto una volta per verificare
+cosa è arrivato davvero.
+</Callout>
 
 ## Elenca i Contatti
 
@@ -51,7 +52,11 @@ curl "https://api.tratto.email/v1/contacts?status=subscribed&limit=50" \
 ```
 
 **Parametri di Query:**
+- `q`: Ricerca per **prefisso** dell'email, case-insensitive. Combinabile solo
+  con `status`: con `audienceId` o `tag` restituisce 422
 - `status`: Filtra per status (`subscribed`, `unsubscribed`, `bounced`, `complained`)
+- `audienceId`: Solo i contatti di quell'audience
+- `tag`: Solo i contatti con quel tag
 - `limit`: Max risultati per pagina (default 50, max 100)
 - `after`: Cursor per paginazione
 
@@ -59,19 +64,33 @@ curl "https://api.tratto.email/v1/contacts?status=subscribed&limit=50" \
 ```json
 {
   "data": [
-    { "id": "cont_abc123", "email": "alice@example.com", ... },
-    { "id": "cont_def456", "email": "bob@example.com", ... }
+    {
+      "id": "cont_abc123",
+      "email": "alice@example.com",
+      "firstName": "Alice",
+      "lastName": "Smith",
+      "status": "subscribed",
+      "trackingOptOut": false,
+      "tags": ["vip"],
+      "customFields": { "plan": "pro" },
+      "createdAt": "2025-06-30T12:00:00Z"
+    }
   ],
   "pagination": {
     "hasMore": true,
-    "nextCursor": "Y3Vyc29yOnZhbHVl"
+    "nextCursor": "Y3Vyc29yOnZhbHVl",
+    "total": 1284
   }
 }
 ```
 
+`pagination.total` è il numero di contatti che soddisfano i filtri, non solo
+quelli della pagina. `trackingOptOut` indica se il destinatario ha chiesto di
+non essere tracciato — vedi [Privacy](/it/docs/privacy).
+
 ## Aggiorna un Contatto
 
-Aggiorna i dettagli di un contatto (status, tag, metadata).
+Aggiorna i dettagli di un contatto (status, tag, campi personalizzati).
 
 **cURL**
 ```bash
@@ -81,9 +100,11 @@ curl -X PATCH https://api.tratto.email/v1/contacts/cont_abc123 \
   -d '{
     "status":"unsubscribed",
     "tags":["unsubscribed"],
-    "metadata":{"unsubscribedAt":"2025-06-30T12:00:00Z"}
+    "customFields":{"unsubscribedAt":"2025-06-30T12:00:00Z"}
   }'
 ```
+
+`customFields` sostituisce l'intero oggetto: non viene fuso campo per campo.
 
 ## Valori dello Status del Contatto
 
@@ -99,6 +120,18 @@ curl -X PATCH https://api.tratto.email/v1/contacts/cont_abc123 \
 - Quando un contatto clicca annulla iscrizione → status diventa `unsubscribed`
 - Quando un'email è segnalata → status diventa `complained`
 
+<Callout type="warn">
+**`bounced` e `complained` sono a senso unico.** Un contatto soppresso dal
+sistema non può essere portato a *nessun* altro status tramite l'API, nemmeno
+`unsubscribed`. La `PATCH` risponde **403 FORBIDDEN**, con un messaggio che
+spiega perché: reinviare a un indirizzo in hard bounce o che ha segnalato spam
+danneggia la reputazione di consegna condivisa da ogni account del pool di
+invio.
+
+Reinviare lo status *attuale* del contatto è accettato come no-op, così un
+form che fa PATCH di tutti i campi al salvataggio continua a funzionare.
+</Callout>
+
 ## Tag
 
 Usa i tag per organizzare i contatti in gruppi logici:
@@ -113,13 +146,13 @@ Usa i tag per organizzare i contatti in gruppi logici:
 - Filtra contatti per flussi specifici
 - Traccia coorti
 
-## Metadata
+## Campi Personalizzati
 
-Metadata è un oggetto JSON a forma libera per proprietà personalizzate:
+`customFields` è un oggetto JSON a forma libera per le tue proprietà:
 
 ```json
 {
-  "metadata": {
+  "customFields": {
     "plan": "pro",
     "signupDate": "2025-01-01",
     "lastPurchase": "2025-06-15",
@@ -128,10 +161,17 @@ Metadata è un oggetto JSON a forma libera per proprietà personalizzate:
 }
 ```
 
-Usa metadata per:
-- Archiviare proprietà personalizzate
-- Filtrare audience per condizioni metadata
-- Personalizzare contenuto email con variabili
+Usa i campi personalizzati per:
+- Archiviare proprietà tue sul contatto
+- Filtrare le audience per condizioni sui campi personalizzati
+- Personalizzare il contenuto delle email con le variabili
+
+<Callout type="warn">
+Il campo `metadata` non esiste. Un oggetto `metadata` in una richiesta di
+creazione o di aggiornamento viene scartato senza errore: la richiesta sembra
+riuscita e il dato semplicemente non c'è. L'SDK Node lo chiama `customFields`,
+quello Python `custom_fields`.
+</Callout>
 
 ## Disiscrivi un Contatto
 
@@ -160,4 +200,4 @@ curl -X PATCH https://api.tratto.email/v1/contacts/cont_abc123 \
 
 - **Usare contatti nelle campagne?** Vedi [Campagne](/it/docs/campaigns)
 - **Segmentare contatti in audience?** Vai a [Audience](/it/docs/audiences)
-- **Usare metadata contatto nei template?** Vedi [Template](/it/docs/templates)
+- **Usare i campi personalizzati del contatto nei template?** Vedi [Template](/it/docs/templates)

@@ -50,7 +50,7 @@ curl "https://api.tratto.email/v1/analytics/summary?period=30d" \
 | `complained` | Recipients marked as spam |
 | `avgDeliveryLatencySeconds` | Average time from send to delivery confirmation. `null` when no email in the period has been delivered yet |
 
-`unsubscribed` isn't part of this endpoint — it's tracked on the [contact](/en/docs/contacts), not on individual emails. Check a contact's `status` or a campaign's `stats.unsubscribed` (see [Campaigns](/en/docs/campaigns)) instead.
+`unsubscribed` isn't part of this endpoint — it's tracked on the [contact](/en/docs/contacts), not on individual emails. Check a contact's `status` instead. A campaign has no `unsubscribed` count either — the nearest thing is `stats.skipped`, the sends cancelled because the contact unsubscribed between dispatch and delivery (see [Campaigns](/en/docs/campaigns)).
 
 ## Rates
 

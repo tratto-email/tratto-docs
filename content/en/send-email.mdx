@@ -146,11 +146,12 @@ Instead of composing HTML in code, use a template with variable substitution.
 ```json
 {
   "name": "Welcome Email",
-  "subject": "Welcome, {{firstName}}!",
-  "text": "Hello {{firstName}}!",
   "html": "<h1>Hello {{firstName}}!</h1><p>Your code: {{code}}</p>"
 }
 ```
+
+A template holds a name and a body. It has no subject — that belongs to each
+send.
 
 **Step 2: Send using the template**
 
@@ -161,6 +162,7 @@ curl -X POST https://api.tratto.email/v1/emails \
   -d '{
     "from": "hello@yourdomain.com",
     "to": "user@example.com",
+    "subject": "Welcome, Alice!",
     "templateId": "tmpl_abc123",
     "variables": {
       "firstName": "Alice",
@@ -169,7 +171,9 @@ curl -X POST https://api.tratto.email/v1/emails \
   }'
 ```
 
-The template's `subject`, `text`, and `html` are rendered with the provided variables.
+`subject` is required on every send. The template's `html` (and, for an
+`emailmd` template, its pinned text part) is rendered with the variables you
+pass; **the subject is not** — it goes out exactly as written.
 
 ## Schedule an Email
 

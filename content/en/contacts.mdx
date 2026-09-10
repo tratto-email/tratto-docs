@@ -1,6 +1,7 @@
 ---
 title: "Contacts: Create, Import & Status"
-description: Manage email contacts with status, tags, and metadata
+description: Manage email contacts with status, tags, and custom fields
+updatedAt: 2026-09-10
 ---
 
 **Contacts** are the recipients of your emails. Create them individually, bulk-import from CSV, manage their status, and track bounces/complaints.
@@ -20,25 +21,24 @@ curl -X POST https://api.tratto.email/v1/contacts \
     "lastName":"Smith",
     "status":"subscribed",
     "tags":["vip","newsletter"],
-    "metadata":{"plan":"pro","signupDate":"2025-01-01"}
+    "customFields":{"plan":"pro","signupDate":"2025-01-01"}
   }'
 ```
 
-**Response:**
+**Response:** creation returns the id only.
 ```json
 {
   "data": {
-    "id": "cont_abc123",
-    "email": "user@example.com",
-    "firstName": "Alice",
-    "lastName": "Smith",
-    "status": "subscribed",
-    "tags": ["vip", "newsletter"],
-    "metadata": { "plan": "pro", "signupDate": "2025-01-01" },
-    "createdAt": "2025-06-30T12:00:00Z"
+    "id": "cont_abc123"
   }
 }
 ```
+
+<Callout type="warn">
+**The field is `customFields`, not `metadata`.** Unknown fields are dropped
+silently — send `metadata` and you get a `201`, no error, and none of your
+data stored. Read the contact back once to confirm what actually landed.
+</Callout>
 
 ## List Contacts
 
@@ -51,7 +51,11 @@ curl "https://api.tratto.email/v1/contacts?status=subscribed&limit=50" \
 ```
 
 **Query Parameters:**
+- `q`: Email **prefix** search, case-insensitive. Combinable with `status`
+  only — with `audienceId` or `tag` it returns 422
 - `status`: Filter by status (`subscribed`, `unsubscribed`, `bounced`, `complained`)
+- `audienceId`: Only contacts in that audience
+- `tag`: Only contacts carrying that tag
 - `limit`: Max results per page (default 50, max 100)
 - `after`: Cursor for pagination
 
@@ -59,19 +63,33 @@ curl "https://api.tratto.email/v1/contacts?status=subscribed&limit=50" \
 ```json
 {
   "data": [
-    { "id": "cont_abc123", "email": "alice@example.com", ... },
-    { "id": "cont_def456", "email": "bob@example.com", ... }
+    {
+      "id": "cont_abc123",
+      "email": "alice@example.com",
+      "firstName": "Alice",
+      "lastName": "Smith",
+      "status": "subscribed",
+      "trackingOptOut": false,
+      "tags": ["vip"],
+      "customFields": { "plan": "pro" },
+      "createdAt": "2025-06-30T12:00:00Z"
+    }
   ],
   "pagination": {
     "hasMore": true,
-    "nextCursor": "Y3Vyc29yOnZhbHVl"
+    "nextCursor": "Y3Vyc29yOnZhbHVl",
+    "total": 1284
   }
 }
 ```
 
+`pagination.total` is the count of contacts matching the filters, not just the
+page. `trackingOptOut` reports whether the recipient asked not to be tracked —
+see [Privacy](/en/docs/privacy).
+
 ## Update a Contact
 
-Update a contact's details (status, tags, metadata).
+Update a contact's details (status, tags, custom fields).
 
 **cURL**
 ```bash
@@ -81,9 +99,11 @@ curl -X PATCH https://api.tratto.email/v1/contacts/cont_abc123 \
   -d '{
     "status":"unsubscribed",
     "tags":["unsubscribed"],
-    "metadata":{"unsubscribedAt":"2025-06-30T12:00:00Z"}
+    "customFields":{"unsubscribedAt":"2025-06-30T12:00:00Z"}
   }'
 ```
+
+`customFields` replaces the whole object — it is not merged field by field.
 
 ## Contact Status Values
 
@@ -99,6 +119,17 @@ curl -X PATCH https://api.tratto.email/v1/contacts/cont_abc123 \
 - When a contact clicks unsubscribe → status becomes `unsubscribed`
 - When an email is complained → status becomes `complained`
 
+<Callout type="warn">
+**`bounced` and `complained` are one-way.** A contact the system suppressed
+cannot be moved to *any* other status through the API — including
+`unsubscribed`. `PATCH` returns **403 FORBIDDEN**, with a message explaining
+why: re-sending to a hard-bounced or complaining address damages the delivery
+reputation shared by every account on the sending pool.
+
+Re-sending the contact's *current* status is accepted as a no-op, so a form
+that PATCHes every field on save keeps working.
+</Callout>
+
 ## Tags
 
 Use tags to organize contacts into logical groups:
@@ -113,13 +144,13 @@ Use tags to organize contacts into logical groups:
 - Filter contacts for specific flows
 - Track cohorts
 
-## Metadata
+## Custom Fields
 
-Metadata is a free-form JSON object for custom properties:
+`customFields` is a free-form JSON object for your own properties:
 
 ```json
 {
-  "metadata": {
+  "customFields": {
     "plan": "pro",
     "signupDate": "2025-01-01",
     "lastPurchase": "2025-06-15",
@@ -128,10 +159,17 @@ Metadata is a free-form JSON object for custom properties:
 }
 ```
 
-Use metadata to:
-- Store custom properties
-- Filter audiences by metadata conditions
+Use custom fields to:
+- Store your own properties on a contact
+- Filter audiences by custom-field conditions
 - Personalize email content with variables
+
+<Callout type="warn">
+There is no `metadata` field. A `metadata` object in a create or update
+request is discarded without an error, so the request looks successful and the
+data is simply gone. The Node SDK calls it `customFields`, the Python SDK
+`custom_fields`.
+</Callout>
 
 ## Unsubscribe a Contact
 
@@ -160,4 +198,4 @@ curl -X PATCH https://api.tratto.email/v1/contacts/cont_abc123 \
 
 - **Use contacts in campaigns?** See [Campaigns](/en/docs/campaigns)
 - **Segment contacts into audiences?** Go to [Audiences](/en/docs/audiences)
-- **Use contact metadata in templates?** See [Templates](/en/docs/templates)
+- **Use contact custom fields in templates?** See [Templates](/en/docs/templates)

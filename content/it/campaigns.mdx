@@ -1,13 +1,16 @@
 ---
 title: "Campagne: Draft, Programma e Invia"
 description: Crea e invia campagne email alle audience
+updatedAt: 2026-09-10
 ---
 
 Una **campagna** è una trasmissione email una tantum a un'audience. Crea una campagna, opzionalmente testala, poi inviala a centinaia o migliaia di destinatari.
 
 ## Crea una Campagna (Draft)
 
-Crea una campagna in status draft.
+Crea una campagna in status draft. **`name`, `subjectA` ed esattamente uno fra
+`templateId` e `html` sono obbligatori**: se ometti `subjectA` la richiesta
+fallisce con 422.
 
 **cURL**
 ```bash
@@ -16,25 +19,42 @@ curl -X POST https://api.tratto.email/v1/campaigns \
   -H "Content-Type: application/json" \
   -d '{
     "name":"Saldi Estivi Q3",
+    "subjectA":"I saldi estivi iniziano oggi",
     "templateId":"tmpl_abc123",
     "audienceId":"aud_abc123"
   }'
 ```
 
-**Risposta:**
+**Risposta:** l'id, e nient'altro.
 ```json
 {
   "data": {
-    "id": "camp_xyz789",
-    "name": "Saldi Estivi Q3",
-    "status": "draft",
-    "templateId": "tmpl_abc123",
-    "audienceId": "aud_abc123",
-    "contactCount": 5000,
-    "createdAt": "2025-06-30T12:00:00Z"
+    "id": "camp_xyz789"
   }
 }
 ```
+
+Usa `GET /v1/campaigns/{id}` per leggerne status, contenuto e statistiche.
+
+**Campi del body:**
+
+| Campo | Obbligatorio | Note |
+|---|---|---|
+| `name` | sì | max 200 caratteri |
+| `subjectA` | sì | l'oggetto, max 998 caratteri |
+| `subjectB` | no | secondo oggetto per un test A/B |
+| `templateId` | uno dei due | copia il contenuto del template nella campagna. **Esattamente uno** fra `templateId` e `html`: entrambi, o nessuno, è un 422 |
+| `html` | uno dei due | HTML inline, senza bisogno di un template |
+| `audienceId` | no | **omesso = tutti i contatti del workspace** |
+| `fromName` | no | in mancanza, il mittente di default del workspace |
+| `fromEmail` | no | in mancanza, il mittente di default del workspace |
+
+Se né il body né il workspace forniscono un mittente, la richiesta fallisce con
+422 e un messaggio che ti dice di impostare un mittente di default.
+
+Dalla creazione in poi la campagna possiede una **copia** del contenuto del
+template: modificare il template dopo non cambia una campagna già creata da
+esso, e modificare la campagna non tocca il template.
 
 ## Invio di Test
 
@@ -64,54 +84,62 @@ curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/send \
 ```json
 {
   "data": {
-    "id": "camp_xyz789",
-    "status": "sending",
-    "sentAt": "2025-06-30T12:05:00Z",
-    "contactCount": 5000
+    "status": "sending"
   }
 }
 ```
 
-Lo status della campagna diventa `sending`, poi `sent` al completamento.
+Lo status della campagna diventa `sending`, poi `completed` a invio concluso.
+
+L'invio è rifiutato con 409 se la campagna non è `draft` o `paused`, e prima di
+partire viene confrontato con la
+[quota mensile](/it/docs/rate-limits) residua.
 
 ## Programma per Dopo
 
-Programma la campagna per l'invio a un orario specifico (ISO 8601).
+Programma la campagna con **`scheduledAt`** (ISO 8601). Il campo non si chiama
+`sendAt`.
 
 **cURL**
 ```bash
 curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/send \
   -H "Authorization: Bearer tratto_live_..." \
   -H "Content-Type: application/json" \
-  -d '{"sendAt":"2025-07-01T09:00:00Z"}'
+  -d '{"scheduledAt":"2026-10-01T09:00:00Z"}'
 ```
 
-Lo status della campagna diventa `scheduled`. Verrà inviata automaticamente all'orario specificato.
+Lo status della campagna diventa `scheduled` e l'invio parte automaticamente a
+quell'orario. Uno `scheduledAt` nel passato equivale a «invia adesso».
+
+Per annullare la programmazione e riportare la campagna a `draft`:
+
+```bash
+curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/unschedule \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+Risponde `409` se il dispatcher ha già iniziato l'invio: in quel caso metti in
+pausa.
 
 ## Ciclo di Vita dello Status della Campagna
 
-```
-draft
-  ├─→ (test-send)
-  └─→ send (immediatamente)
-      └─→ sending
-          └─→ sent
-```
-
-O:
+Gli status sono cinque: `draft`, `scheduled`, `sending`, `paused` e
+`completed`. **`sent` non esiste.**
 
 ```
 draft
   ├─→ (test-send)
-  └─→ send (programmato)
-      └─→ scheduled
-          └─→ sending
-              └─→ sent
+  ├─→ send                 → sending → completed
+  └─→ send + scheduledAt   → scheduled → sending → completed
+                                └─→ unschedule → draft
+
+sending / scheduled  ─→ pause → paused ─→ send (ripresa) → sending
 ```
 
 ## Pausa una Campagna
 
-Interrompi una campagna programmata o in corso.
+Interrompi una campagna programmata o in corso. Si può mettere in pausa solo
+una campagna `sending` o `scheduled`: qualsiasi altro status è un 409.
 
 **cURL**
 ```bash
@@ -119,7 +147,17 @@ curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/pause \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
-Le campagne in pausa possono essere riprese o eliminate (ma non ri-inviate così com'è).
+**La ripresa è una nuova `POST /:id/send`** sulla campagna in pausa: non
+esiste un endpoint di ripresa separato. Riparte dai soli destinatari mai
+raggiunti, quindi nessuno riceve l'email due volte.
+
+Una campagna può anche essere messa in pausa *per te*: se l'invio esaurisce la
+quota mensile a metà strada, il dispatcher la mette in pausa e imposta
+`pausedReason` a `"quota_exceeded"`. Su una campagna che hai messo in pausa tu,
+`pausedReason` è `null`: quel campo è l'unico modo per distinguere i due casi.
+
+Una campagna in pausa può essere ripresa; solo una in `draft` può essere
+eliminata.
 
 ## Ottieni Statistiche Campagna
 
@@ -131,22 +169,52 @@ curl https://api.tratto.email/v1/campaigns/camp_xyz789/stats \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
-**Risposta:**
+**Risposta:** conteggi e tassi sono due oggetti distinti.
 ```json
 {
   "data": {
-    "totalSent": 5000,
-    "delivered": 4950,
-    "opened": 2475,
-    "clicked": 742,
-    "bounced": 40,
-    "complained": 10,
-    "deliveryRate": 0.99,
-    "openRate": 0.50,
-    "clickRate": 0.15
+    "campaignId": "camp_xyz789",
+    "status": "completed",
+    "stats": {
+      "total": 5000,
+      "sent": 5000,
+      "delivered": 4950,
+      "opened": 2475,
+      "clicked": 742,
+      "bounced": 40,
+      "skipped": 12,
+      "untracked": 130
+    },
+    "rates": {
+      "deliveryRate": 99,
+      "openRate": 50.82,
+      "clickRate": 15.24,
+      "bounceRate": 0.8,
+      "untracked": 130
+    }
   }
 }
 ```
+
+<Callout type="warn">
+**I tassi sono percentuali**, arrotondate a due decimali: `99` significa 99%,
+non `0.99`. Un alert scritto come `deliveryRate < 0.95` non scatterà mai: il
+confronto giusto è `< 95`. Stessa scala di [Analytics](/it/docs/analytics).
+</Callout>
+
+Note sui campi:
+
+- `total` è il numero di destinatari; `sent` conta quelli effettivamente
+  inviati
+- `skipped` — invii annullati perché il contatto si è disiscritto dopo il
+  dispatch. Non sono mai avvenuti, quindi non alimentano nessun tasso
+- `untracked` — destinatari che hanno rifiutato il tracciamento di aperture e
+  click. Sono **esclusi dal denominatore di openRate e clickRate**, mai
+  stimati. La chiave `untracked` dentro `rates` è quello stesso conteggio, non
+  un tasso
+- `stats.variants` e `rates.variants` compaiono solo su una campagna che ha
+  fatto un test A/B sull'oggetto
+- **Non esiste** un campo `complained`, né `totalSent`
 
 ## Elenca le Campagne
 
@@ -154,13 +222,18 @@ Ottieni tutte le campagne.
 
 **cURL**
 ```bash
-curl "https://api.tratto.email/v1/campaigns?status=sent&limit=50" \
+curl "https://api.tratto.email/v1/campaigns?status=completed&limit=50" \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
 **Parametri di query:**
-- `status`: Filtra per status (`draft`, `scheduled`, `sending`, `sent`, `paused`)
+- `status`: Filtra per status — `draft`, `scheduled`, `sending`, `paused`,
+  `completed`. `sent` non è un valore valido e restituisce 422
+- `q`: Ricerca per **prefisso** del nome, case-insensitive ma sensibile agli
+  accenti (`sal` trova `Saldi estate`, `estate` no). Finché è attiva,
+  l'ordinamento è per nome invece che dal più recente
 - `limit`: Risultati per pagina (default 50, max 100)
+- `after`: Cursor per paginazione
 
 ## Ottieni Dettagli Campagna
 
@@ -185,7 +258,10 @@ Invia un'email di test a te stesso prima del lancio a qualsiasi audience.
 
 ### 3. Rivedi la Dimensione dell'Audience
 
-Controlla che l'audience abbia il giusto numero di contatti prima dell'invio. Un'audience con 0 contatti significa che nessuno la riceve.
+Conta i destinatari prima dell'invio:
+`GET /v1/contacts?status=subscribed&audienceId=…` restituisce lo stesso
+`pagination.total` che conta il gate d'invio. Un'audience senza contatti
+iscritti significa che nessuno la riceve.
 
 ### 4. Programma Durante i Tempi Ottimali
 
@@ -197,7 +273,9 @@ Dopo l'invio, esamina i tassi di rimbalzo, reclamo e apertura per comprendere l'
 
 ### 6. Crea Nuove Campagne, Non Reinviare
 
-Le campagne vengono inviate una volta. Per inviare di nuovo, crea una nuova campagna.
+Una campagna raggiunge ogni destinatario una volta sola. Reinviare una campagna
+`completed` è un 409; riprendere una `paused` copre solo i destinatari mai
+raggiunti. Per scrivere di nuovo alla stessa audience, crea una nuova campagna.
 
 ---
 
