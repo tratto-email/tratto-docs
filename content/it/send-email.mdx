@@ -148,11 +148,12 @@ Invece di comporre HTML nel codice, usa un template con sostituzione di variabil
 ```json
 {
   "name": "Email di Benvenuto",
-  "subject": "Benvenuto, {{firstName}}!",
-  "text": "Ciao {{firstName}}!",
   "html": "<h1>Ciao {{firstName}}!</h1><p>Il tuo codice: {{code}}</p>"
 }
 ```
+
+Un template contiene un nome e un corpo. Non ha un oggetto: quello appartiene
+al singolo invio.
 
 **Step 2: Invia usando il template**
 
@@ -163,6 +164,7 @@ curl -X POST https://api.tratto.email/v1/emails \
   -d '{
     "from": "hello@tuodominio.it",
     "to": "user@example.com",
+    "subject": "Benvenuta, Alice!",
     "templateId": "tmpl_abc123",
     "variables": {
       "firstName": "Alice",
@@ -171,7 +173,9 @@ curl -X POST https://api.tratto.email/v1/emails \
   }'
 ```
 
-L'`subject`, `text`, e `html` del template vengono renderizzati con le variabili fornite.
+`subject` è obbligatorio su ogni invio. L'`html` del template (e, per un
+template `emailmd`, la sua parte testuale fissata) viene renderizzato con le
+variabili che passi; **l'oggetto no** — parte esattamente com'è scritto.
 
 ## Programma un'Email
 

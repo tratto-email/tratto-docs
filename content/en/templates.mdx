@@ -25,7 +25,14 @@ formats existed are `html`.
 
 ## Create a Template
 
-Create a template with subject, text, and HTML with placeholders.
+A template is a **name plus a body**. The request accepts `name`, `format`,
+and one of `html` or `markdown` — nothing else.
+
+<Callout type="warn">
+**A template has no subject.** There is no `subject` field on a template, and
+no `text` field you can set: the subject belongs to each send. Sending one in
+this request has no effect — it is silently ignored, not stored.
+</Callout>
 
 **cURL**
 ```bash
@@ -34,8 +41,6 @@ curl -X POST https://api.tratto.email/v1/templates \
   -H "Content-Type: application/json" \
   -d '{
     "name":"Welcome Email",
-    "subject":"Welcome, {{firstName}}!",
-    "text":"Hello {{firstName}}, welcome aboard!",
     "html":"<h1>Welcome, {{firstName}}!</h1><p>Your code: {{code}}</p>"
   }'
 ```
@@ -46,21 +51,29 @@ curl -X POST https://api.tratto.email/v1/templates \
   "data": {
     "id": "tmpl_abc123",
     "name": "Welcome Email",
-    "subject": "Welcome, {{firstName}}!",
-    "text": "Hello {{firstName}}, welcome aboard!",
     "html": "<h1>Welcome, {{firstName}}!</h1><p>Your code: {{code}}</p>",
     "status": "draft",
     "version": 1,
-    "createdAt": "2025-06-30T12:00:00Z"
+    "createdAt": "2025-06-30T12:00:00Z",
+    "updatedAt": "2025-06-30T12:00:00Z"
   }
 }
 ```
 
-## Publish a Template
+## `status` is a label, not a gate
 
-Templates are created as `draft` and cannot be used for sending until they are
-`published`. Publishing is a status change on the template itself: there is no
-separate publish endpoint.
+A template is created with `status: "draft"`, and `status` accepts `draft` or
+`published`. That is the whole of it: it is an **editorial label for your own
+workflow**, and nothing in the API enforces it.
+
+<Callout type="warn">
+**A `draft` template sends.** The delivery path loads the template and reads
+its `html`; it never looks at `status`. If you need "not ready to send" to
+actually mean that, enforce it in your own code — do not rely on the API to
+refuse.
+</Callout>
+
+Change the label like any other field:
 
 **cURL**
 ```bash
@@ -70,11 +83,12 @@ curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
   -d '{"status":"published"}'
 ```
 
-`status` accepts only `draft` and `published`.
+It is also a filter on the list endpoint: `GET /v1/templates?status=published`.
 
 ## Send Using a Template
 
-Send an email using a template with variables.
+The template supplies the body. **`subject` is required on the send** and has
+to be passed every time — omit it and the request fails with 422.
 
 **cURL**
 ```bash
@@ -84,6 +98,7 @@ curl -X POST https://api.tratto.email/v1/emails \
   -d '{
     "from":"hello@yourdomain.com",
     "to":"user@example.com",
+    "subject":"Welcome, Alice!",
     "templateId":"tmpl_abc123",
     "variables":{
       "firstName":"Alice",
@@ -92,12 +107,22 @@ curl -X POST https://api.tratto.email/v1/emails \
   }'
 ```
 
-The template renders:
+Renders to:
 ```
 Subject: Welcome, Alice!
-Text: Hello Alice, welcome aboard!
 HTML: <h1>Welcome, Alice!</h1><p>Your code: SECRET123</p>
 ```
+
+<Callout type="warn">
+**Variables are not substituted into the subject.** Substitution runs on the
+HTML and text bodies only. A subject of `"Welcome, {{firstName}}!"` is
+delivered exactly like that, braces included. Build the subject yourself
+before sending.
+</Callout>
+
+An `html` template has no text part. An `emailmd` template pins a rendered
+text part at save time, and that one is sent as `text/plain` alongside the
+HTML.
 
 ## Update a Template
 
@@ -109,24 +134,28 @@ curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
   -H "Authorization: Bearer tratto_live_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "subject":"Welcome back, {{firstName}}!",
     "html":"<h1>Welcome back, {{firstName}}!</h1><p>Code: {{code}}</p>"
   }'
 ```
 
-**Response:**
+**Response:** the full template, with `version` incremented.
 ```json
 {
   "data": {
     "id": "tmpl_abc123",
-    "version": 2,
+    "name": "Welcome Email",
+    "html": "<h1>Welcome back, {{firstName}}!</h1><p>Code: {{code}}</p>",
     "status": "draft",
-    "createdAt": "2025-06-30T12:05:00Z"
+    "version": 2,
+    "createdAt": "2025-06-30T12:00:00Z",
+    "updatedAt": "2025-06-30T12:05:00Z"
   }
 }
 ```
 
-The new version (2) is in `draft` status. Publish it before using it in sends.
+The version only bumps when the content actually changes — a PATCH that sets
+the same HTML leaves it alone. Versions have no status of their own, and
+bumping the version does not touch `status` on the template.
 
 For `emailmd` templates, update the `markdown` field instead — every change
 re-renders the HTML and increments the version the same way. `html` and
@@ -135,7 +164,8 @@ a template of the matching format (422 otherwise).
 
 ## Version History
 
-Get all versions of a template.
+List the versions of a template, newest first (up to 20). Each entry carries
+**only** the version number and when it was saved:
 
 **cURL**
 ```bash
@@ -147,21 +177,36 @@ curl https://api.tratto.email/v1/templates/tmpl_abc123/versions \
 ```json
 {
   "data": [
-    {
-      "version": 2,
-      "status": "draft",
-      "subject": "Welcome back, {{firstName}}!",
-      "createdAt": "2025-06-30T12:05:00Z"
-    },
-    {
-      "version": 1,
-      "status": "published",
-      "subject": "Welcome, {{firstName}}!",
-      "createdAt": "2025-06-30T12:00:00Z"
-    }
+    { "version": 2, "savedAt": "2025-06-30T12:05:00Z" },
+    { "version": 1, "savedAt": "2025-06-30T12:00:00Z" }
   ]
 }
 ```
+
+## Get One Version
+
+To read the content of a past version — the only way to recover it — fetch it
+by number:
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/templates/tmpl_abc123/versions/1 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "version": 1,
+    "html": "<h1>Welcome, {{firstName}}!</h1><p>Your code: {{code}}</p>",
+    "savedAt": "2025-06-30T12:00:00Z"
+  }
+}
+```
+
+On an `emailmd` template the response also carries `source`: the markdown that
+produced that version's HTML.
 
 ## Test Send
 
@@ -219,12 +264,14 @@ Deleting a template cannot be undone. Campaigns and flows using that template wi
 
 ## Template Variable Syntax
 
-Use double curly braces `{{variableName}}` for placeholders. Variables are case-sensitive.
+Use double curly braces `{{variableName}}` for placeholders — surrounding
+whitespace is allowed, so `{{ firstName }}` works too. Variables are
+case-sensitive. There are no conditionals and no loops: this is substitution,
+not a templating language.
 
-**Example:**
+**Template:**
 ```
-Subject: Hello {{firstName}}!
-HTML: <p>Your email is {{email}}</p>
+HTML: <p>Hello {{firstName}}, your email is {{email}}</p>
 ```
 
 **Sending:**
@@ -239,9 +286,11 @@ HTML: <p>Your email is {{email}}</p>
 
 **Rendered:**
 ```
-Subject: Hello Alice!
-HTML: <p>Your email is alice@example.com</p>
+HTML: <p>Hello Alice, your email is alice@example.com</p>
 ```
+
+Substitution applies to the HTML and text bodies. **Not to the subject** — see
+above.
 
 ## Best Practices
 
@@ -250,23 +299,29 @@ HTML: <p>Your email is alice@example.com</p>
 ✅ `{{firstName}}`, `{{orderID}}`, `{{confirmationCode}}`  
 ❌ `{{x}}`, `{{var1}}`, `{{v`
 
-### 2. Provide Fallbacks
+### 2. Always Pass Every Variable
 
-If a variable is missing, rendering will fail. Provide defaults:
+A missing variable does **not** fail the send. The placeholder is left in the
+message exactly as written, and the recipient reads
+`Hello {{firstName}}, welcome to {{companyName}}!` in their inbox.
 
 ```html
 <p>Hello {{firstName}}, welcome to {{companyName}}!</p>
 ```
 
-When sending, always include both variables.
+Nothing on the server will catch this for you, so pass every placeholder the
+template uses on every send — an empty string is a better default than a
+visible `{{firstName}}`.
 
 ### 3. Use Templates for Bulk Sends
 
 Don't compose HTML per email. Use templates and variables for consistency and reusability.
 
-### 4. Test Before Publishing
+### 4. Test Before You Use It
 
-Always test-send a template before publishing to catch rendering issues.
+Always test-send a template before you send it to anyone, to catch rendering
+issues. Nothing stops a `draft` template from going out, so a test-send is the
+only check there is.
 
 ---
 
