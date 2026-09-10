@@ -6,6 +6,28 @@ Next.js 15 App Router + Fumadocs + Tailwind v4.
 Read [SETUP.md](./SETUP.md) for the full architecture; this file covers the
 rules that are easy to get wrong.
 
+Part of the Tratto multi-repo workspace — see `../CLAUDE.md` for the repo map
+and `../GO-LIVE.md` for launch status. The API contract documented here is
+owned by `tratto-api`; `pnpm build` runs `scripts/sync-openapi.js`, which
+processes the locally checked-in `public/openapi.json` — when the contract
+changes in `tratto-api`, that spec (and the MDX) must be updated here.
+
+**This repo lags the contract, and that is the failure mode to watch for.**
+Two contract changes released on 2026-09-04 were still undocumented on
+2026-09-10, and an audit that day found pages describing behaviour the backend
+does not have — a template `publish` gate that no code enforces, plan quotas
+that are wrong in every row, and a page announcing automatic IP warming for a
+function whose data nobody writes. When docs and code disagree, **the docs are
+wrong until proven otherwise**: check `tratto-api/api/src/routes/v1/` before
+trusting a page, and cite the file and line in the commit that corrects it.
+
+A page that is merely missing costs a reader a search. A page that is wrong
+costs them the search, the attempt, and their trust — fix those first.
+
+**CI budget**: GitHub Actions has a hard 3000 min/month org-wide (see
+`../CLAUDE.md`). Replicate the full CI suite locally before opening a PR, and
+verify that deploys actually ran — a green workflow is not a deployed site.
+
 ---
 
 ## Commands
