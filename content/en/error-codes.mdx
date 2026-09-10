@@ -1,9 +1,9 @@
 ---
 title: Error Codes Reference
-description: The eight error codes the Tratto API returns, and what to do about each.
+description: The fifteen error codes the Tratto API returns, and what to do about each.
 ---
 
-The API returns **eight** error codes. They are deliberately generic: the code
+The API returns **fifteen** error codes. They are deliberately generic: the code
 tells you the *class* of problem and the HTTP status, while `message` carries the
 specific detail.
 
@@ -33,8 +33,12 @@ errors add a `details` array: see below.
 | `FORBIDDEN` | 403 | The key lacks permission for this resource | Use a key with the right permissions |
 | `NOT_FOUND` | 404 | The resource does not exist | Check the ID; it may belong to another workspace |
 | `CONFLICT` | 409 | The resource already exists | Fetch or update the existing one instead |
-| `VALIDATION_ERROR` | 422 | The request body failed validation | Read `details` for the offending fields |
-| `RATE_LIMITED` | 429 | More than 500 requests in a minute | Back off exponentially and retry |
+| `VALIDATION_ERROR` | 422 | The request body parsed but failed schema validation | Read `details` for the offending fields |
+| `BAD_REQUEST` | 400 | The request never reached a handler — the body could not be parsed (malformed JSON) | Fix the body syntax; the payload never got as far as the schema |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 | The `Content-Type` is not one this endpoint parses | Send the type the endpoint expects (`application/json` for most, `text/csv` for contact import, `image/png` or `image/jpeg` for the brand logo) |
+| `INVALID_TOKEN` | 400 | A signed link (unsubscribe, preference page) is not valid | Nothing to retry — request a fresh link |
+| `RATE_LIMITED` | 429 | Too many requests: 100/second per API key, or 500/minute per client IP | Back off exponentially and retry |
+| `PAYLOAD_TOO_LARGE` | 413 | The request body exceeds the maximum allowed size | Split the payload (for contact import, upload fewer rows per request) |
 | `QUOTA_EXCEEDED` | 429 | Monthly email quota reached (or the daily test-mode cap) | Upgrade the plan or wait for the reset |
 | `TEST_MODE_NOT_SUPPORTED` | 403 | The endpoint reaches real recipients and rejects test keys | Use a live key (`tratto_live_...`) — see [Test mode](/en/docs/test-mode) |
 | `IDEMPOTENCY_CONFLICT` | 409 | The `Idempotency-Key` was reused with a different payload | Use a fresh key for a different request |
@@ -47,9 +51,31 @@ a missing campaign all return `NOT_FOUND`. The resource is named in `message`,
 not in `code`.
 </Callout>
 
+## `BAD_REQUEST` (400) vs `VALIDATION_ERROR` (422)
+
+Both mean "your request was wrong", and they fail at different stages:
+
+- **`BAD_REQUEST` (400)** — the request never reached a handler. The body could
+  not be parsed at all: malformed JSON, a truncated payload, a `Content-Type`
+  that says JSON over something that isn't. There is no `details` array,
+  because no schema ever ran.
+- **`VALIDATION_ERROR` (422)** — the body parsed, then failed the schema. This
+  is the one that tells you *which field* is wrong.
+
+<Callout type="info">
+**Changed on 2026-09-04.** Three cases used to return `500 INTERNAL_ERROR` and
+no longer do: an **empty body sent with `Content-Type: application/json`** —
+the shape curl and Postman produce by default for a mutation with no fields,
+such as `POST /v1/campaigns/{id}/pause`, `POST /v1/campaigns/{id}/unschedule`
+or any `DELETE` — now succeeds normally (200/204/409); **malformed JSON** now
+returns `400 BAD_REQUEST`; an **unhandled `Content-Type`** now returns
+`415 UNSUPPORTED_MEDIA_TYPE`. If your client treats 5xx as retryable and 4xx as
+final, that classification is now correct for these three.
+</Callout>
+
 ## Validation errors
 
-`VALIDATION_ERROR` returns **422**, not 400, and includes a `details` array from
+`VALIDATION_ERROR` returns **422** and includes a `details` array from
 the schema validator identifying each field that failed:
 
 ```json
