@@ -302,17 +302,36 @@ sopra.
 
 ### 2. Passa Sempre Tutte le Variabili
 
-Una variabile mancante **non** fa fallire l'invio. Il placeholder resta nel
-messaggio esattamente com'è scritto, e il destinatario legge nella sua inbox
-`Ciao {{firstName}}, benvenuto a {{companyName}}!`.
+Una variabile mancante **non** fa fallire l'invio: il placeholder viene
+sostituito con una **stringa vuota**. Questo template
 
 ```html
 <p>Ciao {{firstName}}, benvenuto a {{companyName}}!</p>
 ```
 
-Nessun controllo lato server te lo segnala, quindi passa a ogni invio tutti i
-placeholder usati dal template: una stringa vuota è un default migliore di un
-`{{firstName}}` visibile.
+inviato senza `firstName` né `companyName` arriva come `Ciao , benvenuto a !`
+— la punteggiatura resta orfana, ma il destinatario non vede mai il nome della
+tua variabile.
+
+Vale per l'oggetto e per il corpo, in HTML e in emailmd, sia sugli invii
+transazionali che sulle campagne. Anche `null` sostituisce vuoto: non
+comparirà mai la stringa `null` o `undefined` in un'email.
+
+Non è un invito a passare meno variabili — al contrario. Una frase con un
+buco resta una frase sbagliata, e ora **niente te lo segnala**: né all'invio,
+né prima. Con il placeholder visibile un refuso come `{{firstname}}` al posto
+di `{{firstName}}` almeno si notava nell'anteprima; con la sostituzione vuota
+sparisce senza lasciare traccia.
+
+Il controllo automatico esiste solo per le **campagne**, dove Tratto conosce
+l'insieme delle variabili disponibili (`email`, `firstName`, `lastName`,
+`unsubscribe_url`) e può quindi segnalare in bozza quelle che non ne fanno
+parte. Per un template non è possibile: le variabili arrivano da chi chiama
+`POST /v1/emails`, quindi non esiste un insieme contro cui verificarle e ogni
+controllo sarebbe un'ipotesi.
+
+Su un template, quindi, l'unica difesa è passare a ogni invio tutti i
+placeholder che il template usa.
 
 ### 3. Usa Template per Invii Bulk
 
