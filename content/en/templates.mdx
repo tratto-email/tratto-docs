@@ -98,7 +98,7 @@ curl -X POST https://api.tratto.email/v1/emails \
   -d '{
     "from":"hello@yourdomain.com",
     "to":"user@example.com",
-    "subject":"Welcome, Alice!",
+    "subject":"Welcome, {{firstName}}!",
     "templateId":"tmpl_abc123",
     "variables":{
       "firstName":"Alice",
@@ -113,12 +113,9 @@ Subject: Welcome, Alice!
 HTML: <h1>Welcome, Alice!</h1><p>Your code: SECRET123</p>
 ```
 
-<Callout type="warn">
-**Variables are not substituted into the subject.** Substitution runs on the
-HTML and text bodies only. A subject of `"Welcome, {{firstName}}!"` is
-delivered exactly like that, braces included. Build the subject yourself
-before sending.
-</Callout>
+The subject is rendered with the same `variables` as the body, so
+`{{firstName}}` works in both. A variable you don't pass becomes an empty
+string in the subject too — see *Always Pass Every Variable* below.
 
 An `html` template has no text part. An `emailmd` template pins a rendered
 text part at save time, and that one is sent as `text/plain` alongside the
@@ -228,6 +225,12 @@ curl -X POST https://api.tratto.email/v1/templates/tmpl_abc123/test-send \
 
 A test email is sent immediately to your address so you can review it in your inbox.
 
+Its subject is `[Test]` followed by the template name. A test send has no
+contact, so the recipient variables you don't pass get preview values: `email`
+is the test address, `firstName` is `Preview`, `lastName` is `Recipient`, and
+`unsubscribe_url` is a preview link that unsubscribes nobody. Any other
+variable you leave out renders empty, as on a real send.
+
 ## List Templates
 
 Get all templates for your tenant.
@@ -289,8 +292,7 @@ HTML: <p>Hello {{firstName}}, your email is {{email}}</p>
 HTML: <p>Hello Alice, your email is alice@example.com</p>
 ```
 
-Substitution applies to the HTML and text bodies. **Not to the subject** — see
-above.
+Substitution applies to the subject and to the HTML and text bodies.
 
 ## Best Practices
 
