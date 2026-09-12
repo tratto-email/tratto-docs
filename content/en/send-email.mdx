@@ -171,9 +171,9 @@ curl -X POST https://api.tratto.email/v1/emails \
   }'
 ```
 
-`subject` is required on every send. The template's `html` (and, for an
-`emailmd` template, its pinned text part) is rendered with the variables you
-pass; **the subject is not** — it goes out exactly as written.
+`subject` is required on every send. The subject and the template's `html`
+(and, for an `emailmd` template, its pinned text part) are all rendered with
+the `variables` you pass; a variable you don't pass becomes an empty string.
 
 ## Schedule an Email
 

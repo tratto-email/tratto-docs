@@ -173,9 +173,10 @@ curl -X POST https://api.tratto.email/v1/emails \
   }'
 ```
 
-`subject` è obbligatorio su ogni invio. L'`html` del template (e, per un
-template `emailmd`, la sua parte testuale fissata) viene renderizzato con le
-variabili che passi; **l'oggetto no** — parte esattamente com'è scritto.
+`subject` è obbligatorio su ogni invio. L'oggetto e l'`html` del template (e,
+per un template `emailmd`, la sua parte testuale fissata) vengono renderizzati
+con le `variables` che passi; una variabile che non passi diventa una stringa
+vuota.
 
 ## Programma un'Email
 
