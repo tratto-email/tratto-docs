@@ -1,9 +1,9 @@
 ---
 title: Riferimento Codici di Errore
-description: I quindici codici di errore restituiti dall'API Tratto, e cosa fare per ciascuno.
+description: I codici di errore restituiti dall'API Tratto, e cosa fare per ciascuno.
 ---
 
-L'API restituisce **quindici** codici di errore. Sono volutamente generici: il codice
+L'API restituisce un piccolo insieme di codici di errore. Sono volutamente generici: il codice
 indica la *classe* del problema e lo stato HTTP, mentre `message` contiene il
 dettaglio specifico.
 
@@ -17,7 +17,7 @@ persone e possono cambiare senza preavviso.
   "error": {
     "code": "NOT_FOUND",
     "message": "Webhook 'wh_abc123' not found.",
-    "docs": "https://tratto.email/docs/api/errors#not_found"
+    "docs": "https://docs.tratto.email/en/docs/error-codes"
   }
 }
 ```
@@ -30,20 +30,21 @@ Gli errori di validazione aggiungono un array `details`: vedi sotto.
 | Codice | HTTP | Significato | Cosa fare |
 |---|---|---|---|
 | `UNAUTHORIZED` | 401 | Chiave API mancante o non valida | Controlla l'header `Authorization: Bearer` |
-| `FORBIDDEN` | 403 | La chiave non ha i permessi per questa risorsa | Usa una chiave con i permessi corretti |
+| `FORBIDDEN` | 403 | La richiesta non è consentita: alla chiave manca un permesso, il dominio mittente non è verificato, o l'azione è bloccata per questa risorsa | Leggi `message` e `suggestion`; se manca un permesso, usa una chiave che lo abbia |
 | `NOT_FOUND` | 404 | La risorsa non esiste | Verifica l'ID: potrebbe appartenere a un altro workspace |
-| `CONFLICT` | 409 | La risorsa esiste già | Recuperala o aggiornala invece di crearla |
+| `CONFLICT` | 409 | La risorsa esiste già, oppure il suo stato attuale non consente l'azione (ad esempio modificare una campagna che non è più in bozza) | Recupera la risorsa e verificane lo stato prima di riprovare |
 | `VALIDATION_ERROR` | 422 | Il corpo è stato letto ma non rispetta lo schema | Leggi `details` per i campi errati |
 | `BAD_REQUEST` | 400 | La richiesta non è arrivata a un handler: il corpo non è interpretabile (JSON malformato) | Correggi la sintassi del corpo: il payload non è mai arrivato allo schema |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | Il `Content-Type` non è fra quelli che l'endpoint sa leggere | Usa il tipo atteso (`application/json` nella maggior parte dei casi, `text/csv` per l'import contatti, `image/png` o `image/jpeg` per il logo del marchio) |
 | `INVALID_TOKEN` | 400 | Un link firmato (disiscrizione, pagina preferenze) non è valido | Non c'è nulla da riprovare: serve un link nuovo |
 | `RATE_LIMITED` | 429 | Troppe richieste: 100 al secondo per chiave API, o 500 al minuto per IP client | Applica un backoff esponenziale e riprova |
 | `PAYLOAD_TOO_LARGE` | 413 | Il corpo della richiesta supera la dimensione massima | Spezza il payload (per l'import contatti, carica meno righe per richiesta) |
-| `QUOTA_EXCEEDED` | 429 | Quota mensile di email esaurita (o tetto giornaliero del test mode) | Passa a un piano superiore o attendi il reset |
+| `QUOTA_EXCEEDED` | 429 | Raggiunto un limite del piano: quota mensile di email, numero di domini, o tetto giornaliero del test mode | Passa a un piano superiore o attendi il reset |
 | `TEST_MODE_NOT_SUPPORTED` | 403 | L'endpoint raggiunge destinatari reali e rifiuta le chiavi di test | Usa una chiave live (`tratto_live_...`) — vedi [Test mode](/it/docs/test-mode) |
 | `IDEMPOTENCY_CONFLICT` | 409 | La stessa `Idempotency-Key` è stata riusata con un payload diverso | Usa una chiave nuova per una richiesta diversa |
 | `IDEMPOTENCY_IN_PROGRESS` | 409 | Una richiesta con questa `Idempotency-Key` è ancora in elaborazione | Attendi che la prima finisca, poi riprova |
 | `INTERNAL_ERROR` | 500 | Errore dalla nostra parte | Riprova con backoff; contatta il supporto se persiste |
+| `SERVICE_UNAVAILABLE` | 503 | Un servizio da cui dipende l'endpoint è disattivato, saturo o non risponde | Riprova più tardi, rispettando `Retry-After` se la risposta lo imposta; `suggestion` indica se attendere serve |
 
 <Callout type="warn">
 Non esistono codici specifici per risorsa. Un template inesistente, un contatto
@@ -85,10 +86,10 @@ prodotto dal validatore dello schema, che identifica ogni campo non valido:
   "error": {
     "code": "VALIDATION_ERROR",
     "message": "Request validation failed.",
-    "docs": "https://tratto.email/docs/api/errors#validation_error",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
     "details": [
       {
-        "instancePath": "/to",
+        "path": "/to",
         "message": "Invalid email"
       }
     ]
@@ -117,8 +118,9 @@ reazioni opposte:
 
 - **`RATE_LIMITED`**: stai inviando troppo in fretta. Rallenta e riprova: la
   richiesta andrà a buon fine a breve. Vedi [Rate Limit](/it/docs/rate-limits).
-- **`QUOTA_EXCEEDED`**: hai esaurito il monte email mensile. Riprovare non serve
-  finché il piano non si resetta o non viene aggiornato.
+- **`QUOTA_EXCEEDED`**: hai raggiunto un limite del piano, come il monte email
+  mensile. Riprovare non serve finché il limite non si resetta o il piano non
+  viene aggiornato.
 
 Trattarli allo stesso modo significa riprovare all'infinito contro un muro:
 
