@@ -1,9 +1,9 @@
 ---
 title: Error Codes Reference
-description: The fifteen error codes the Tratto API returns, and what to do about each.
+description: The error codes the Tratto API returns, and what to do about each.
 ---
 
-The API returns **fifteen** error codes. They are deliberately generic: the code
+The API returns a small set of error codes. They are deliberately generic: the code
 tells you the *class* of problem and the HTTP status, while `message` carries the
 specific detail.
 
@@ -17,7 +17,7 @@ change without notice.
   "error": {
     "code": "NOT_FOUND",
     "message": "Webhook 'wh_abc123' not found.",
-    "docs": "https://tratto.email/docs/api/errors#not_found"
+    "docs": "https://docs.tratto.email/en/docs/error-codes"
   }
 }
 ```
@@ -30,20 +30,21 @@ errors add a `details` array: see below.
 | Code | HTTP | Meaning | What to do |
 |---|---|---|---|
 | `UNAUTHORIZED` | 401 | Missing or invalid API key | Check the `Authorization: Bearer` header |
-| `FORBIDDEN` | 403 | The key lacks permission for this resource | Use a key with the right permissions |
+| `FORBIDDEN` | 403 | The request is not allowed: the key lacks a permission, the sending domain is not verified, or the action is blocked for this resource | Read `message` and `suggestion`; for a missing permission, use a key that has it |
 | `NOT_FOUND` | 404 | The resource does not exist | Check the ID; it may belong to another workspace |
-| `CONFLICT` | 409 | The resource already exists | Fetch or update the existing one instead |
+| `CONFLICT` | 409 | The resource already exists, or its current state does not allow the action (for example, editing a campaign that is no longer a draft) | Fetch the resource and check its state before retrying |
 | `VALIDATION_ERROR` | 422 | The request body parsed but failed schema validation | Read `details` for the offending fields |
 | `BAD_REQUEST` | 400 | The request never reached a handler — the body could not be parsed (malformed JSON) | Fix the body syntax; the payload never got as far as the schema |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | The `Content-Type` is not one this endpoint parses | Send the type the endpoint expects (`application/json` for most, `text/csv` for contact import, `image/png` or `image/jpeg` for the brand logo) |
 | `INVALID_TOKEN` | 400 | A signed link (unsubscribe, preference page) is not valid | Nothing to retry — request a fresh link |
 | `RATE_LIMITED` | 429 | Too many requests: 100/second per API key, or 500/minute per client IP | Back off exponentially and retry |
 | `PAYLOAD_TOO_LARGE` | 413 | The request body exceeds the maximum allowed size | Split the payload (for contact import, upload fewer rows per request) |
-| `QUOTA_EXCEEDED` | 429 | Monthly email quota reached (or the daily test-mode cap) | Upgrade the plan or wait for the reset |
+| `QUOTA_EXCEEDED` | 429 | A plan limit was reached: the monthly email quota, the domain limit, or the daily test-mode cap | Upgrade the plan or wait for the reset |
 | `TEST_MODE_NOT_SUPPORTED` | 403 | The endpoint reaches real recipients and rejects test keys | Use a live key (`tratto_live_...`) — see [Test mode](/en/docs/test-mode) |
 | `IDEMPOTENCY_CONFLICT` | 409 | The `Idempotency-Key` was reused with a different payload | Use a fresh key for a different request |
 | `IDEMPOTENCY_IN_PROGRESS` | 409 | A request with this `Idempotency-Key` is still being processed | Wait for the original request to finish, then retry |
 | `INTERNAL_ERROR` | 500 | Something failed on our side | Retry with backoff; contact support if it persists |
+| `SERVICE_UNAVAILABLE` | 503 | A service this endpoint depends on is switched off, saturated or not responding | Retry later, honouring `Retry-After` when the response sets it; `suggestion` says whether waiting helps |
 
 <Callout type="warn">
 There are no resource-specific codes. A missing template, a missing contact and
@@ -83,10 +84,10 @@ the schema validator identifying each field that failed:
   "error": {
     "code": "VALIDATION_ERROR",
     "message": "Request validation failed.",
-    "docs": "https://tratto.email/docs/api/errors#validation_error",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
     "details": [
       {
-        "instancePath": "/to",
+        "path": "/to",
         "message": "Invalid email"
       }
     ]
@@ -116,8 +117,9 @@ responses:
 
 - **`RATE_LIMITED`**: you are sending too fast. Back off and retry; the request
   will succeed shortly. See [Rate Limits](/en/docs/rate-limits).
-- **`QUOTA_EXCEEDED`**: you have used your monthly email allowance. Retrying
-  will not help until the plan resets or is upgraded.
+- **`QUOTA_EXCEEDED`**: you have hit a plan limit, such as the monthly email
+  allowance. Retrying will not help until the limit resets or the plan is
+  upgraded.
 
 Treating them the same means retrying forever against a quota wall:
 
