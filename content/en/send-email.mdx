@@ -106,7 +106,7 @@ Depending on your plan, Tratto may append a footer to the HTML version — the "
 
 Pass a `markdown` body instead of `html` and Tratto renders it server-side
 into responsive, email-safe HTML (plus a plain-text part) using the
-[emailmd format](/en/docs/emailmd-templates):
+[Markdown format](/en/docs/emailmd-templates):
 
 ```bash
 curl -X POST https://api.tratto.email/v1/emails \
@@ -172,7 +172,7 @@ curl -X POST https://api.tratto.email/v1/emails \
 ```
 
 `subject` is required on every send. The subject and the template's `html`
-(and, for an `emailmd` template, its pinned text part) are all rendered with
+(and, for a Markdown template, its pinned text part) are all rendered with
 the `variables` you pass; a variable you don't pass becomes an empty string.
 
 ## Schedule an Email
@@ -269,7 +269,7 @@ Later, filter emails by tags or use them in webhooks.
 | `subject` | string | ✓ (if not using template) | Email subject line |
 | `text` | string | | Plain text content (used as fallback) |
 | `html` | string | | HTML content (mutually exclusive with `markdown`) |
-| `markdown` | string | | [emailmd markdown](/en/docs/emailmd-templates), rendered server-side (mutually exclusive with `html`, max 100,000 chars) |
+| `markdown` | string | | [Markdown](/en/docs/emailmd-templates), rendered server-side (mutually exclusive with `html`, max 100,000 chars) |
 | `templateId` | string | | Template ID (instead of `subject`/`text`/`html`) |
 | `variables` | object | | Variables to interpolate in template |
 | `attachments` | array | | Array of attachment objects |

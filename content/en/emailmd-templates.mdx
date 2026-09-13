@@ -1,15 +1,14 @@
 ---
-title: "Markdown Templates (emailmd)"
+title: "Markdown Templates"
 description: Write email templates in markdown and let Tratto render responsive, email-safe HTML for you.
 ---
 
-Tratto templates come in two formats: **`html`** (you provide the HTML) and
-**`emailmd`** (you write markdown, Tratto renders it into responsive,
-email-safe HTML — dark mode, Outlook fixes and a plain-text part included).
-The markdown dialect is [emailmd](https://www.emailmd.dev), an open-source
-markdown-to-email renderer.
+Tratto templates come in two formats: **HTML** (`format: "html"`, you provide
+the HTML) and **Markdown** (`format: "emailmd"`, you write markdown, Tratto
+renders it into responsive, email-safe HTML — dark mode, Outlook fixes and a
+plain-text part included).
 
-With an `emailmd` template:
+With a Markdown template:
 
 - The **markdown is the source of truth** — it lives in the template's `source`
   field. The `html` field is derived from it by the server at save time and
@@ -52,11 +51,9 @@ theme: auto
 - **`theme`** — `light` (default), `dark`, or `auto` (renders light but adapts
   to readers whose mail client is in dark mode).
 
-Other emailmd frontmatter keys (`brand_color`, `button_color`, `font_family`,
-…) pass through to the render as well — see the
-[emailmd frontmatter reference](https://www.emailmd.dev/docs/frontmatter) for
-the full list. Invalid values never break the render; they surface as
-[render warnings](#render-warnings) instead.
+Other frontmatter keys (`brand_color`, `button_color`, `font_family`, …) pass
+through to the render as well. Invalid values never break the render; they
+surface as [render warnings](#render-warnings) instead.
 
 ### Directives
 
@@ -177,7 +174,7 @@ tighter rate limit of **60 requests per minute** (the render is CPU-bound).
 ### 3. Iterate: update re-renders
 
 `PATCH` with a new `markdown` re-renders and creates a new version. Sending
-`html` to an `emailmd` template — or `markdown` to an `html` template — fails
+`html` to a Markdown template — or `markdown` to an `html` template — fails
 with 422. **The format itself is fixed at creation and can never be changed.**
 
 ```bash
@@ -189,7 +186,7 @@ curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
 
 ### 4. Test send, publish, send
 
-From here on, an `emailmd` template behaves exactly like an HTML one:
+From here on, a Markdown template behaves exactly like an HTML one:
 
 ```bash
 # Test send to your own inbox, with sample variable values
@@ -263,7 +260,7 @@ const email = await client.emails.send({
   variables: { firstName: 'Alice' },
 });
 
-// Create an emailmd template
+// Create a Markdown template
 const template = await client.templates.create({
   name: 'Welcome Email',
   markdown: '# Welcome, {{firstName}}!',
@@ -286,7 +283,7 @@ client.emails.send(SendEmailOptions(
     variables={'firstName': 'Alice'},
 ))
 
-# Create an emailmd template
+# Create a Markdown template
 template = client.templates.create(CreateTemplateOptions(
     name='Welcome Email',
     markdown='# Welcome, {{firstName}}!',
