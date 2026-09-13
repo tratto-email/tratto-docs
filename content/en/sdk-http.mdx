@@ -182,7 +182,7 @@ curl -v ...
 | 403 | Forbidden (no permission) |
 | 404 | Not Found |
 | 409 | Conflict (idempotency error) |
-| 429 | Too Many Requests (rate limited) |
+| 429 | Too Many Requests (rate limited, or plan quota reached: check `error.code`) |
 | 500 | Server Error |
 
 ---

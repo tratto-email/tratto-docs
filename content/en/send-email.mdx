@@ -320,7 +320,7 @@ the domain named in `message`.
 
 ### RATE_LIMITED
 
-**Cause:** You have exceeded the rate limit of 500 requests per minute.
+**Cause:** More than 100 requests in one second with the same API key, or more than 500 requests in one minute from the same IP.
 
 **Fix:** Implement exponential backoff and retry later. See [Rate Limits](/en/docs/rate-limits).
 

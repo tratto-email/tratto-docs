@@ -21,9 +21,13 @@ The per-minute limit is **per client IP, not per tenant**. Two workspaces
 calling from the same egress IP share it; one workspace calling from several
 IPs gets one allowance per IP.
 
+`POST /v1/templates/render-preview` has its own per-IP limit of **60 requests /
+minute**, which takes the place of the 500/minute on that endpoint. The per-key
+limit still applies to it.
+
 ## Rate Limit Headers
 
-Every response includes rate limit info:
+Responses carry the state of the per-IP limit:
 
 ```http
 x-ratelimit-limit: 500
@@ -32,14 +36,15 @@ x-ratelimit-reset: 47
 ```
 
 `x-ratelimit-reset` is the number of **seconds remaining** in the current window,
-not a Unix timestamp. On a 429 the response also carries a `retry-after` header,
-in seconds.
+not a Unix timestamp. When the per-IP limit is exceeded, the 429 also carries a
+`retry-after` header, in seconds.
 
 <Callout type="info">
-These headers describe the **500/minute per-IP** limit only. The per-key
-limit of 100/second is not reflected in them: you can be at
-`x-ratelimit-remaining: 400` and still get a 429 for sending 100 requests in
-the same second.
+These headers describe the **per-IP** limit only: 500/minute, or 60/minute on
+`render-preview`. The per-key limit of 100/second is not reflected in them: you
+can be at `x-ratelimit-remaining: 400` and still get a 429 for sending 100
+requests in the same second. That per-key 429 carries neither these headers nor
+`retry-after`.
 </Callout>
 
 ## Check Rate Limit Status
@@ -55,38 +60,44 @@ Returns headers with remaining requests and reset time.
 
 ## Rate Limit Exceeded (429)
 
-When you exceed the limit:
+Both limits answer with the same code. Over the per-IP limit:
 
 ```json
 {
   "error": {
     "code": "RATE_LIMITED",
-    "message": "Too many requests. Slow down.",
+    "message": "Rate limit exceeded, retry in 47 seconds",
     "docs": "https://docs.tratto.email/en/docs/error-codes"
   }
 }
 ```
 
-The response carries no `retryAfter` field. Use the `x-ratelimit-reset` header
-and your own backoff.
+Over the per-key limit, `message` is
+`Rate limit exceeded: 100 requests/second per API key.`
+
+The body carries no `retryAfter` field. After a per-IP 429, wait the
+`retry-after` seconds. After a per-key 429 there is no header to read, but the
+window is one second, so a short backoff is enough.
 
 ## Retry Strategy
 
-Use **exponential backoff with jitter**:
+Use **exponential backoff with jitter**, honour `retry-after` when it is set,
+and do not retry `QUOTA_EXCEEDED`, which shares the 429 status:
 
 ```javascript
-async function sendWithRetry(request, maxRetries = 3) {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await fetch(request);
-    } catch (error) {
-      if (error.status === 429) {
-        const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
-        await new Promise(r => setTimeout(r, delay));
-      } else {
-        throw error;
-      }
-    }
+async function sendWithRetry(url, options, maxRetries = 3) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, options);
+    if (res.status !== 429 || attempt === maxRetries) return res;
+
+    const { error } = await res.clone().json();
+    if (error?.code === 'QUOTA_EXCEEDED') return res; // retrying will not help
+
+    const retryAfter = Number(res.headers.get('retry-after'));
+    const delay = retryAfter
+      ? retryAfter * 1000
+      : 2 ** attempt * 1000 + Math.random() * 1000;
+    await new Promise((r) => setTimeout(r, delay));
   }
 }
 ```
@@ -123,7 +134,7 @@ curl https://api.tratto.email/v1/workspace \
 {
   "data": {
     "plan": "free",
-    "limits": { "emailsPerMonth": 3000, "domains": 1 }
+    "limits": { "emailsPerMonth": 3000, "domains": 2 }
   }
 }
 ```
@@ -142,14 +153,17 @@ October still starts November at zero, on its first November send.
 **There is no "Pro" plan, and no unlimited tier.** `free`, `starter` and
 `growth` are the only three. Some early workspaces still carry a legacy plan
 value of `pro` in storage; it is not recognised, so it resolves to **free** —
-3,000 emails per month and 1 verified domain — both in what is enforced and in
+3,000 emails per month and 2 verified domains — both in what is enforced and in
 what `GET /v1/workspace` reports back (that endpoint answers `"plan": "free"`
 for such a workspace, not `"pro"`).
 </Callout>
 
 ## Burst Behavior
 
-Short bursts (seconds) can exceed `x-ratelimit-remaining` due to asynchronous processing. The 500 req/min limit is a hard cap; short peaks are allowed if average stays under the limit.
+Neither limit is averaged, and neither allows a burst above it. The per-key
+limit counts requests in each clock second. The per-IP limit opens a one-minute
+window on your first request and resets when that window ends. Spread requests
+out instead of sending them in spikes.
 
 ---
 
