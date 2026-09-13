@@ -19,7 +19,7 @@ Every template has a `format`, chosen at creation and **immutable afterwards**:
   markdown without saving.
 
 Markdown templates get their own guide — syntax, security model, end-to-end
-flow: [Markdown Templates (emailmd)](/en/docs/emailmd-templates). Responses on
+flow: [Markdown Templates](/en/docs/emailmd-templates). Responses on
 this page omit the `format` field for brevity; templates created before
 formats existed are `html`.
 
@@ -117,7 +117,7 @@ The subject is rendered with the same `variables` as the body, so
 `{{firstName}}` works in both. A variable you don't pass becomes an empty
 string in the subject too — see *Always Pass Every Variable* below.
 
-An `html` template has no text part. An `emailmd` template pins a rendered
+An `html` template has no text part. A Markdown template pins a rendered
 text part at save time, and that one is sent as `text/plain` alongside the
 HTML.
 
@@ -154,7 +154,7 @@ The version only bumps when the content actually changes — a PATCH that sets
 the same HTML leaves it alone. Versions have no status of their own, and
 bumping the version does not touch `status` on the template.
 
-For `emailmd` templates, update the `markdown` field instead — every change
+For Markdown templates, update the `markdown` field instead — every change
 re-renders the HTML and increments the version the same way. `html` and
 `markdown` are mutually exclusive in a PATCH, and each one is only accepted by
 a template of the matching format (422 otherwise).
@@ -202,7 +202,7 @@ curl https://api.tratto.email/v1/templates/tmpl_abc123/versions/1 \
 }
 ```
 
-On an `emailmd` template the response also carries `source`: the markdown that
+On a Markdown template the response also carries `source`: the markdown that
 produced that version's HTML.
 
 ## Test Send
@@ -314,7 +314,7 @@ sent without `firstName` or `companyName` arrives as `Hello , welcome to !` —
 the punctuation is left stranded, but the recipient never sees the name of
 your variable.
 
-This applies to the subject and the body, in HTML and in emailmd, on
+This applies to the subject and the body, in HTML and in Markdown, on
 transactional sends and campaigns alike. `null` substitutes to empty too: the
 strings `null` and `undefined` never reach an inbox.
 

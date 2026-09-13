@@ -1,15 +1,14 @@
 ---
-title: "Template Markdown (emailmd)"
+title: "Template Markdown"
 description: Scrivi i template email in markdown e lascia che Tratto generi HTML responsive ed email-safe per te.
 ---
 
-I template Tratto esistono in due formati: **`html`** (l'HTML lo fornisci tu)
-e **`emailmd`** (scrivi markdown e Tratto lo renderizza in HTML responsive ed
-email-safe — dark mode, fix per Outlook e parte testuale inclusi). Il dialetto
-markdown è [emailmd](https://www.emailmd.dev), un renderer open-source da
-markdown a email.
+I template Tratto esistono in due formati: **HTML** (`format: "html"`, l'HTML
+lo fornisci tu) e **Markdown** (`format: "emailmd"`, scrivi markdown e Tratto
+lo renderizza in HTML responsive ed email-safe — dark mode, fix per Outlook e
+parte testuale inclusi).
 
-Con un template `emailmd`:
+Con un template Markdown:
 
 - Il **markdown è la fonte di verità** — vive nel campo `source` del template.
   Il campo `html` è derivato dal server al salvataggio e non può essere
@@ -56,11 +55,9 @@ theme: auto
 - **`theme`** — `light` (default), `dark`, oppure `auto` (renderizza chiaro ma
   si adatta ai lettori con il client email in dark mode).
 
-Anche le altre chiavi frontmatter di emailmd (`brand_color`, `button_color`,
-`font_family`, …) passano al render — vedi il
-[riferimento frontmatter di emailmd](https://www.emailmd.dev/docs/frontmatter)
-per la lista completa. I valori non validi non rompono mai il render:
-emergono come [warning di render](#warning-di-render).
+Anche le altre chiavi frontmatter (`brand_color`, `button_color`,
+`font_family`, …) passano al render. I valori non validi non rompono mai il
+render: emergono come [warning di render](#warning-di-render).
 
 ### Direttive
 
@@ -184,7 +181,7 @@ limit più stretto di **60 richieste al minuto** (il render è CPU-bound).
 ### 3. Itera: l'aggiornamento ri-renderizza
 
 `PATCH` con un nuovo `markdown` ri-renderizza e crea una nuova versione.
-Inviare `html` a un template `emailmd` — o `markdown` a un template `html` —
+Inviare `html` a un template Markdown — o `markdown` a un template `html` —
 fallisce con 422. **Il formato è fissato alla creazione e non può mai essere
 cambiato.**
 
@@ -197,7 +194,7 @@ curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
 
 ### 4. Test, pubblica, invia
 
-Da qui in poi un template `emailmd` si comporta esattamente come uno HTML:
+Da qui in poi un template Markdown si comporta esattamente come uno HTML:
 
 ```bash
 # Invio di test alla tua inbox, con valori di esempio per le variabili
@@ -273,7 +270,7 @@ const email = await client.emails.send({
   variables: { firstName: 'Alice' },
 });
 
-// Crea un template emailmd
+// Crea un template Markdown
 const template = await client.templates.create({
   name: 'Email di Benvenuto',
   markdown: '# Benvenuto, {{firstName}}!',
@@ -296,7 +293,7 @@ client.emails.send(SendEmailOptions(
     variables={'firstName': 'Alice'},
 ))
 
-# Crea un template emailmd
+# Crea un template Markdown
 template = client.templates.create(CreateTemplateOptions(
     name='Email di Benvenuto',
     markdown='# Benvenuto, {{firstName}}!',

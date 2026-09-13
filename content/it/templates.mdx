@@ -19,7 +19,7 @@ Ogni template ha un `format`, scelto alla creazione e **immutabile dopo**:
   `POST /v1/templates/render-preview` renderizza il markdown senza salvare.
 
 I template markdown hanno una guida dedicata — sintassi, modello di sicurezza,
-flusso end-to-end: [Template Markdown (emailmd)](/it/docs/emailmd-templates).
+flusso end-to-end: [Template Markdown](/it/docs/emailmd-templates).
 Le risposte in questa pagina omettono il campo `format` per brevità; i
 template creati prima dell'esistenza dei formati sono `html`.
 
@@ -119,7 +119,7 @@ L'oggetto viene renderizzato con le stesse `variables` del corpo, quindi
 stringa vuota anche nell'oggetto — vedi *Passa Sempre Tutte le Variabili* più
 sotto.
 
-Un template `html` non ha una parte testuale. Un template `emailmd` fissa al
+Un template `html` non ha una parte testuale. Un template Markdown fissa al
 salvataggio una parte testuale renderizzata, e quella viene inviata come
 `text/plain` accanto all'HTML.
 
@@ -156,7 +156,7 @@ La versione si incrementa solo se il contenuto cambia davvero: una PATCH che
 reimposta lo stesso HTML la lascia com'è. Le versioni non hanno uno status
 proprio, e il bump di versione non tocca lo `status` del template.
 
-Per i template `emailmd`, aggiorna invece il campo `markdown` — ogni modifica
+Per i template Markdown, aggiorna invece il campo `markdown` — ogni modifica
 ri-renderizza l'HTML e incrementa la versione allo stesso modo. `html` e
 `markdown` sono mutuamente esclusivi in una PATCH, e ciascuno è accettato solo
 da un template del formato corrispondente (422 altrimenti).
@@ -204,7 +204,7 @@ curl https://api.tratto.email/v1/templates/tmpl_abc123/versions/1 \
 }
 ```
 
-Su un template `emailmd` la risposta porta anche `source`: il markdown che ha
+Su un template Markdown la risposta porta anche `source`: il markdown che ha
 prodotto l'HTML di quella versione.
 
 ## Invio di Test
@@ -317,7 +317,7 @@ inviato senza `firstName` né `companyName` arriva come `Ciao , benvenuto a !`
 — la punteggiatura resta orfana, ma il destinatario non vede mai il nome della
 tua variabile.
 
-Vale per l'oggetto e per il corpo, in HTML e in emailmd, sia sugli invii
+Vale per l'oggetto e per il corpo, in HTML e in Markdown, sia sugli invii
 transazionali che sulle campagne. Anche `null` sostituisce vuoto: non
 comparirà mai la stringa `null` o `undefined` in un'email.
 

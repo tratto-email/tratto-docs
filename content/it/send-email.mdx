@@ -106,7 +106,7 @@ A seconda del tuo piano, Tratto può aggiungere un footer alla versione HTML —
 
 Passa un corpo `markdown` invece di `html` e Tratto lo renderizza lato server
 in HTML responsive ed email-safe (più una parte in testo semplice) usando il
-[formato emailmd](/it/docs/emailmd-templates):
+[formato Markdown](/it/docs/emailmd-templates):
 
 ```bash
 curl -X POST https://api.tratto.email/v1/emails \
@@ -174,7 +174,7 @@ curl -X POST https://api.tratto.email/v1/emails \
 ```
 
 `subject` è obbligatorio su ogni invio. L'oggetto e l'`html` del template (e,
-per un template `emailmd`, la sua parte testuale fissata) vengono renderizzati
+per un template Markdown, la sua parte testuale fissata) vengono renderizzati
 con le `variables` che passi; una variabile che non passi diventa una stringa
 vuota.
 
@@ -272,7 +272,7 @@ Successivamente, filtra le email per tag o usali nei webhook.
 | `subject` | string | ✓ (se non usi template) | Riga di oggetto dell'email |
 | `text` | string | | Contenuto testo semplice (usato come fallback) |
 | `html` | string | | Contenuto HTML (mutuamente esclusivo con `markdown`) |
-| `markdown` | string | | [Markdown emailmd](/it/docs/emailmd-templates), renderizzato lato server (mutuamente esclusivo con `html`, max 100.000 caratteri) |
+| `markdown` | string | | [Markdown](/it/docs/emailmd-templates), renderizzato lato server (mutuamente esclusivo con `html`, max 100.000 caratteri) |
 | `templateId` | string | | Template ID (al posto di `subject`/`text`/`html`) |
 | `variables` | object | | Variabili da interpolate nel template |
 | `attachments` | array | | Array di oggetti allegati |
