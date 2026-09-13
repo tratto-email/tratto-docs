@@ -21,9 +21,13 @@ Il limite al minuto è **per IP client, non per tenant**. Due workspace che
 chiamano dallo stesso IP di uscita lo condividono; un workspace che chiama da
 più IP ha un'allowance per ciascun IP.
 
+`POST /v1/templates/render-preview` ha un proprio limite per IP di **60
+richieste / minuto**, che su quell'endpoint prende il posto delle 500/minuto. Il
+limite per chiave vale anche lì.
+
 ## Header di Rate Limit
 
-Ogni risposta include le informazioni sul rate limit:
+Le risposte riportano lo stato del limite per IP:
 
 ```http
 x-ratelimit-limit: 500
@@ -32,14 +36,15 @@ x-ratelimit-reset: 47
 ```
 
 `x-ratelimit-reset` è il numero di **secondi rimanenti** nella finestra corrente,
-non un timestamp Unix. In caso di 429 la risposta include anche l'header
-`retry-after`, in secondi.
+non un timestamp Unix. Quando superi il limite per IP, il 429 include anche
+l'header `retry-after`, in secondi.
 
 <Callout type="info">
-Questi header descrivono soltanto il limite di **500/minuto per IP**. Il limite
-per chiave, 100/secondo, non vi compare: puoi essere a
-`x-ratelimit-remaining: 400` e ricevere comunque un 429 per aver mandato 100
-richieste nello stesso secondo.
+Questi header descrivono soltanto il limite **per IP**: 500/minuto, o 60/minuto
+su `render-preview`. Il limite per chiave, 100/secondo, non vi compare: puoi
+essere a `x-ratelimit-remaining: 400` e ricevere comunque un 429 per aver
+mandato 100 richieste nello stesso secondo. Quel 429 per chiave non ha né questi
+header né `retry-after`.
 </Callout>
 
 ## Verificare lo Stato del Rate Limit
@@ -55,38 +60,44 @@ Restituisce gli header con le richieste rimanenti e l'orario di reset.
 
 ## Rate Limit Superato (429)
 
-Quando superi il limite:
+Entrambi i limiti rispondono con lo stesso codice. Oltre il limite per IP:
 
 ```json
 {
   "error": {
     "code": "RATE_LIMITED",
-    "message": "Too many requests. Slow down.",
+    "message": "Rate limit exceeded, retry in 47 seconds",
     "docs": "https://docs.tratto.email/en/docs/error-codes"
   }
 }
 ```
 
-La risposta non contiene alcun campo `retryAfter`: usa l'header
-`x-ratelimit-reset` e il tuo backoff.
+Oltre il limite per chiave, `message` è
+`Rate limit exceeded: 100 requests/second per API key.`
+
+Il body non contiene alcun campo `retryAfter`. Dopo un 429 per IP, attendi i
+secondi indicati da `retry-after`. Dopo un 429 per chiave non c'è un header da
+leggere, ma la finestra è di un secondo: basta un breve backoff.
 
 ## Strategia di Retry
 
-Usa un **backoff esponenziale con jitter**:
+Usa un **backoff esponenziale con jitter**, rispetta `retry-after` quando è
+presente e non riprovare `QUOTA_EXCEEDED`, che condivide lo status 429:
 
 ```javascript
-async function sendWithRetry(request, maxRetries = 3) {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await fetch(request);
-    } catch (error) {
-      if (error.status === 429) {
-        const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
-        await new Promise(r => setTimeout(r, delay));
-      } else {
-        throw error;
-      }
-    }
+async function sendWithRetry(url, options, maxRetries = 3) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, options);
+    if (res.status !== 429 || attempt === maxRetries) return res;
+
+    const { error } = await res.clone().json();
+    if (error?.code === 'QUOTA_EXCEEDED') return res; // riprovare non serve
+
+    const retryAfter = Number(res.headers.get('retry-after'));
+    const delay = retryAfter
+      ? retryAfter * 1000
+      : 2 ** attempt * 1000 + Math.random() * 1000;
+    await new Promise((r) => setTimeout(r, delay));
   }
 }
 ```
@@ -124,7 +135,7 @@ curl https://api.tratto.email/v1/workspace \
 {
   "data": {
     "plan": "free",
-    "limits": { "emailsPerMonth": 3000, "domains": 1 }
+    "limits": { "emailsPerMonth": 3000, "domains": 2 }
   }
 }
 ```
@@ -143,14 +154,18 @@ invia nulla riparte comunque da zero a novembre, al primo invio di novembre.
 **Non esiste un piano "Pro", né alcun piano illimitato.** `free`, `starter` e
 `growth` sono gli unici tre. Alcuni workspace dei primi tempi conservano ancora
 un valore legacy `pro`; non è riconosciuto e quindi ricade su **free** — 3.000
-email al mese e 1 dominio verificato — sia in ciò che viene applicato sia in
+email al mese e 2 domini verificati — sia in ciò che viene applicato sia in
 ciò che `GET /v1/workspace` riporta (per un workspace così quell'endpoint
 risponde `"plan": "free"`, non `"pro"`).
 </Callout>
 
 ## Comportamento nei Picchi
 
-I picchi brevi (nell'ordine dei secondi) possono superare `x-ratelimit-remaining` a causa dell'elaborazione asincrona. Il limite di 500 req/min è un tetto rigido, ma i picchi brevi sono ammessi se la media resta sotto la soglia.
+Nessuno dei due limiti fa una media, e nessuno ammette picchi oltre la soglia.
+Il limite per chiave conta le richieste in ogni secondo di orologio. Il limite
+per IP apre una finestra di un minuto alla tua prima richiesta e si azzera
+quando la finestra finisce. Distribuisci le richieste invece di inviarle a
+raffiche.
 
 ---
 

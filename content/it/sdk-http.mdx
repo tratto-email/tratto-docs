@@ -115,7 +115,7 @@ curl -X POST https://api.tratto.email/v1/domains \
 | 400 | Richiesta Non Valida |
 | 401 | Non Autorizzato |
 | 404 | Non Trovato |
-| 429 | Troppi Tentativi (rate limit) |
+| 429 | Troppi Tentativi (rate limit, o quota del piano raggiunta: controlla `error.code`) |
 | 500 | Errore Server |
 
 ---

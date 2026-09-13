@@ -323,7 +323,7 @@ dominio indicato in `message`.
 
 ### RATE_LIMITED
 
-**Causa:** Hai superato il limite di 500 richieste al minuto.
+**Causa:** Più di 100 richieste in un secondo con la stessa chiave API, o più di 500 richieste in un minuto dallo stesso IP.
 
 **Fix:** Implementa backoff esponenziale e riprova più tardi. Vedi [Rate Limits](/it/docs/rate-limits).
 
