@@ -9,7 +9,7 @@ Segui queste pratiche per massimizzare il recapito in inbox ed evitare la cartel
 
 **Checklist:**
 - ✅ Aggiungi i tre record CNAME DKIM presenti in `records` del tuo dominio (necessari per inviare)
-- ✅ Aggiungi il record SPF: `v=spf1 include:amazonses.com ~all` (uniscilo a un record SPF esistente)
+- ✅ Aggiungi il record SPF: `v=spf1 include:amazonses.com ~all`. Se il dominio ne ha già uno, aggiungi invece `include:amazonses.com` a quello (es. `v=spf1 include:amazonses.com include:_spf.mx.cloudflare.net ~all`): un dominio deve avere esattamente un record `v=spf1`, e con due SPF si rompe per tutti i mittenti
 - ✅ Aggiungi la policy DMARC: `v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email`
 
 Vedi [Domini](/it/docs/domains) per la configurazione.

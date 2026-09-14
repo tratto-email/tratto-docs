@@ -82,6 +82,8 @@ Risposta (i valori sono esempi, usa sempre quelli della **tua** risposta):
 
 Aggiungi tutti i record della risposta presso il tuo provider DNS. I tre **record CNAME DKIM sono obbligatori** per la verifica; SPF e DMARC sono fortemente consigliati per la deliverability.
 
+Se il tuo dominio ha già un record SPF (di Cloudflare Email Routing, Google Workspace, Microsoft 365 e simili), **aggiungi `include:amazonses.com` a quello** invece di crearne un secondo, per esempio `v=spf1 include:amazonses.com include:_spf.mx.cloudflare.net ~all`. Un dominio deve avere esattamente un record `v=spf1`: con due, SPF si rompe per tutti i mittenti.
+
 <Callout>
 Amazon SES indica che le modifiche DNS possono richiedere fino a 72 ore per propagarsi. La verifica avviene anche in automatico: Tratto ricontrolla ogni 10 minuti i domini in attesa.
 </Callout>

@@ -9,7 +9,7 @@ Follow these practices to maximize inbox placement and avoid spam folders.
 
 **Checklist:**
 - ✅ Add the three DKIM CNAME records from your domain's `records` (required to send)
-- ✅ Add SPF record: `v=spf1 include:amazonses.com ~all` (merge it into an existing SPF record)
+- ✅ Add SPF record: `v=spf1 include:amazonses.com ~all`. If the domain already has one, add `include:amazonses.com` to it instead (e.g. `v=spf1 include:amazonses.com include:_spf.mx.cloudflare.net ~all`): a domain must have exactly one `v=spf1` record, and two break SPF for every sender
 - ✅ Add DMARC policy: `v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email`
 
 See [Domains](/en/docs/domains) for setup.

@@ -85,7 +85,7 @@ Add the records from `records` at your DNS provider (GoDaddy, Namecheap, Cloudfl
 | DKIM | CNAME | `<token1>._domainkey.hello.yourdomain.com` | `<token1>.dkim.amazonses.com` | Yes |
 | DKIM | CNAME | `<token2>._domainkey.hello.yourdomain.com` | `<token2>.dkim.amazonses.com` | Yes |
 | DKIM | CNAME | `<token3>._domainkey.hello.yourdomain.com` | `<token3>.dkim.amazonses.com` | Yes |
-| SPF | TXT | `hello.yourdomain.com` | `v=spf1 include:amazonses.com ~all` | Recommended |
+| SPF | TXT | `hello.yourdomain.com` | `v=spf1 include:amazonses.com ~all` | Recommended; if the host already has an SPF record, add `include:amazonses.com` to it |
 | DMARC | TXT | `_dmarc.hello.yourdomain.com` | `v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email` | Recommended |
 
 ### 1. DKIM Records (required)
@@ -106,7 +106,13 @@ The three tokens are unique to your domain: copy each host and value from your r
 **Host:** `hello.yourdomain.com`  
 **Value:** `v=spf1 include:amazonses.com ~all`
 
-This authorizes Amazon SES to send for the hostname. A hostname can have only one SPF record: if it already has one, add `include:amazonses.com` to it instead of creating a second.
+This authorizes Amazon SES to send for the hostname.
+
+<Callout type="warning">
+A hostname must have exactly one `v=spf1` record (RFC 7208, section 3.2). With two, the SPF check fails with a permanent error (`permerror`) for every sender on that hostname, not only Amazon SES. If the host already has an SPF record, for example from Cloudflare Email Routing, Google Workspace or Microsoft 365, **add `include:amazonses.com` to it** instead of creating a second one:
+
+`v=spf1 include:amazonses.com include:_spf.mx.cloudflare.net ~all`
+</Callout>
 
 ### 3. DMARC Record (recommended)
 

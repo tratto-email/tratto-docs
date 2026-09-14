@@ -154,6 +154,12 @@ Add every record from the response at your DNS provider. The three **DKIM
 CNAME records are required** for verification; SPF and DMARC are strongly
 recommended for deliverability.
 
+If your domain already has an SPF record (from Cloudflare Email Routing, Google
+Workspace, Microsoft 365 and similar), **add `include:amazonses.com` to it**
+instead of creating a second one, for example
+`v=spf1 include:amazonses.com include:_spf.mx.cloudflare.net ~all`. A domain
+must have exactly one `v=spf1` record: two break SPF for every sender.
+
 <Callout>
 Amazon SES notes that DNS changes can take up to 72 hours to propagate.
 Verification also runs automatically: Tratto re-checks pending domains every
