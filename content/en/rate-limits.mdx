@@ -104,9 +104,9 @@ async function sendWithRetry(url, options, maxRetries = 3) {
 
 ## Plan Limits
 
-There are three plans, and two caps on each:
+Each plan has two caps:
 
-| Plan | Emails per month | Verified domains |
+| Plan | Emails per month | Domains |
 |---|---|---|
 | Free | 3,000 | 2 |
 | Starter | 75,000 | 5 |
@@ -119,6 +119,11 @@ the test-mode one — 100 test sends per day, see
 Exceed the monthly quota and requests fail with `QUOTA_EXCEEDED`, which also
 returns 429. Unlike `RATE_LIMITED` it will not clear by retrying: see
 [Error Codes](/en/docs/error-codes).
+
+The domain limit counts every domain in the workspace, whatever its
+verification status, and it is checked only when you add one
+(`POST /v1/domains`). Deleting a domain (`DELETE /v1/domains/{id}`) frees its
+place.
 
 ### Read your own limits from the API
 
@@ -150,12 +155,9 @@ month** — there is no scheduled reset job. A workspace that sends nothing in
 October still starts November at zero, on its first November send.
 
 <Callout type="warn">
-**There is no "Pro" plan, and no unlimited tier.** `free`, `starter` and
-`growth` are the only three. Some early workspaces still carry a legacy plan
-value of `pro` in storage; it is not recognised, so it resolves to **free** —
-3,000 emails per month and 2 verified domains — both in what is enforced and in
-what `GET /v1/workspace` reports back (that endpoint answers `"plan": "free"`
-for such a workspace, not `"pro"`).
+**There is no "Pro" plan, and no plan without a monthly email cap.** The plans
+are the ones in the table above, and `GET /v1/workspace` always reports one of
+them.
 </Callout>
 
 ## Burst Behavior

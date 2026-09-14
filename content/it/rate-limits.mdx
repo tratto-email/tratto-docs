@@ -104,9 +104,9 @@ async function sendWithRetry(url, options, maxRetries = 3) {
 
 ## Limiti di Piano
 
-I piani sono tre, e ciascuno ha due tetti:
+Ogni piano ha due tetti:
 
-| Piano | Email al mese | Domini verificati |
+| Piano | Email al mese | Domini |
 |---|---|---|
 | Free | 3.000 | 2 |
 | Starter | 75.000 | 5 |
@@ -119,6 +119,11 @@ del prodotto è quello del test mode — 100 invii di test al giorno, vedi
 Se superi la quota mensile le richieste falliscono con `QUOTA_EXCEEDED`,
 anch'esso 429. A differenza di `RATE_LIMITED` non si risolve riprovando: vedi
 [Codici di Errore](/it/docs/error-codes).
+
+Il limite di domini conta tutti i domini del workspace, qualunque sia il loro
+stato di verifica, e viene controllato solo quando ne aggiungi uno
+(`POST /v1/domains`). Eliminare un dominio (`DELETE /v1/domains/{id}`) libera il
+suo posto.
 
 ### Leggi i tuoi limiti dall'API
 
@@ -151,12 +156,9 @@ nuovo**: non c'è nessun job schedulato di reset. Un workspace che a ottobre non
 invia nulla riparte comunque da zero a novembre, al primo invio di novembre.
 
 <Callout type="warn">
-**Non esiste un piano "Pro", né alcun piano illimitato.** `free`, `starter` e
-`growth` sono gli unici tre. Alcuni workspace dei primi tempi conservano ancora
-un valore legacy `pro`; non è riconosciuto e quindi ricade su **free** — 3.000
-email al mese e 2 domini verificati — sia in ciò che viene applicato sia in
-ciò che `GET /v1/workspace` riporta (per un workspace così quell'endpoint
-risponde `"plan": "free"`, non `"pro"`).
+**Non esiste un piano "Pro", né un piano senza tetto mensile di email.** I
+piani sono quelli della tabella qui sopra, e `GET /v1/workspace` riporta sempre
+uno di questi.
 </Callout>
 
 ## Comportamento nei Picchi

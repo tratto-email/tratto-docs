@@ -1,7 +1,7 @@
 ---
 title: Test Mode
 description: Develop and test the full email flow — statuses, timeline, webhooks — without sending real email
-updatedAt: 2026-09-10
+updatedAt: 2026-09-14
 ---
 
 Every workspace has two key environments, Stripe-style:
@@ -13,7 +13,7 @@ Every workspace has two key environments, Stripe-style:
 | Monthly quota | Untouched (own cap: 100 test sends/day) | Counts against your plan |
 | Statuses, timeline, webhooks | Identical to live | — |
 | Data visibility | A test key sees only test data | A live key sees only live data |
-| Retention | Test emails deleted after 7 days | Per plan retention |
+| Retention | Deleted 7 days after creation | Deleted 90 days after sending, on every plan |
 
 The point: your integration — sending, status polling, webhook handling,
 bounce handling — runs against the exact same pipeline as production, before
