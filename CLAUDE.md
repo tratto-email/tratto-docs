@@ -128,15 +128,35 @@ Things that are easy to get wrong:
 
 ## Git workflow
 
-**Never commit directly to `main` or `develop`.**
+**Never commit directly to `main`.** There is no `develop` branch.
 
 ```
-feat/<slug>  →  PR → develop  →  staging deploy
-                                    ↓ (release PR)
-                                  main  →  production deploy
+<type>/<slug>  →  PR → main  →  merge  →  production + staging deploy (both from main)
 ```
 
-| Push to | Deploys to |
-|---|---|
-| `develop` | docs.staging.tratto.email |
-| `main` | docs.tratto.email |
+Merging a PR publishes it. Both Firebase App Hosting backends roll out from
+`main`, on the same commit, in parallel — staging is not a gate before
+production, so the PR (local `pnpm lint && pnpm typecheck && pnpm build`, plus
+the CI check) is the only review step:
+
+| Branch | Backend (config) | Serves |
+|---|---|---|
+| `main` | `trattoemail` (`apphosting.yaml`) | docs.tratto.email |
+| `main` | `tratto-staging` (`apphosting.staging.yaml`) | docs.staging.tratto.email |
+
+A green merge is not a deployed site: check that both
+`App Hosting - Rollout (…/tratto-docs)` check runs on the `main` commit
+succeeded (`gh api repos/{owner}/{repo}/commits/<sha>/check-runs`).
+
+### Releases
+
+Tratto has one product version shared by API, dashboard, site and docs; the
+SDKs (`tratto-node`, `tratto-python`) are versioned separately. After a
+release, bump `version` in `package.json` to the same number and tag the
+production commit on `main`:
+
+```bash
+gh release create vX.Y.Z --target <main-sha> --title vX.Y.Z --generate-notes
+```
+
+Use the same `vX.Y.Z` as `tratto-api`, `tratto-app` and `tratto`.
