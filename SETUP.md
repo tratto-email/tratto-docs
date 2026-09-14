@@ -137,27 +137,38 @@ If Chrome is not auto-detected, set `CHROME_PATH` before running.
 
 ## Branching and deployment
 
+There is no `develop` branch.
+
 ```
-feat/<slug>  →  PR → develop  →  docs.staging.tratto.email
-                                     ↓ (release PR)
-                                   main  →  docs.tratto.email
+<type>/<slug>  →  PR → main  →  merge  →  production + staging deploy (both from main)
 ```
 
-Firebase App Hosting deploys automatically on push:
+Firebase App Hosting deploys automatically on push to `main`. Both backends
+track `main` and roll out the same commit in parallel, so staging is not a gate
+before production:
 
-| Branch | Backend | Config | Domain |
+| Branch | Backend | Config actually applied | Domain |
 |---|---|---|---|
 | `main` | prod (GCP `trattoemail`) | `apphosting.yaml` | docs.tratto.email |
-| `develop` | staging (GCP `tratto-staging`) | `apphosting.staging.yaml` | docs.staging.tratto.email |
+| `main` | staging (GCP `tratto-staging`) | `apphosting.yaml` (see below) | tratto-docs--tratto-staging.europe-west4.hosted.app |
 
-`.github/workflows/ci.yml` runs lint, typecheck and build on every PR to `main`
-or `develop`.
+`apphosting.staging.yaml` is only read when the backend's environment name is
+`staging`. The `tratto-staging` backend has none set (checked 2026-09-14), so
+staging builds with the production values from `apphosting.yaml`.
+
+`.github/workflows/ci.yml` runs lint, typecheck and build on every PR to and
+push on `main`.
+
+Releases share one version with `tratto-api`, `tratto-app` and `tratto` (the
+SDKs are versioned separately): bump `package.json`, then
+`gh release create vX.Y.Z --target <main-sha> --title vX.Y.Z --generate-notes`.
 
 ### One-time setup still required in the consoles
 
 These cannot be done from the repository:
 
-- Create the two App Hosting backends and point them at this repo/branches.
-- Map the custom domains `docs.tratto.email` and `docs.staging.tratto.email`.
-- Enable branch protection on `main` and `develop` (require PR + passing CI).
+- Set the environment name of the `tratto-staging` backend to `staging`, so
+  `apphosting.staging.yaml` applies (noindex, staging API spec, no GTM).
+- Map the custom domain `docs.staging.tratto.email` (no DNS record yet).
+- Enable branch protection on `main` (require PR + passing CI).
 - Submit the sitemap to Google Search Console.
