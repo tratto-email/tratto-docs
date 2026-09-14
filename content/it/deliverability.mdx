@@ -8,9 +8,9 @@ Segui queste pratiche per massimizzare il recapito in inbox ed evitare la cartel
 ## 1. Autenticazione del Dominio (SPF + DKIM + DMARC)
 
 **Checklist:**
-- ✅ Aggiungi il record SPF: `v=spf1 include:spf.tratto.email ~all`
-- ✅ Aggiungi il record DKIM con la chiave pubblica fornita da Tratto
-- ✅ Aggiungi la policy DMARC: `v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com`
+- ✅ Aggiungi i tre record CNAME DKIM presenti in `records` del tuo dominio (necessari per inviare)
+- ✅ Aggiungi il record SPF: `v=spf1 include:amazonses.com ~all` (uniscilo a un record SPF esistente)
+- ✅ Aggiungi la policy DMARC: `v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email`
 
 Vedi [Domini](/it/docs/domains) per la configurazione.
 

@@ -62,32 +62,28 @@ curl -X POST https://api.tratto.email/v1/domains \
   -d '{"domain":"hello.tuodominio.it"}'
 ```
 
-Risposta:
+Risposta (i valori sono esempi, usa sempre quelli della **tua** risposta):
 ```json
 {
   "data": {
     "id": "dom_abc123",
     "domain": "hello.tuodominio.it",
-    "status": "pending_verification",
-    "records": {
-      "spf": "v=spf1 include:spf.tratto.email ~all",
-      "dkim": "v=DKIM1; p=MIIBIjANBg...",
-      "dmarc": "v=DMARC1; p=none; rua=mailto:dmarc@tuodominio.it"
-    }
+    "status": "pending",
+    "records": [
+      { "type": "CNAME", "host": "token1._domainkey.hello.tuodominio.it", "value": "token1.dkim.amazonses.com", "purpose": "dkim" },
+      { "type": "CNAME", "host": "token2._domainkey.hello.tuodominio.it", "value": "token2.dkim.amazonses.com", "purpose": "dkim" },
+      { "type": "CNAME", "host": "token3._domainkey.hello.tuodominio.it", "value": "token3.dkim.amazonses.com", "purpose": "dkim" },
+      { "type": "TXT", "host": "hello.tuodominio.it", "value": "v=spf1 include:amazonses.com ~all", "purpose": "spf" },
+      { "type": "TXT", "host": "_dmarc.hello.tuodominio.it", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email", "purpose": "dmarc" }
+    ]
   }
 }
 ```
 
-Aggiungi questi record DNS al tuo registrar di dominio:
-
-| Type | Nome | Valore |
-|------|------|--------|
-| TXT | `hello.tuodominio.it` | `v=spf1 include:spf.tratto.email ~all` |
-| TXT | `default._domainkey.hello.tuodominio.it` | (valore dalla risposta) |
-| TXT | `_dmarc.hello.tuodominio.it` | `v=DMARC1; p=none; rua=mailto:dmarc@tuodominio.it` |
+Aggiungi tutti i record della risposta presso il tuo provider DNS. I tre **record CNAME DKIM sono obbligatori** per la verifica; SPF e DMARC sono fortemente consigliati per la deliverability.
 
 <Callout>
-I cambiamenti DNS possono richiedere fino a 48 ore per propagarsi. Ritorna tra qualche minuto.
+Amazon SES indica che le modifiche DNS possono richiedere fino a 72 ore per propagarsi. La verifica avviene anche in automatico: Tratto ricontrolla ogni 10 minuti i domini in attesa.
 </Callout>
 
 Verifica quando pronto:

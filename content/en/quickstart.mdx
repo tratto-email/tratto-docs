@@ -155,8 +155,9 @@ CNAME records are required** for verification; SPF and DMARC are strongly
 recommended for deliverability.
 
 <Callout>
-DNS changes can take up to 48 hours to propagate, though it's usually
-minutes. Verification also runs automatically in the background.
+Amazon SES notes that DNS changes can take up to 72 hours to propagate.
+Verification also runs automatically: Tratto re-checks pending domains every
+10 minutes.
 </Callout>
 
 Verify when ready:

@@ -8,9 +8,9 @@ Follow these practices to maximize inbox placement and avoid spam folders.
 ## 1. Domain Authentication (SPF + DKIM + DMARC)
 
 **Checklist:**
-- ✅ Add SPF record: `v=spf1 include:spf.tratto.email ~all`
-- ✅ Add DKIM record with public key from Tratto
-- ✅ Add DMARC policy: `v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com`
+- ✅ Add the three DKIM CNAME records from your domain's `records` (required to send)
+- ✅ Add SPF record: `v=spf1 include:amazonses.com ~all` (merge it into an existing SPF record)
+- ✅ Add DMARC policy: `v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email`
 
 See [Domains](/en/docs/domains) for setup.
 
