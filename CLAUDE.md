@@ -139,10 +139,19 @@ Merging a PR publishes it. Both Firebase App Hosting backends roll out from
 production, so the PR (local `pnpm lint && pnpm typecheck && pnpm build`, plus
 the CI check) is the only review step:
 
-| Branch | Backend (config) | Serves |
-|---|---|---|
-| `main` | `trattoemail` (`apphosting.yaml`) | docs.tratto.email |
-| `main` | `tratto-staging` (`apphosting.staging.yaml`) | docs.staging.tratto.email |
+| Branch | Backend | Config actually applied | Serves |
+|---|---|---|---|
+| `main` | `trattoemail` | `apphosting.yaml` | docs.tratto.email |
+| `main` | `tratto-staging` | `apphosting.yaml` (!) | tratto-docs--tratto-staging.europe-west4.hosted.app |
+
+**Staging runs production config.** App Hosting reads `apphosting.staging.yaml`
+only when the backend's environment name is `staging`. The `tratto-staging`
+backend has no environment set (checked 2026-09-14, build
+`build-2026-09-13-003`), so its builds use `apphosting.yaml`: production
+canonical URL, `robots.txt` allowing everything, production GTM. The
+`docs.staging.tratto.email` domain has no DNS record and is not mapped. Until
+someone sets the environment in the console, do not treat staging as
+non-indexed or analytics-free.
 
 A green merge is not a deployed site: check that both
 `App Hosting - Rollout (…/tratto-docs)` check runs on the `main` commit

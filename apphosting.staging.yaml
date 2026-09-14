@@ -1,5 +1,11 @@
 # Firebase App Hosting — staging backend (GCP project: tratto-staging)
-# Serves https://docs.staging.tratto.email from the `develop` branch.
+# The backend tracks the `main` branch, same as production.
+#
+# NOT APPLIED TODAY: App Hosting reads this file only when the backend's
+# environment name is `staging`. The tratto-staging backend has none set
+# (checked 2026-09-14), so staging builds with apphosting.yaml (production
+# values) and serves on tratto-docs--tratto-staging.europe-west4.hosted.app.
+# docs.staging.tratto.email is not mapped and has no DNS record.
 #
 # NEXT_PUBLIC_SITE_URL is what makes the app serve `Disallow: /` in robots.txt
 # and add `X-Robots-Tag: noindex` — staging must never be indexed.
