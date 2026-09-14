@@ -116,7 +116,7 @@ for record in domain['data']['records']:
 
 ```python
 result = client.domains.verify('dom_abc123')
-print(result['data']['status'])  # 'verified' or 'failed'
+print(result['data']['status'])  # 'pending', 'verified' or 'failed'
 ```
 
 ## Create Contact

@@ -3,7 +3,7 @@ title: "Domini: Aggiungi, Configurazione DNS e Verifica"
 description: Configura i domini di invio con proper autenticazione DNS
 ---
 
-Un **dominio** è la tua identità di invio verificata. Prima di inviare email, devi aggiungere un dominio e verificare la proprietà tramite record DNS.
+Un **dominio** è la tua identità di invio verificata. Prima di inviare email reali, devi aggiungere un dominio e pubblicare i record DNS che Tratto restituisce.
 
 ## Perché i Domini Contano
 
@@ -53,80 +53,89 @@ data = response.json()['data']
 print(f"Domain ID: {data['id']}")
 ```
 
-**Risposta:**
+**Risposta** (`201`; i valori sono esempi, usa sempre quelli della **tua** risposta):
 ```json
 {
   "data": {
     "id": "dom_abc123",
     "domain": "hello.tuodominio.it",
-    "status": "pending_verification",
-    "records": {
-      "spf": "v=spf1 include:spf.tratto.email ~all",
-      "dkim": "v=DKIM1; p=MIIBIjANBg...",
-      "dmarc": "v=DMARC1; p=none; rua=mailto:dmarc@tuodominio.it"
-    },
-    "createdAt": "2025-06-30T12:00:00Z"
+    "status": "pending",
+    "records": [
+      { "type": "CNAME", "host": "token1._domainkey.hello.tuodominio.it", "value": "token1.dkim.amazonses.com", "verified": false, "purpose": "dkim" },
+      { "type": "CNAME", "host": "token2._domainkey.hello.tuodominio.it", "value": "token2.dkim.amazonses.com", "verified": false, "purpose": "dkim" },
+      { "type": "CNAME", "host": "token3._domainkey.hello.tuodominio.it", "value": "token3.dkim.amazonses.com", "verified": false, "purpose": "dkim" },
+      { "type": "TXT", "host": "hello.tuodominio.it", "value": "v=spf1 include:amazonses.com ~all", "verified": false, "purpose": "spf" },
+      { "type": "TXT", "host": "_dmarc.hello.tuodominio.it", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email", "verified": false, "purpose": "dmarc" }
+    ],
+    "createdAt": "2026-06-30T12:00:00.000Z",
+    "updatedAt": "2026-06-30T12:00:00.000Z",
+    "verifiedAt": null
   }
 }
 ```
 
-Lo status del dominio è `pending_verification`: in attesa di record DNS.
+Lo status del dominio è `pending`: Tratto attende che Amazon SES, che consegna le tue email, trovi i record DKIM.
 
 ## Configurazione Record DNS
 
-Aggiungi tre record al tuo registrar di dominio (GoDaddy, Namecheap, Route 53, ecc.):
+Aggiungi i record di `records` presso il tuo provider DNS (GoDaddy, Namecheap, Cloudflare, Route 53, ecc.). Ogni dominio ne riceve cinque:
 
-### 1. Record SPF
+| Scopo | Tipo | Host | Valore | Necessario per inviare |
+|-------|------|------|--------|------------------------|
+| DKIM | CNAME | `<token1>._domainkey.hello.tuodominio.it` | `<token1>.dkim.amazonses.com` | Sì |
+| DKIM | CNAME | `<token2>._domainkey.hello.tuodominio.it` | `<token2>.dkim.amazonses.com` | Sì |
+| DKIM | CNAME | `<token3>._domainkey.hello.tuodominio.it` | `<token3>.dkim.amazonses.com` | Sì |
+| SPF | TXT | `hello.tuodominio.it` | `v=spf1 include:amazonses.com ~all` | Consigliato; se l'host ha già un record SPF, aggiungi `include:amazonses.com` a quello |
+| DMARC | TXT | `_dmarc.hello.tuodominio.it` | `v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email` | Consigliato |
 
-**Nome:** `hello.tuodominio.it`  
-**Tipo:** TXT  
-**Valore:** `v=spf1 include:spf.tratto.email ~all`
+### 1. Record DKIM (obbligatori)
 
-Questo autorizza Tratto a inviare per tuo conto.
+**Tipo:** CNAME, tre record  
+**Host:** `<token>._domainkey.hello.tuodominio.it`  
+**Valore:** `<token>.dkim.amazonses.com`
 
-### 2. Record DKIM
-
-**Nome:** `default._domainkey.hello.tuodominio.it`  
-**Tipo:** TXT  
-**Valore:** (dalla risposta API `records.dkim`)
-
-Questo usa la crittografia a chiave pubblica per firmare le email dal tuo dominio.
+I tre token sono unici per il tuo dominio: copia host e valore di ciascuno dalla tua risposta. Amazon SES genera e gestisce la chiave di firma, e i record CNAME puntano alle sue chiavi pubbliche. Sono gli unici record che Tratto controlla: devono risolversi tutti e tre prima che il dominio diventi `verified`.
 
 <Callout>
-Il valore DKIM inizia con `v=DKIM1; p=...` e può essere molto lungo. Copia l'intero valore dalla risposta API.
+`host` è il nome completo. Se il tuo provider DNS aggiunge il dominio in automatico, inserisci solo la parte che lo precede (per esempio `<token1>._domainkey.hello` nella zona `tuodominio.it`), altrimenti il record diventa `<token1>._domainkey.hello.tuodominio.it.tuodominio.it`.
 </Callout>
 
-### 3. Record DMARC
+### 2. Record SPF (consigliato)
 
-**Nome:** `_dmarc.hello.tuodominio.it`  
 **Tipo:** TXT  
-**Valore:** `v=DMARC1; p=none; rua=mailto:dmarc@tuodominio.it`
+**Host:** `hello.tuodominio.it`  
+**Valore:** `v=spf1 include:amazonses.com ~all`
 
-Questo imposta la policy DMARC per il dominio. `p=none` significa solo report; `p=quarantine` o `p=reject` sono più rigidi.
-
-## Esempio: Aggiungere Record in Route 53
-
-Se usi AWS Route 53:
-
-1. Vai a **Route 53** → **Hosted Zones**
-2. Clicca il tuo dominio
-3. Crea tre nuovi record:
-
-| Nome | Tipo | Valore |
-|------|------|--------|
-| `hello.tuodominio.it` | TXT | `v=spf1 include:spf.tratto.email ~all` |
-| `default._domainkey.hello.tuodominio.it` | TXT | (valore DKIM) |
-| `_dmarc.hello.tuodominio.it` | TXT | `v=DMARC1; p=none; rua=mailto:dmarc@tuodominio.it` |
-
-4. Clicca **Create records**
+Questo autorizza Amazon SES a inviare per l'hostname.
 
 <Callout type="warning">
-La propagazione DNS può richiedere **fino a 48 ore**. Ritorna tra qualche minuto, ma concedi tempo per la diffusione globale.
+Un hostname deve avere esattamente un record `v=spf1` (RFC 7208, sezione 3.2). Con due, il controllo SPF fallisce con un errore permanente (`permerror`) per tutti i mittenti di quell'hostname, non solo per Amazon SES. Se l'host ha già un record SPF, per esempio di Cloudflare Email Routing, Google Workspace o Microsoft 365, **aggiungi `include:amazonses.com` a quello** invece di crearne un secondo:
+
+`v=spf1 include:amazonses.com include:_spf.mx.cloudflare.net ~all`
 </Callout>
 
-## Verifica Proprietà del Dominio
+### 3. Record DMARC (consigliato)
 
-Una volta che i record DNS sono in posto, attiva la verifica.
+**Tipo:** TXT  
+**Host:** `_dmarc.hello.tuodominio.it`  
+**Valore:** `v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email`
+
+Questo chiede ai server riceventi di mettere in quarantena la posta che non supera l'autenticazione. La policy vale per tutta la posta inviata a nome del dominio, non solo per quella inviata tramite Tratto: assicurati che gli altri servizi che inviano per il dominio siano autenticati prima di pubblicarla. Tieni un solo record DMARC per host. Tratto non controlla questo record, quindi puoi adattare la policy e l'indirizzo `rua` al tuo dominio.
+
+## Verifica
+
+Tratto verifica **solo DKIM**, chiedendo ad Amazon SES se ha trovato i tre record CNAME. SPF e DMARC non vengono mai controllati: il loro flag `verified` è sempre `false`, anche su un dominio verificato. I tre record DKIM condividono un unico flag, che diventa `true` quando il dominio è `verified`.
+
+Il controllo avviene in due modi:
+
+- **In automatico**: un job in background ricontrolla ogni 10 minuti tutti i domini `pending`
+- **Su richiesta**: `POST /v1/domains/{id}/verify` controlla subito
+
+<Callout type="warning">
+Amazon SES indica che le modifiche DNS possono richiedere **fino a 72 ore** per propagarsi, e cerca i record DKIM per un massimo di 72 ore.
+</Callout>
+
+### Verifica Subito
 
 **cURL**
 ```bash
@@ -156,15 +165,24 @@ data = response.json()['data']
 print(f"Status: {data['status']}")
 ```
 
-**Possibili risposte:**
+La risposta è il dominio completo, `records` inclusi, con `200` qualunque sia l'esito: leggi `status`, non il codice HTTP.
 
-- `verified`: ✅ Successo! Dominio pronto per inviare
-- `pending_verification`: ⏳ Ancora in corso la verifica dei record DNS (riprova tra qualche minuto)
-- `failed`: ❌ Record DNS non trovati o non validi (controlla i record, attendi la propagazione DNS)
+| Status | Significato |
+|--------|-------------|
+| `pending` | Amazon SES non ha ancora trovato tutti e tre i record DKIM, oppure un problema temporaneo di SES ha impedito il controllo. Attendi o ricontrolla più tardi. |
+| `verified` | I record DKIM sono stati trovati. Puoi inviare email reali da questo dominio. |
+| `failed` | Amazon SES ha smesso di cercare, di solito perché non ha trovato i record DKIM. Il controllo automatico salta i domini `failed`: vedi [Risoluzione dei Problemi DNS](#risoluzione-dei-problemi-dns). |
+
+### Cosa Sblocca `verified`
+
+- **Invii reali**: un'email inviata con una chiave live (`tratto_live_...`) viene accettata solo se il dominio del `from` è verificato nel tuo workspace. Altrimenti l'API risponde `403` con `FORBIDDEN`.
+- **Corrispondenza esatta**: il controllo confronta il dominio completo dopo la `@`. Verificare `tuodominio.it` non copre `hello.tuodominio.it`: aggiungi e verifica ogni dominio da cui invii.
+- **Invii di test**: le chiavi di test (`tratto_test_...`) saltano questo controllo. Vedi [Test mode](/it/docs/test-mode).
+- **Mittente predefinito**: quando un dominio diventa `verified` per la prima volta e il workspace non ha un mittente predefinito, Tratto lo imposta a `noreply@` su quel dominio.
 
 ## Controlla lo Status del Dominio
 
-Ottieni i dettagli di un dominio verificato.
+Ottieni un dominio con i suoi record DNS.
 
 **cURL**
 ```bash
@@ -179,15 +197,17 @@ curl https://api.tratto.email/v1/domains/dom_abc123 \
     "id": "dom_abc123",
     "domain": "hello.tuodominio.it",
     "status": "verified",
-    "verifiedAt": "2025-06-30T12:10:00Z",
-    "records": { ... }
+    "records": [ ... ],
+    "createdAt": "2026-06-30T12:00:00.000Z",
+    "updatedAt": "2026-06-30T12:10:00.000Z",
+    "verifiedAt": "2026-06-30T12:10:00.000Z"
   }
 }
 ```
 
 ## Elenca i Domini
 
-Ottieni tutti i domini per il tuo tenant.
+Ottieni tutti i domini per il tuo tenant. Ogni elemento ha `id`, `domain`, `status` e i timestamp, ma non `records`: per vederli richiedi il singolo dominio. Pagina con `limit` (da 1 a 100, default 50) e `after`.
 
 **cURL**
 ```bash
@@ -197,7 +217,7 @@ curl https://api.tratto.email/v1/domains \
 
 ## Rimuovi un Dominio
 
-Elimina un dominio (non potrai più inviare da esso).
+Elimina un dominio. Viene eliminata anche la sua identità in Amazon SES.
 
 **cURL**
 ```bash
@@ -206,34 +226,42 @@ curl -X DELETE https://api.tratto.email/v1/domains/dom_abc123 \
 ```
 
 <Callout type="warning">
-La rimozione di un dominio non può essere annullata. Tutte le email da quel dominio non riusciranno ad essere inviate.
+La rimozione di un dominio non può essere annullata. Le email reali da quel dominio vengono rifiutate finché non lo aggiungi di nuovo e lo verifichi con i record della nuova risposta.
 </Callout>
 
 ## Risoluzione dei Problemi DNS
 
-### "pending_verification" dopo l'aggiunta di record
+### Ancora `pending` dopo l'aggiunta dei record
 
-**Causa:** DNS non si è ancora propagato o i record sono non corretti.
+**Causa:** il DNS non si è ancora propagato, oppure un record DKIM non corrisponde.
 
 **Fix:**
-1. Verifica che i record siano esattamente come mostrato (case-sensitive)
-2. Attendi fino a 48 ore per la propagazione DNS
-3. Usa [MXToolbox](https://mxtoolbox.com) per verificare se i record DNS sono live
-4. Riprova la verifica con `POST /v1/domains/{id}/verify`
+1. Confronta host e valore di ogni record DKIM con `records` di `GET /v1/domains/{id}`
+2. Controlla che il provider non abbia aggiunto il dominio all'host una seconda volta
+3. Usa [MXToolbox](https://mxtoolbox.com) o `dig CNAME <token1>._domainkey.hello.tuodominio.it` per verificare che i record siano live
+4. Attendi il prossimo controllo automatico (ogni 10 minuti), oppure chiama `POST /v1/domains/{id}/verify`
+
+SPF e DMARC non influiscono sullo status: un record SPF o DMARC mancante non lascia mai un dominio in `pending`.
+
+### Dominio `failed`
+
+**Causa:** Amazon SES ha smesso di cercare, di solito perché non ha trovato i record DKIM.
+
+**Fix:** correggi i record DKIM, poi chiama `POST /v1/domains/{id}/verify`, che legge lo status attuale da Amazon SES. Se il dominio resta `failed`, rimuovilo, aggiungilo di nuovo e pubblica i record della nuova risposta.
 
 ### SPF vs DKIM vs DMARC
 
-| Record | Scopo |
-|--------|-------|
-| **SPF** | Autorizza Tratto a inviare dal tuo dominio |
-| **DKIM** | Firma digitalmente le email (verifica crittografica) |
-| **DMARC** | Istruisce i server di posta su come gestire SPF/DKIM falliti |
+| Record | Scopo | Controllato da Tratto |
+|--------|-------|-----------------------|
+| **DKIM** | Firma ogni email con una chiave che Amazon SES gestisce per il tuo dominio | Sì, necessario per inviare |
+| **SPF** | Autorizza Amazon SES a inviare per l'hostname | No, consigliato |
+| **DMARC** | Istruisce i server di posta su come gestire SPF/DKIM falliti | No, consigliato |
 
-**Best practice:** Usa tutti e tre per la massima deliverability.
+**Best practice:** Pubblica tutti e cinque i record per la massima deliverability.
 
 ## Invio da Sottodominio
 
-Puoi usare i sottodomini per inviare (es., `hello.tuodominio.it`) mentre il tuo dominio principale rimane pulito.
+Puoi usare i sottodomini per inviare (es., `hello.tuodominio.it`) mentre il tuo dominio principale rimane pulito. Tratto confronta il dominio del `from` in modo esatto, quindi aggiungi e verifica il sottodominio stesso.
 
 **Vantaggi:**
 - Isola la reputazione email dal dominio principale

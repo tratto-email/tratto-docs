@@ -3,7 +3,7 @@ title: "Domains: Add, DNS Setup & Verification"
 description: Set up sending domains with proper DNS authentication
 ---
 
-A **domain** is your verified sending identity. Before you send emails, you must add a domain and verify ownership via DNS records.
+A **domain** is your verified sending identity. Before you send live emails, you must add a domain and publish the DNS records Tratto returns for it.
 
 ## Why Domains Matter
 
@@ -53,80 +53,89 @@ data = response.json()['data']
 print(f"Domain ID: {data['id']}")
 ```
 
-**Response:**
+**Response** (`201`; values are examples, always use the ones from **your** response):
 ```json
 {
   "data": {
     "id": "dom_abc123",
     "domain": "hello.yourdomain.com",
-    "status": "pending_verification",
-    "records": {
-      "spf": "v=spf1 include:spf.tratto.email ~all",
-      "dkim": "v=DKIM1; p=MIIBIjANBg...",
-      "dmarc": "v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com"
-    },
-    "createdAt": "2025-06-30T12:00:00Z"
+    "status": "pending",
+    "records": [
+      { "type": "CNAME", "host": "token1._domainkey.hello.yourdomain.com", "value": "token1.dkim.amazonses.com", "verified": false, "purpose": "dkim" },
+      { "type": "CNAME", "host": "token2._domainkey.hello.yourdomain.com", "value": "token2.dkim.amazonses.com", "verified": false, "purpose": "dkim" },
+      { "type": "CNAME", "host": "token3._domainkey.hello.yourdomain.com", "value": "token3.dkim.amazonses.com", "verified": false, "purpose": "dkim" },
+      { "type": "TXT", "host": "hello.yourdomain.com", "value": "v=spf1 include:amazonses.com ~all", "verified": false, "purpose": "spf" },
+      { "type": "TXT", "host": "_dmarc.hello.yourdomain.com", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email", "verified": false, "purpose": "dmarc" }
+    ],
+    "createdAt": "2026-06-30T12:00:00.000Z",
+    "updatedAt": "2026-06-30T12:00:00.000Z",
+    "verifiedAt": null
   }
 }
 ```
 
-Domain status is `pending_verification`: waiting for DNS records.
+Domain status is `pending`: Tratto is waiting for Amazon SES, which delivers your email, to find the DKIM records.
 
 ## DNS Records Setup
 
-Add three records to your domain registrar (GoDaddy, Namecheap, Route 53, etc.):
+Add the records from `records` at your DNS provider (GoDaddy, Namecheap, Cloudflare, Route 53, etc.). Every domain gets five:
 
-### 1. SPF Record
+| Purpose | Type | Host | Value | Needed to send |
+|---------|------|------|-------|----------------|
+| DKIM | CNAME | `<token1>._domainkey.hello.yourdomain.com` | `<token1>.dkim.amazonses.com` | Yes |
+| DKIM | CNAME | `<token2>._domainkey.hello.yourdomain.com` | `<token2>.dkim.amazonses.com` | Yes |
+| DKIM | CNAME | `<token3>._domainkey.hello.yourdomain.com` | `<token3>.dkim.amazonses.com` | Yes |
+| SPF | TXT | `hello.yourdomain.com` | `v=spf1 include:amazonses.com ~all` | Recommended; if the host already has an SPF record, add `include:amazonses.com` to it |
+| DMARC | TXT | `_dmarc.hello.yourdomain.com` | `v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email` | Recommended |
 
-**Name:** `hello.yourdomain.com`  
-**Type:** TXT  
-**Value:** `v=spf1 include:spf.tratto.email ~all`
+### 1. DKIM Records (required)
 
-This authorizes Tratto to send on your behalf.
+**Type:** CNAME, three records  
+**Host:** `<token>._domainkey.hello.yourdomain.com`  
+**Value:** `<token>.dkim.amazonses.com`
 
-### 2. DKIM Record
-
-**Name:** `default._domainkey.hello.yourdomain.com`  
-**Type:** TXT  
-**Value:** (from API response `records.dkim`)
-
-This uses public-key cryptography to sign emails from your domain.
+The three tokens are unique to your domain: copy each host and value from your response. Amazon SES generates and manages the signing key, and the CNAME records point to its public keys. These are the only records Tratto checks: all three must resolve before the domain becomes `verified`.
 
 <Callout>
-The DKIM value starts with `v=DKIM1; p=...` and can be very long. Copy the entire value from the API response.
+`host` is the full name. If your DNS provider appends your domain automatically, enter only the part before it (for example `<token1>._domainkey.hello` in the `yourdomain.com` zone), or the record ends up as `<token1>._domainkey.hello.yourdomain.com.yourdomain.com`.
 </Callout>
 
-### 3. DMARC Record
+### 2. SPF Record (recommended)
 
-**Name:** `_dmarc.hello.yourdomain.com`  
 **Type:** TXT  
-**Value:** `v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com`
+**Host:** `hello.yourdomain.com`  
+**Value:** `v=spf1 include:amazonses.com ~all`
 
-This sets the DMARC policy for the domain. `p=none` means reports only; `p=quarantine` or `p=reject` are stricter.
-
-## Example: Adding Records in Route 53
-
-If you use AWS Route 53:
-
-1. Go to **Route 53** → **Hosted Zones**
-2. Click your domain
-3. Create three new records:
-
-| Name | Type | Value |
-|------|------|-------|
-| `hello.yourdomain.com` | TXT | `v=spf1 include:spf.tratto.email ~all` |
-| `default._domainkey.hello.yourdomain.com` | TXT | (DKIM value) |
-| `_dmarc.hello.yourdomain.com` | TXT | `v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com` |
-
-4. Click **Create records**
+This authorizes Amazon SES to send for the hostname.
 
 <Callout type="warning">
-DNS propagation can take **up to 48 hours**. Check back in a few minutes, but allow time for changes to spread globally.
+A hostname must have exactly one `v=spf1` record (RFC 7208, section 3.2). With two, the SPF check fails with a permanent error (`permerror`) for every sender on that hostname, not only Amazon SES. If the host already has an SPF record, for example from Cloudflare Email Routing, Google Workspace or Microsoft 365, **add `include:amazonses.com` to it** instead of creating a second one:
+
+`v=spf1 include:amazonses.com include:_spf.mx.cloudflare.net ~all`
 </Callout>
 
-## Verify Domain Ownership
+### 3. DMARC Record (recommended)
 
-Once DNS records are in place, trigger verification.
+**Type:** TXT  
+**Host:** `_dmarc.hello.yourdomain.com`  
+**Value:** `v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email`
+
+This asks receiving servers to quarantine mail that fails authentication. The policy covers all mail sent as this domain, not only mail sent through Tratto, so make sure your other senders authenticate before you publish it. Keep a single DMARC record per host. Tratto doesn't check this record, so you can adapt the policy and the `rua` address to your domain.
+
+## Verification
+
+Tratto verifies **DKIM only**, by asking Amazon SES whether it has found the three CNAME records. SPF and DMARC are never checked: their `verified` flag is always `false`, even on a verified domain. The three DKIM records share one flag, which turns `true` when the domain is `verified`.
+
+Checks happen in two ways:
+
+- **Automatically**: a background job re-checks every `pending` domain every 10 minutes
+- **On demand**: `POST /v1/domains/{id}/verify` checks right away
+
+<Callout type="warning">
+Amazon SES notes that DNS changes can take **up to 72 hours** to propagate, and it keeps looking for the DKIM records for up to 72 hours.
+</Callout>
+
+### Verify Now
 
 **cURL**
 ```bash
@@ -156,15 +165,24 @@ data = response.json()['data']
 print(f"Status: {data['status']}")
 ```
 
-**Possible responses:**
+The response is the full domain, `records` included, with `200` whatever the outcome: read `status`, not the HTTP code.
 
-- `verified`: ✅ Success! Domain is ready to send
-- `pending_verification`: ⏳ Still checking DNS records (retry in a few minutes)
-- `failed`: ❌ DNS records not found or invalid (check records, wait for DNS propagation)
+| Status | Meaning |
+|--------|---------|
+| `pending` | Amazon SES hasn't found all three DKIM records yet, or a temporary SES issue prevented the check. Wait, or check again later. |
+| `verified` | The DKIM records were found. Live emails can be sent from this domain. |
+| `failed` | Amazon SES stopped looking, typically because it couldn't find the DKIM records. The automatic check skips `failed` domains: see [DNS Troubleshooting](#dns-troubleshooting). |
+
+### What `verified` Unlocks
+
+- **Live sends**: an email sent with a live key (`tratto_live_...`) is accepted only if its `from` domain is verified in your workspace. Otherwise the API returns `403` with `FORBIDDEN`.
+- **Exact match**: the check compares the full domain after `@`. Verifying `yourdomain.com` does not cover `hello.yourdomain.com`: add and verify each domain you send from.
+- **Test sends**: test keys (`tratto_test_...`) skip this check. See [Test mode](/en/docs/test-mode).
+- **Default sender**: when a domain first becomes `verified` and your workspace has no default sender, Tratto sets it to `noreply@` on that domain.
 
 ## Check Domain Status
 
-Get details about a verified domain.
+Get a domain with its DNS records.
 
 **cURL**
 ```bash
@@ -179,15 +197,17 @@ curl https://api.tratto.email/v1/domains/dom_abc123 \
     "id": "dom_abc123",
     "domain": "hello.yourdomain.com",
     "status": "verified",
-    "verifiedAt": "2025-06-30T12:10:00Z",
-    "records": { ... }
+    "records": [ ... ],
+    "createdAt": "2026-06-30T12:00:00.000Z",
+    "updatedAt": "2026-06-30T12:10:00.000Z",
+    "verifiedAt": "2026-06-30T12:10:00.000Z"
   }
 }
 ```
 
 ## List Domains
 
-Get all domains for your tenant.
+Get all domains for your tenant. Each item has `id`, `domain`, `status` and timestamps, but no `records`: fetch a single domain to see them. Paginate with `limit` (1 to 100, default 50) and `after`.
 
 **cURL**
 ```bash
@@ -197,7 +217,7 @@ curl https://api.tratto.email/v1/domains \
 
 ## Remove a Domain
 
-Delete a domain (you can't send from it afterward).
+Delete a domain. Its identity in Amazon SES is deleted too.
 
 **cURL**
 ```bash
@@ -206,34 +226,42 @@ curl -X DELETE https://api.tratto.email/v1/domains/dom_abc123 \
 ```
 
 <Callout type="warning">
-Removing a domain cannot be undone. All emails from that domain will fail to send.
+Removing a domain cannot be undone. Live emails from that domain are rejected until you add it again and verify it with the records from the new response.
 </Callout>
 
 ## DNS Troubleshooting
 
-### "pending_verification" after adding records
+### Still `pending` after adding records
 
-**Cause:** DNS hasn't propagated yet or records are incorrect.
+**Cause:** DNS hasn't propagated yet, or a DKIM record doesn't match.
 
 **Fix:**
-1. Verify records are exactly as shown (case-sensitive)
-2. Wait up to 48 hours for DNS propagation
-3. Use [MXToolbox](https://mxtoolbox.com) to check if DNS records are live
-4. Retry verification with `POST /v1/domains/{id}/verify`
+1. Compare each DKIM host and value with `records` from `GET /v1/domains/{id}`
+2. Check that your provider didn't append your domain to the host a second time
+3. Use [MXToolbox](https://mxtoolbox.com) or `dig CNAME <token1>._domainkey.hello.yourdomain.com` to check that the records are live
+4. Wait for the next automatic check (every 10 minutes), or call `POST /v1/domains/{id}/verify`
+
+SPF and DMARC don't affect the status: a missing SPF or DMARC record never keeps a domain `pending`.
+
+### Domain is `failed`
+
+**Cause:** Amazon SES stopped looking, typically because it couldn't find the DKIM records.
+
+**Fix:** correct the DKIM records, then call `POST /v1/domains/{id}/verify`, which reads the current status from Amazon SES. If the domain stays `failed`, remove it, add it again and publish the records from the new response.
 
 ### SPF vs DKIM vs DMARC
 
-| Record | Purpose |
-|--------|---------|
-| **SPF** | Authorizes Tratto to send from your domain |
-| **DKIM** | Digitally signs emails (cryptographic verification) |
-| **DMARC** | Instructs mail servers how to handle failed SPF/DKIM |
+| Record | Purpose | Checked by Tratto |
+|--------|---------|-------------------|
+| **DKIM** | Signs every email with a key Amazon SES manages for your domain | Yes, required to send |
+| **SPF** | Authorizes Amazon SES to send for the hostname | No, recommended |
+| **DMARC** | Instructs mail servers how to handle failed SPF/DKIM | No, recommended |
 
-**Best practice:** Use all three for maximum deliverability.
+**Best practice:** Publish all five records for maximum deliverability.
 
 ## Subdomain Sending
 
-You can use subdomains for sending (e.g., `hello.yourdomain.com`) while your main domain stays clean.
+You can use subdomains for sending (e.g., `hello.yourdomain.com`) while your main domain stays clean. Tratto matches the `from` domain exactly, so add and verify the subdomain itself.
 
 **Advantages:**
 - Isolate email reputation from main domain

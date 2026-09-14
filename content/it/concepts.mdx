@@ -39,15 +39,15 @@ Vedi [Autenticazione](/it/docs/authentication) per gestire le chiavi.
 Un **domain** è un dominio di invio verificato. Prima di inviare email, devi:
 
 1. Aggiungere il tuo dominio a Tratto
-2. Pubblicare record DNS (SPF, DKIM, DMARC) sul tuo registrar
-3. Verificare i record con Tratto
+2. Pubblicare i record DNS della risposta API: tre record CNAME DKIM (obbligatori), più SPF e DMARC (consigliati)
+3. Attendere che Tratto verifichi DKIM: ricontrolla ogni 10 minuti, oppure su richiesta
 
 I record provano ai server di posta riceventi che controlli il dominio e sei autorizzato a inviare da esso.
 
 **Ciclo di vita del dominio:**
-- `pending_verification`: In attesa di record DNS
+- `pending`: In attesa che Amazon SES trovi i record DKIM
 - `verified`: Pronto per l'invio
-- `failed`: Verifica DNS non riuscita (ri-verifica più tardi)
+- `failed`: I record DKIM non sono stati trovati
 
 Vedi [Domini](/it/docs/domains) per la configurazione passo dopo passo.
 
