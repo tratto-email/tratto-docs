@@ -1,7 +1,9 @@
 # Firebase App Hosting — production backend (GCP project: trattoemail)
 # Serves https://docs.tratto.email from the `main` branch.
 #
-# The staging backend uses apphosting.staging.yaml (GCP project: tratto-staging).
+# The staging backend (GCP project: tratto-staging) merges apphosting.staging.yaml
+# ON TOP of this file: every variable added here also reaches staging unless
+# apphosting.staging.yaml overrides it.
 runConfig:
   runCommand: pnpm start
   cpu: 1

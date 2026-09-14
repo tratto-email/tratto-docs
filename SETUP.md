@@ -150,11 +150,15 @@ before production:
 | Branch | Backend | Config actually applied | Domain |
 |---|---|---|---|
 | `main` | prod (GCP `trattoemail`) | `apphosting.yaml` | docs.tratto.email |
-| `main` | staging (GCP `tratto-staging`) | `apphosting.yaml` (see below) | tratto-docs--tratto-staging.europe-west4.hosted.app |
+| `main` | staging (GCP `tratto-staging`) | `apphosting.yaml` + `apphosting.staging.yaml` (see below) | tratto-docs--tratto-staging.europe-west4.hosted.app |
 
-`apphosting.staging.yaml` is only read when the backend's environment name is
-`staging`. The `tratto-staging` backend has none set (checked 2026-09-14), so
-staging builds with the production values from `apphosting.yaml`.
+The `tratto-staging` backend has environment name `staging` (checked
+2026-09-14), so App Hosting merges `apphosting.staging.yaml` over
+`apphosting.yaml`. Variables the staging file does not repeat keep their
+production value. It overrides all three today: `NEXT_PUBLIC_SITE_URL`
+(noindex), `TRATTO_OPENAPI_URL` (staging spec) and `NEXT_PUBLIC_GTM_ID`
+(`none`: no GTM, since App Hosting treats empty strings as reserved and the
+layout loads GTM only for IDs starting with `GTM-`).
 
 `.github/workflows/ci.yml` runs lint, typecheck and build on every PR to and
 push on `main`.
@@ -167,8 +171,6 @@ SDKs are versioned separately): bump `package.json`, then
 
 These cannot be done from the repository:
 
-- Set the environment name of the `tratto-staging` backend to `staging`, so
-  `apphosting.staging.yaml` applies (noindex, staging API spec, no GTM).
 - Map the custom domain `docs.staging.tratto.email` (no DNS record yet).
 - Enable branch protection on `main` (require PR + passing CI).
 - Submit the sitemap to Google Search Console.

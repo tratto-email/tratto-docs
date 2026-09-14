@@ -104,7 +104,10 @@ export default async function LocaleLayout({
       className={`${inter.variable} ${dmSerif.variable} ${jetbrains.variable}`}
     >
       <body className="flex min-h-screen flex-col">
-        {process.env.NEXT_PUBLIC_GTM_ID && (
+        {/* Only a real container ID loads GTM. Staging sets `none`: its yaml
+            is merged over apphosting.yaml (prod ID) and App Hosting lists
+            empty strings as reserved, so "" is not a reliable override. */}
+        {process.env.NEXT_PUBLIC_GTM_ID?.startsWith('GTM-') && (
           <GoogleTagManager id={process.env.NEXT_PUBLIC_GTM_ID} />
         )}
         <NextIntlClientProvider>

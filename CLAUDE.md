@@ -142,16 +142,18 @@ the CI check) is the only review step:
 | Branch | Backend | Config actually applied | Serves |
 |---|---|---|---|
 | `main` | `trattoemail` | `apphosting.yaml` | docs.tratto.email |
-| `main` | `tratto-staging` | `apphosting.yaml` (!) | tratto-docs--tratto-staging.europe-west4.hosted.app |
+| `main` | `tratto-staging` | `apphosting.yaml` + `apphosting.staging.yaml` | tratto-docs--tratto-staging.europe-west4.hosted.app |
 
-**Staging runs production config.** App Hosting reads `apphosting.staging.yaml`
-only when the backend's environment name is `staging`. The `tratto-staging`
-backend has no environment set (checked 2026-09-14, build
-`build-2026-09-13-003`), so its builds use `apphosting.yaml`: production
-canonical URL, `robots.txt` allowing everything, production GTM. The
-`docs.staging.tratto.email` domain has no DNS record and is not mapped. Until
-someone sets the environment in the console, do not treat staging as
-non-indexed or analytics-free.
+**The staging file is merged, not substituted.** The `tratto-staging` backend
+has environment name `staging` (checked 2026-09-14), so App Hosting layers
+`apphosting.staging.yaml` on top of `apphosting.yaml`: any variable the staging
+file does not repeat keeps its **production** value. Staging overrides
+`NEXT_PUBLIC_SITE_URL` (staging canonical, `robots.txt` `Disallow: /`,
+`X-Robots-Tag: noindex`), `TRATTO_OPENAPI_URL`, and `NEXT_PUBLIC_GTM_ID`
+(`none` — the layout loads GTM only for IDs starting with `GTM-`, because App
+Hosting treats empty strings as reserved). Adding a variable to
+`apphosting.yaml` means deciding its staging value in the same PR. The
+`docs.staging.tratto.email` domain has no DNS record and is not mapped.
 
 A green merge is not a deployed site: check that both
 `App Hosting - Rollout (…/tratto-docs)` check runs on the `main` commit

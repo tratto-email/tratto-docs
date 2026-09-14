@@ -1,11 +1,12 @@
 # Firebase App Hosting — staging backend (GCP project: tratto-staging)
-# The backend tracks the `main` branch, same as production.
+# The backend tracks the `main` branch, same as production, and serves on
+# tratto-docs--tratto-staging.europe-west4.hosted.app. docs.staging.tratto.email
+# is not mapped and has no DNS record (checked 2026-09-14).
 #
-# NOT APPLIED TODAY: App Hosting reads this file only when the backend's
-# environment name is `staging`. The tratto-staging backend has none set
-# (checked 2026-09-14), so staging builds with apphosting.yaml (production
-# values) and serves on tratto-docs--tratto-staging.europe-west4.hosted.app.
-# docs.staging.tratto.email is not mapped and has no DNS record.
+# App Hosting MERGES this file on top of apphosting.yaml (backend environment
+# name `staging`): any variable not repeated here keeps its production value.
+# Every variable in apphosting.yaml must be overridden here or be safe for
+# staging.
 #
 # NEXT_PUBLIC_SITE_URL is what makes the app serve `Disallow: /` in robots.txt
 # and add `X-Robots-Tag: noindex` — staging must never be indexed.
@@ -20,6 +21,16 @@ runConfig:
 env:
   - variable: NEXT_PUBLIC_SITE_URL
     value: https://docs.staging.tratto.email
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Disables GTM: staging visits must not reach the production analytics
+  # property. `none` rather than "": App Hosting lists empty strings as
+  # reserved, so an empty value is not a documented way to clear the
+  # production ID. The layout loads GTM only for values starting with `GTM-`.
+  - variable: NEXT_PUBLIC_GTM_ID
+    value: none
     availability:
       - BUILD
       - RUNTIME
