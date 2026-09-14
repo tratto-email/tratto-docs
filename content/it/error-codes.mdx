@@ -39,7 +39,7 @@ Gli errori di validazione aggiungono un array `details`: vedi sotto.
 | `INVALID_TOKEN` | 400 | Un link firmato (disiscrizione, pagina preferenze) non è valido | Non c'è nulla da riprovare: serve un link nuovo |
 | `RATE_LIMITED` | 429 | Troppe richieste: 100 al secondo per chiave API, o 500 al minuto per IP client | Applica un backoff esponenziale e riprova |
 | `PAYLOAD_TOO_LARGE` | 413 | Il corpo della richiesta supera la dimensione massima | Spezza il payload (per l'import contatti, carica meno righe per richiesta) |
-| `QUOTA_EXCEEDED` | 429 | Raggiunto un limite del piano: quota mensile di email, numero di domini, o tetto giornaliero del test mode | Passa a un piano superiore o attendi il reset |
+| `QUOTA_EXCEEDED` | 429 | Raggiunto un limite d'uso: la quota mensile di email (su `POST /v1/emails`, o inviando subito una campagna a più destinatari di quanti ne restano nella quota), il limite di domini (quando aggiungi un dominio), o il tetto giornaliero del test mode | Non riprovare: `message` indica il limite. La quota email si azzera all'inizio del mese UTC successivo, il tetto del test mode a mezzanotte UTC. Per il limite di domini elimina un dominio o passa a un piano superiore; per la quota email passa a un piano superiore |
 | `TEST_MODE_NOT_SUPPORTED` | 403 | L'endpoint raggiunge destinatari reali e rifiuta le chiavi di test | Usa una chiave live (`tratto_live_...`) — vedi [Test mode](/it/docs/test-mode) |
 | `IDEMPOTENCY_CONFLICT` | 409 | La stessa `Idempotency-Key` è stata riusata con un payload diverso | Usa una chiave nuova per una richiesta diversa |
 | `IDEMPOTENCY_IN_PROGRESS` | 409 | Una richiesta con questa `Idempotency-Key` è ancora in elaborazione | Attendi che la prima finisca, poi riprova |
@@ -118,9 +118,16 @@ reazioni opposte:
 
 - **`RATE_LIMITED`**: stai inviando troppo in fretta. Rallenta e riprova: la
   richiesta andrà a buon fine a breve. Vedi [Rate Limit](/it/docs/rate-limits).
-- **`QUOTA_EXCEEDED`**: hai raggiunto un limite del piano, come il monte email
-  mensile. Riprovare non serve finché il limite non si resetta o il piano non
-  viene aggiornato.
+- **`QUOTA_EXCEEDED`**: hai raggiunto un limite d'uso, come la quota mensile di
+  email. Riprovare non serve finché il limite non si azzera, non elimini un
+  dominio o non passi a un piano superiore.
+
+Il lavoro in background non risponde mai con questo codice. Una campagna che il
+dispatcher non riesce a far stare nella quota rimasta, prima di partire o a
+metà invio, viene messa in pausa con `pausedReason: "quota_exceeded"` (vedi
+[Campagne](/it/docs/campaigns)); riprenderla più tardi raggiunge solo i
+destinatari mancati. Un flusso il cui step di invio trova la quota esaurita
+salta quell'email e prosegue: l'email non viene inviata in seguito.
 
 Trattarli allo stesso modo significa riprovare all'infinito contro un muro:
 

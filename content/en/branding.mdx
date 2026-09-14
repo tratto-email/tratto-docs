@@ -1,6 +1,6 @@
 ---
 title: Email Footer & Branding
-description: When Tratto appends a footer to your emails — the "Sent using Tratto" badge on the free plan, and how paid plans can opt in to keep it.
+description: When Tratto appends a footer to your emails — the "Sent using Tratto" badge, mandatory on some plans (today Free) and opt-in on the others.
 ---
 
 Tratto can append a small footer to the HTML version of the emails you send. There are two variants:
@@ -10,26 +10,26 @@ Tratto can append a small footer to the HTML version of the emails you send. The
 
 Which one an email gets depends on your plan and on a single workspace setting.
 
-## Free plan
+## Plans with a mandatory footer
 
-On the free plan, **every HTML email carries the branded "Sent using Tratto" footer** — campaigns, transactional sends, and template test sends alike. This is part of the free plan and cannot be turned off.
+Some plans require the branded footer — today that is only **Free**. On those plans, **every HTML email carries the branded "Sent using Tratto" footer** — campaigns, transactional sends, and template test sends alike. It cannot be turned off.
 
 - Campaigns and transactional emails linked to a contact: branded footer **with** an unsubscribe link.
 - Transactional emails not linked to a contact, and template test sends: branded footer **without** an unsubscribe link.
 
-## Paid plans
+## Other plans
 
-On paid plans the badge is off by default:
+On every other plan — today Starter and Growth — the badge is off by default:
 
 - **Campaigns**: a plain unsubscribe footer (marketing email must always offer an opt-out).
 - **Transactional emails and test sends**: no footer at all — your HTML is delivered as-is.
 
 ### Keeping the badge (opt-in)
 
-A paid workspace can choose to keep the branded footer with the `keepTrattoBranding` workspace setting. When it is on, every HTML send gets the branded footer, exactly as on the free plan:
+A workspace on a plan without a mandatory footer can choose to keep the branded footer with the `keepTrattoBranding` workspace setting. When it is on, every HTML send gets the branded footer, exactly as on a plan that requires it:
 
 ```
-branded footer  =  plan is "free"          (always, not configurable)
+branded footer  =  the plan requires it     (today: Free — not configurable)
                 or keepTrattoBranding is true
 ```
 
@@ -49,17 +49,17 @@ The field is returned by `GET /v1/workspace` and documented in the [API Referenc
 
 Good to know:
 
-- `keepTrattoBranding` is accepted on **any** plan. On the free plan it has no effect — the branded footer is mandatory there anyway.
-- The setting **persists across plan changes**: downgrading to free and later upgrading again does not reset your choice.
+- `keepTrattoBranding` is accepted on **any** plan. On a plan that requires the footer it has no effect — the footer is there anyway.
+- The setting **persists across plan changes**: moving to a plan that requires the footer and back again does not reset your choice.
 - SDK support: the Node.js SDK (`@tratto/email`) will accept `keepTrattoBranding` in its workspace update call starting with **version 1.1.0**, which is not published yet. Until then, use the dashboard or call the HTTP endpoint directly.
 
 ## Behavior at a glance
 
 | Plan | `keepTrattoBranding` | Campaign | Transactional linked to a contact | Transactional / test send, no contact |
 |------|----------------------|----------|-----------------------------------|---------------------------------------|
-| Free | any value (ignored) | Branded + unsubscribe | Branded + unsubscribe | Branded, no unsubscribe link |
-| Paid | `true` | Branded + unsubscribe | Branded + unsubscribe | Branded, no unsubscribe link |
-| Paid | `false` / not set (default) | Plain unsubscribe | No footer | No footer |
+| Footer required (today Free) | any value (ignored) | Branded + unsubscribe | Branded + unsubscribe | Branded, no unsubscribe link |
+| Other plans (today Starter, Growth) | `true` | Branded + unsubscribe | Branded + unsubscribe | Branded, no unsubscribe link |
+| Other plans | `false` / not set (default) | Plain unsubscribe | No footer | No footer |
 
 Independently of the footer, every email sent through Tratto carries RFC 8058 one-click unsubscribe headers — see [Privacy & Compliance](/en/docs/privacy).
 
