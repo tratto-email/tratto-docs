@@ -161,13 +161,25 @@ succeeded (`gh api repos/{owner}/{repo}/commits/<sha>/check-runs`).
 
 ### Releases
 
-Tratto has one product version shared by API, dashboard, site and docs; the
-SDKs (`tratto-node`, `tratto-python`) are versioned separately. After a
-release, bump `version` in `package.json` to the same number and tag the
-production commit on `main`:
+Tratto has **one product version number**, shared by API, dashboard, site and
+docs; the SDKs (`tratto-node`, `tratto-python`) are versioned separately.
+`tratto-api` is the reference: keep `version` in `package.json` equal to its
+current release, and check it rather than assuming
+(`gh release list --repo tratto-email/tratto-api`).
+
+The other repos bump `version` on `develop`, before the release PR. **This
+repo has no `develop`** (see the workflow above), so the bump goes in the PR
+that accompanies the release — there is no integration branch here to put it
+on, and applying the `develop` rule by analogy just stalls the release.
+
+Tag the production commit on `main`:
 
 ```bash
-gh release create vX.Y.Z --target <main-sha> --title vX.Y.Z --generate-notes
+gh release create vX.Y.Z --target "$(git rev-parse origin/main)" --title vX.Y.Z --generate-notes
 ```
+
+`--target` needs the **full 40-character sha**: a short sha is rejected with
+`HTTP 422 … Release.target_commitish is invalid` (hit on `tratto-email/tratto`,
+2026-09-16).
 
 Use the same `vX.Y.Z` as `tratto-api`, `tratto-app` and `tratto`.
