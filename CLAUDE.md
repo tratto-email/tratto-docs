@@ -24,6 +24,23 @@ trusting a page, and cite the file and line in the commit that corrects it.
 A page that is merely missing costs a reader a search. A page that is wrong
 costs them the search, the attempt, and their trust — fix those first.
 
+**Drift runs in both directions.** `content/en/ip-warming.mdx:11-17` has said
+since 2026-09-10 (0a498f9) that there is no per-workspace warming automation,
+while the internal blueprint still described warming as a running system — the
+blueprint was the file corrected, on 2026-09-16 (`../email-saas-blueprint.md`
+§9, note at line 2810). Being right here settles nothing elsewhere, and being
+wrong elsewhere does not make this repo wrong: correct whichever document is
+actually wrong, rather than aligning to the other one on reflex.
+
+**Check every DNS or API instruction against the endpoint's real response, not
+against how it used to work.** Until 2026-09-14 `content/en/domains.mdx`
+taught DKIM as a single `default._domainkey` TXT record (lines 89 and 118
+before the fix); the API returns **three CNAMEs**, one per SES token
+(`tratto-api/api/src/routes/v1/domains.ts:55-65`). The tables match it now
+(`content/{en,it}/domains.mdx:85-87`, fixed in 4f20668 / PR #92). A record
+type is exactly the detail memory gets confidently wrong — re-read the route
+or call the endpoint before repeating one.
+
 **CI budget**: GitHub Actions has a hard 3000 min/month org-wide (see
 `../CLAUDE.md`). Replicate the full CI suite locally before opening a PR, and
 verify that deploys actually ran — a green workflow is not a deployed site.
@@ -69,6 +86,18 @@ Two rules that will otherwise break the build or the links:
 A page missing from `content/it/` falls back to the English version. That is
 intentional, and the SEO layer handles it — do not add stub translations just
 to fill the gap.
+
+### Editorial decisions apply to every repo
+
+A content decision taken in one repo is not done until it has been grepped
+across the whole workspace. The first line of
+`content/{en,it}/introduction.mdx` opened with "a competitive alternative to
+Resend" from the page's creation (28d5673, 2026-06-30). The site dropped that
+same claim on 2026-09-14 (`tratto`, a57e4f4, PR #276), but that round looked
+only at `tratto`, so the docs kept serving it in both languages until
+2026-09-16 (ddc96a8, PR #97) — same sentence, same decision, two days of
+avoidable production drift. When an editorial line changes, grep `../` for it
+before calling it applied.
 
 ---
 
@@ -158,6 +187,22 @@ Hosting treats empty strings as reserved). Adding a variable to
 A green merge is not a deployed site: check that both
 `App Hosting - Rollout (…/tratto-docs)` check runs on the `main` commit
 succeeded (`gh api repos/{owner}/{repo}/commits/<sha>/check-runs`).
+
+**Wait for the fourth minute.** The rollout checks finish roughly 4 min after
+the merge commit (2026-09-16: commit 16:56:40Z, both rollouts completed
+17:00:56Z; every deploy commit since 2026-09-13 lands between 3m42s and
+4m36s). Reading the checks earlier reports a missing rollout that has simply
+not appeared yet.
+
+**And expect gaps in the check runs.** Only the merge commit carries rollouts
+— the branch commits in its history have none, which is normal — but on merge
+commits a backend's check run sometimes never shows up: 23e0ed1 (2026-09-14)
+reports only `trattoemail`, 9f49fb2 only `tratto-staging`. It is not specific
+to one backend, and it is **unresolved** whether the rollout failed to start
+or only failed to publish its check — the installed `gcloud` has no App
+Hosting surface to settle it. So "both green" is not always provable from the
+check runs: when one is missing, confirm against the served site instead of
+assuming either outcome.
 
 ### Releases
 
