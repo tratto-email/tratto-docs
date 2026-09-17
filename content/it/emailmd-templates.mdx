@@ -40,24 +40,49 @@ Testo in **grassetto**, un [link](https://example.com), e una lista:
 
 ### Frontmatter
 
-Un blocco YAML opzionale in testa imposta metadati e opzioni di tema:
+Un blocco YAML opzionale in testa al documento imposta i metadati dell'email e
+poche opzioni di documento:
 
 ```markdown
 ---
 preheader: "Il tuo ordine è partito. Traccialo ora"
+lang: it
+dir: ltr
+breaks: false
 theme: auto
 ---
 ```
 
-- **`preheader`** — il testo di anteprima che i client email mostrano accanto
-  all'oggetto nella lista della inbox. È incorporato in modo invisibile nel
-  corpo dell'email.
-- **`theme`** — `light` (default), `dark`, oppure `auto` (renderizza chiaro ma
-  si adatta ai lettori con il client email in dark mode).
+Queste cinque chiavi sono l'elenco completo: Tratto passa al renderer **solo**
+queste.
 
-Anche le altre chiavi frontmatter (`brand_color`, `button_color`,
-`font_family`, …) passano al render. I valori non validi non rompono mai il
-render: emergono come [warning di render](#warning-di-render).
+| Chiave | Cosa fa |
+|---|---|
+| `preheader` | Il testo di anteprima che i client email mostrano accanto all'oggetto nella lista della inbox. È incorporato in modo invisibile nel corpo dell'email. |
+| `lang` | La lingua del documento, scritta nell'attributo `lang` dell'HTML renderizzato. Un tag di lingua: `it`, `en`, `pt-BR`. |
+| `dir` | La direzione del testo — `ltr` (default), `rtl` o `auto`. `rtl` ribalta a destra l'allineamento predefinito. |
+| `breaks` | `true` trasforma un a-capo singolo in un'interruzione di riga; `false` (default) mantiene il markdown standard, dove i paragrafi si separano con una riga vuota. |
+| `theme` | `light` (default), `dark` oppure `auto` (renderizza chiaro ma si adatta ai lettori con il client email in dark mode). Solo questi tre valori: qualsiasi altro viene ignorato, con un warning. |
+
+**Qualsiasi altra chiave viene rimossa prima del render e segnalata come
+[warning di render](#warning-di-render).** In particolare:
+
+- I **colori** (`brand_color`, `button_color`, `divider_color`,
+  `background_color`, `content_color`, …) si impostano nelle impostazioni di
+  marchio del workspace, non nel template — vedi
+  [Dare un aspetto diverso a una campagna](#dare-un-aspetto-diverso-a-una-campagna).
+  Il render applica il marchio del workspace come garanzia, non come
+  impostazione predefinita che un documento può sovrascrivere.
+- **`font_family` e `fonts` non sono supportate.** `fonts` caricherebbe un
+  foglio di stile remoto dentro la casella del destinatario.
+- **`dark:` (palette scura personalizzata) non è supportata.** Per una resa
+  scura usa `theme: dark` o `theme: auto`, che usano la palette scura coerente
+  del renderer.
+
+Il markdown che salvi **non** viene modificato: la riga rimossa resta nel
+`source` del template esattamente come l'hai scritta, semplicemente non ha
+effetto sull'HTML renderizzato. Vedere ancora `brand_color:` nell'editor non
+significa quindi che sia stato applicato — te lo dicono i warning.
 
 ### Direttive
 
@@ -109,6 +134,25 @@ Sopravvivono intatti al render markdown e vengono sostituiti quando l'email
 viene **inviata**, con le `variables` che passi a `POST /v1/emails` o a un
 invio di test. Per questo l'HTML del template salvato contiene ancora i
 placeholder letterali: è voluto.
+
+## Dare un aspetto diverso a una campagna
+
+Colori e logo sono un'impostazione **di workspace**, condivisa da tutti i
+template; l'unica leva per singolo documento è `theme`.
+
+- **Marchio del workspace** — i tre colori di marchio (link e bottoni primari,
+  bottoni secondari, divisori) e il logo del workspace si impostano in
+  **Settings → Workspace** nella dashboard, oppure via `PATCH /v1/workspace`
+  (l'oggetto `brand`) e `PUT /v1/workspace/brand/logo`. Li applica il renderer,
+  quindi una modifica raggiunge ogni render successivo — ma non l'HTML già
+  fissato sui template salvati prima, che mantiene i suoi colori finché il
+  template non viene salvato di nuovo.
+- **Per singolo documento** — `theme: dark`, oppure `theme: auto` per una resa
+  che segue il client email di chi legge. Non c'è altro.
+
+Non esiste un override di colori, font o palette per singolo template, ed è
+voluto: quello che il workspace ha configurato è quello che ricevono i
+destinatari.
 
 ## Sicurezza: l'HTML raw viene escapato
 
@@ -239,6 +283,17 @@ controllato e vengono riportati come warning. Su un template salvato finiscono
 in `renderWarnings`; su `render-preview` tornano in `warnings`. Trattali come
 una checklist, non come errori: il template è stato salvato e si invia
 comunque.
+
+Quelli che incontrerai più spesso:
+
+- **Una chiave frontmatter che non è una delle cinque sopra** — è stata
+  rimossa prima del render; il warning nomina la chiave. Le chiavi di colore e
+  di font finiscono sempre qui.
+- **Un valore non valido su una chiave supportata** — un `theme` sconosciuto,
+  un `dir` diverso da `ltr` / `rtl` / `auto`, un `lang` malformato, un
+  `breaks` che non è un booleano. Il renderer ricade sul default e lo dice.
+- **Un parametro di direttiva sconosciuto** — per esempio una parola su una
+  riga `::: callout` che non è fra quelle documentate.
 
 Solo due situazioni rifiutano la richiesta, entrambe con `VALIDATION_ERROR`
 (422):

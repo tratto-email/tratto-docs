@@ -96,9 +96,13 @@ HTML, create an HTML-format template instead.
 ### Render warnings
 
 If the render finds non-fatal problems — an unknown directive parameter, an
-invalid frontmatter value that fell back to the default, and so on — they
+invalid frontmatter value that fell back to the default, or a frontmatter key
+that is not supported and was removed before the render (colour and font keys
+always are, see
+[Frontmatter](/en/docs/emailmd-templates#frontmatter)) — they
 appear as a **warnings banner** above the preview, one short message per
-issue. Warnings never block saving or sending: the ones present at the last
+issue. A removed key stays in your source: the editor keeps what you typed, the
+render simply ignores it. Warnings never block saving or sending: the ones present at the last
 save are stored with the template (`renderWarnings` in the API). Aim for an
 empty banner before publishing.
 
