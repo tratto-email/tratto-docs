@@ -37,23 +37,49 @@ Some **bold** text, a [link](https://example.com), and a list:
 
 ### Frontmatter
 
-An optional YAML block at the top sets email metadata and theme options:
+An optional YAML block at the very top of the document sets email metadata and
+a few document-level options:
 
 ```markdown
 ---
 preheader: "Your order has shipped. Track it now"
+lang: en
+dir: ltr
+breaks: false
 theme: auto
 ---
 ```
 
-- **`preheader`** — the preview text email clients show next to the subject in
-  the inbox list. It is embedded invisibly in the email body.
-- **`theme`** — `light` (default), `dark`, or `auto` (renders light but adapts
-  to readers whose mail client is in dark mode).
+Those five keys are the whole list — Tratto passes **only** these to the
+renderer:
 
-Other frontmatter keys (`brand_color`, `button_color`, `font_family`, …) pass
-through to the render as well. Invalid values never break the render; they
-surface as [render warnings](#render-warnings) instead.
+| Key | What it does |
+|---|---|
+| `preheader` | The preview text email clients show next to the subject in the inbox list. Embedded invisibly in the email body. |
+| `lang` | The document language, written to the `lang` attribute of the rendered HTML. A language tag: `en`, `it`, `pt-BR`. |
+| `dir` | Text direction — `ltr` (default), `rtl` or `auto`. `rtl` flips the default alignment to the right. |
+| `breaks` | `true` turns a single newline into a line break; `false` (the default) keeps standard markdown, where paragraphs are separated by a blank line. |
+| `theme` | `light` (default), `dark`, or `auto` (renders light but adapts to readers whose mail client is in dark mode). Only these three values — anything else is ignored, with a warning. |
+
+**Every other key is removed before the render and reported as a
+[render warning](#render-warnings).** In particular:
+
+- **Colours** (`brand_color`, `button_color`, `divider_color`,
+  `background_color`, `content_color`, …) are set in your workspace brand
+  settings, not in the template — see
+  [Making a campaign look different](#making-a-campaign-look-different). The
+  render applies the workspace brand as a guarantee, not as a default that a
+  document can overwrite.
+- **`font_family` and `fonts` are not supported.** `fonts` would load a remote
+  stylesheet inside your recipient's mailbox.
+- **`dark:` (a custom dark palette) is not supported.** For a dark rendering
+  use `theme: dark` or `theme: auto`, which use the renderer's own consistent
+  dark palette.
+
+The markdown you save is **not** modified: the removed line stays in the
+template's `source` exactly as you typed it, it simply has no effect on the
+rendered HTML. So seeing `brand_color:` still sitting there in the editor does
+not mean it was applied — the warnings are what tell you.
 
 ### Directives
 
@@ -104,6 +130,24 @@ They survive the markdown render intact and are substituted when the email is
 **sent**, with the `variables` you pass to `POST /v1/emails` or a test send.
 This is why the saved template's HTML still contains the literal placeholders:
 that is by design.
+
+## Making a campaign look different
+
+Colours and logo are a **workspace** setting, shared by every template; the
+only per-document lever is `theme`.
+
+- **Workspace brand** — the three brand colours (links and primary buttons,
+  secondary buttons, dividers) and the workspace logo are set in
+  **Settings → Workspace** in the dashboard, or through `PATCH /v1/workspace`
+  (the `brand` object) and `PUT /v1/workspace/brand/logo`. The renderer applies
+  them, so a change reaches every render that happens after it — but not the
+  HTML already pinned on templates you saved earlier, which keeps its colours
+  until the template is saved again.
+- **Per document** — `theme: dark`, or `theme: auto` for a rendering that
+  follows the reader's mail client. That is the whole list.
+
+There is no per-template colour, font or custom palette override, and that is
+deliberate: what the workspace configured is what recipients get.
 
 ## Security: raw HTML is escaped
 
@@ -230,6 +274,17 @@ The render never fails on imperfect input — problems degrade gracefully and
 are reported as warnings. On a saved template they are stored in
 `renderWarnings`; on `render-preview` they come back in `warnings`. Treat them
 as a checklist, not as errors: the template still saved and still sends.
+
+The ones you are most likely to meet:
+
+- **A frontmatter key that is not one of the five above** — it was removed
+  before the render; the warning names the key. Colour and font keys always
+  land here.
+- **An invalid value on a supported key** — an unknown `theme`, a `dir` that
+  is not `ltr` / `rtl` / `auto`, a malformed `lang`, a `breaks` that is not a
+  boolean. The renderer falls back to the default and says so.
+- **An unknown directive parameter** — e.g. a word on a `::: callout` line
+  that is not one of the documented ones.
 
 Only two situations reject the request outright, both with
 `VALIDATION_ERROR` (422):

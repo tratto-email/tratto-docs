@@ -97,9 +97,13 @@ un bug. Se ti serve HTML scritto a mano, crea un template in formato HTML.
 ### Warning di render
 
 Se il render trova problemi non fatali — un parametro di direttiva
-sconosciuto, un valore frontmatter non valido ricaduto sul default, e così
-via — compaiono come **banner di warning** sopra la preview, un messaggio
-breve per problema. I warning non bloccano mai salvataggio o invio: quelli
+sconosciuto, un valore frontmatter non valido ricaduto sul default, o una
+chiave frontmatter non supportata e rimossa prima del render (le chiavi di
+colore e di font lo sono sempre, vedi
+[Frontmatter](/it/docs/emailmd-templates#frontmatter)) — compaiono come
+**banner di warning** sopra la preview, un messaggio breve per problema. Una
+chiave rimossa resta nel tuo sorgente: l'editor conserva quello che hai
+scritto, è il render che la ignora. I warning non bloccano mai salvataggio o invio: quelli
 presenti all'ultimo salvataggio vengono memorizzati con il template
 (`renderWarnings` nell'API). Punta a un banner vuoto prima di pubblicare.
 
