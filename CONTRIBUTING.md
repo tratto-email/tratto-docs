@@ -28,7 +28,7 @@ communication.
 
 ## Development setup
 
-**Requirements:** Node.js ≥ 18, [pnpm](https://pnpm.io).
+**Requirements:** Node.js 22 (`.nvmrc`), [pnpm](https://pnpm.io) 10.
 
 ```bash
 # 1. Fork the repository on GitHub, then clone your fork

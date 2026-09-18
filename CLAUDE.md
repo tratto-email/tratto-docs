@@ -3,47 +3,62 @@
 Documentation site for Tratto (`docs.tratto.email`). Bilingual EN/IT, built on
 Next.js 15 App Router + Fumadocs + Tailwind v4.
 
-Read [SETUP.md](./SETUP.md) for the full architecture; this file covers the
-rules that are easy to get wrong.
+This file holds only the rules a docs writer gets wrong. Everything else has
+one home and is not repeated here:
 
-Part of the Tratto multi-repo workspace — see `../CLAUDE.md` for the repo map
-and `../GO-LIVE.md` for launch status. The API contract documented here is
-owned by `tratto-api`; `pnpm build` runs `scripts/sync-openapi.js`, which
-processes the locally checked-in `public/openapi.json` — when the contract
-changes in `tratto-api`, that spec (and the MDX) must be updated here.
+- [SETUP.md](./SETUP.md) — stack, hosting (both App Hosting backends deploy
+  from `main`), design-token layering, the Fumadocs source shim, OpenAPI sync,
+  release procedure.
+- `../CLAUDE.md` — cross-repo method: CI budget (rule 6), "grep every repo
+  before calling a content decision applied" (lesson 11), "wait for the fourth
+  minute" (lesson 3), full sha for `gh release create` (lesson 10).
+- `../GO-LIVE.md` — launch status.
+
+## The API contract is owned by `tratto-api`
+
+`pnpm build` runs `scripts/sync-openapi.js`, which tries `$TRATTO_OPENAPI_URL`,
+then `https://api-staging.tratto.email/docs/json`, then
+`https://api.tratto.email/docs/json` (`scripts/sync-openapi.js:13-24`); a URL
+that fails is skipped silently (`:64-76`), and only when all fail does it fall
+back to an existing `public/openapi.json`, then to `public/openapi-template.json`
+(`:83-104`). `public/openapi.json` is **gitignored** (`.gitignore:40`) — the
+only committed spec is the template. When the contract changes in
+`tratto-api`, update the MDX here; never invent the contract.
+
+**Production does not serve the spec** (verified 2026-09-18):
+`https://api.tratto.email/docs/json` answers **404**, because
+`deploy-production-api.yml:70` sets `API_DOCS_ENABLED=false` and
+`plugins/swagger.ts:43-48` registers `/docs/json` only together with the UI.
+The build never fails for this — the URL is skipped — so today the API
+reference is built from the **staging** spec
+(`api-staging.tratto.email/docs/json`, 200, 68 paths). Until tratto-api#439 is
+closed, check before every rollout that staging and production run the same
+version (`GET /health` on both). Also: `spec.info.version` is `1.0.0`
+hardcoded (`swagger.ts:16`), not the product version.
 
 **This repo lags the contract, and that is the failure mode to watch for.**
 Two contract changes released on 2026-09-04 were still undocumented on
 2026-09-10, and an audit that day found pages describing behaviour the backend
-does not have — a template `publish` gate that no code enforces, plan quotas
-that are wrong in every row, and a page announcing automatic IP warming for a
-function whose data nobody writes. When docs and code disagree, **the docs are
-wrong until proven otherwise**: check `tratto-api/api/src/routes/v1/` before
-trusting a page, and cite the file and line in the commit that corrects it.
-
-A page that is merely missing costs a reader a search. A page that is wrong
-costs them the search, the attempt, and their trust — fix those first.
+does not have (a template `publish` gate no code enforces, plan quotas wrong
+in every row, automatic IP warming for a function nobody writes data to).
+When docs and code disagree, **the docs are wrong until proven otherwise**:
+check `tratto-api/api/src/routes/v1/` before trusting a page, and cite file
+and line in the commit that corrects it. A missing page costs a reader a
+search; a wrong page costs the search, the attempt and their trust — fix
+those first.
 
 **Drift runs in both directions.** `content/en/ip-warming.mdx:11-17` has said
-since 2026-09-10 (0a498f9) that there is no per-workspace warming automation,
-while the internal blueprint still described warming as a running system — the
-blueprint was the file corrected, on 2026-09-16 (`../email-saas-blueprint.md`
-§9, note at line 2810). Being right here settles nothing elsewhere, and being
-wrong elsewhere does not make this repo wrong: correct whichever document is
-actually wrong, rather than aligning to the other one on reflex.
+since 2026-09-10 (0a498f9) that there is no per-workspace warming; the
+internal blueprint still described warming as running, and the blueprint was
+the file corrected (2026-09-16, `../email-saas-blueprint.md` §9). Correct
+whichever document is actually wrong, never align to the other on reflex.
 
-**Check every DNS or API instruction against the endpoint's real response, not
-against how it used to work.** Until 2026-09-14 `content/en/domains.mdx`
-taught DKIM as a single `default._domainkey` TXT record (lines 89 and 118
-before the fix); the API returns **three CNAMEs**, one per SES token
-(`tratto-api/api/src/routes/v1/domains.ts:55-65`). The tables match it now
-(`content/{en,it}/domains.mdx:85-87`, fixed in 4f20668 / PR #92). A record
-type is exactly the detail memory gets confidently wrong — re-read the route
-or call the endpoint before repeating one.
-
-**CI budget**: GitHub Actions has a hard 3000 min/month org-wide (see
-`../CLAUDE.md`). Replicate the full CI suite locally before opening a PR, and
-verify that deploys actually ran — a green workflow is not a deployed site.
+**Check every DNS or API instruction against the endpoint's real response.**
+Until 2026-09-14 `content/en/domains.mdx` taught DKIM as one
+`default._domainkey` TXT; the API returns **three CNAMEs**
+(`tratto-api/api/src/routes/v1/domains.ts:55-65`; tables fixed in 4f20668,
+PR #92). A record type is exactly the detail memory gets confidently wrong —
+re-read the route or call the endpoint before repeating one.
 
 ---
 
@@ -54,11 +69,11 @@ pnpm dev          # localhost:3000 → /en
 pnpm build        # sync-openapi + next build
 pnpm lint         # eslint (flat config)
 pnpm typecheck    # tsc --noEmit
-pnpm lighthouse   # Lighthouse CI budgets
+pnpm lighthouse   # Lighthouse CI budgets (lighthouserc.json)
 ```
 
-Run `pnpm lint && pnpm typecheck && pnpm build` before opening a PR — CI runs
-exactly these three.
+Run `pnpm lint && pnpm typecheck && pnpm build` before opening a PR — CI
+(`.github/workflows/ci.yml`) runs exactly these three.
 
 ---
 
@@ -69,7 +84,7 @@ MDX lives in `content/<locale>/`. `content/en/foo.mdx` → `/en/docs/foo`.
 ```yaml
 ---
 title: Send Email                 # required
-description: One sentence.        # used for meta description and the OG card
+description: One sentence.        # meta description and OG card
 draft: true                       # optional — noindex + excluded from sitemap
 updatedAt: 2026-07-01             # optional — overrides git date as sitemap lastmod
 ---
@@ -84,147 +99,64 @@ Two rules that will otherwise break the build or the links:
    Wrap it in a code span: `` `GET /v1/emails/{id}` ``.
 
 A page missing from `content/it/` falls back to the English version. That is
-intentional, and the SEO layer handles it — do not add stub translations just
-to fill the gap.
+intentional and the SEO layer handles it — do not add stub translations.
 
-### Editorial decisions apply to every repo
-
-A content decision taken in one repo is not done until it has been grepped
-across the whole workspace. The first line of
-`content/{en,it}/introduction.mdx` opened with "a competitive alternative to
-Resend" from the page's creation (28d5673, 2026-06-30). The site dropped that
-same claim on 2026-09-14 (`tratto`, a57e4f4, PR #276), but that round looked
-only at `tratto`, so the docs kept serving it in both languages until
-2026-09-16 (ddc96a8, PR #97) — same sentence, same decision, two days of
-avoidable production drift. When an editorial line changes, grep `../` for it
-before calling it applied.
+An editorial decision taken elsewhere is not applied until it is applied here
+too (`../CLAUDE.md`, lesson 11): the Resend claim in `introduction.mdx`
+outlived the site's removal by two days (fixed in ddc96a8, PR #97).
 
 ---
 
-## Architecture rules
+## Code rules
 
-### 1. Locale narrowing
-
-Next types route `params` as `{ locale: string }`. Always narrow before use:
-
-```typescript
-const locale = toLocale((await params).locale);
-if (!locale) notFound();
-```
-
-### 2. URLs come from `lib/site.ts`
-
-Use `docsPath(locale, slug)` and `absoluteUrl(path)`. Never hand-build a docs
-URL — canonical, hreflang and the sitemap all depend on one implementation.
-
-### 3. Real translation vs fallback
-
-`hasTranslation(slug, locale)` from `lib/source.ts` is the only correct way to
-ask whether a locale genuinely has a page. `source.getPage()` returns the
-fallback and will lie to you.
-
-### 4. The Fumadocs source shim
-
-`lib/source.ts` normalises `source.files` between `fumadocs-mdx@11` (factory)
-and `fumadocs-core@15` (array). Leave it until Fumadocs 16 + Next 16.
-
-### 5. Design tokens
-
-`app/design-tokens.css` is a **shared file, copied verbatim** from
-`tratto-email/tratto`. Keep it byte-identical — never edit a value there to fix
-something in the docs. Docs-only adjustments belong in `globals.css`, which:
-
-- bridges the token file's `prefers-color-scheme` switch to the `.light` /
-  `.dark` classes the theme toggle writes;
-- remaps Fumadocs' `--color-fd-*` onto token **names** (not values), so dark
-  mode flows through without a second mapping;
-- repoints `--font-display` / `--font-body` / `--font-mono` at the `next/font`
-  variables, because the shared file names families literally and Next
-  self-hosts them under hashed names.
-
-Things that are easy to get wrong:
-
-- The base type scale is **14px** (`--text-base`), not the 16px browser default.
-- The page background is `--color-paper` (#F7F4EF); `--color-white` is the
-  *elevated* surface for cards and code blocks. In dark mode `--color-white`
-  becomes `#1A1A1A` — so never use Tailwind's `text-white` on a coloured
-  background, use a literal `#fff`.
-- Radius is 0 by default. `--radius-pill` and `--radius-circle` are the only
-  sanctioned exceptions.
-- Flat is the brand: no shadows except `--shadow-focus`.
+1. **Locale narrowing.** Next types route `params` as `{ locale: string }`:
+   `const locale = toLocale((await params).locale); if (!locale) notFound();`
+2. **URLs come from `lib/site.ts`.** `docsPath(locale, slug)` and
+   `absoluteUrl(path)` — canonical, hreflang and sitemap share one implementation.
+3. **Real translation vs fallback.** `hasTranslation(slug, locale)` from
+   `lib/source.ts` is the only correct question; `source.getPage()` returns the
+   fallback and will lie to you.
+4. **The `lib/source.ts` shim** (SETUP.md § A known version quirk) stays until
+   Fumadocs 16 + Next 16.
+5. **Design tokens.** `app/design-tokens.css` is a verbatim copy of
+   `tratto/packages/design-tokens/tokens.css`; verify with `cmp` against
+   `tratto`'s `develop`. Never edit it to fix the docs — not even a comment
+   (a docs-only NOTE comment broke byte identity: present since 0b315dc,
+   2026-07-25, found 2026-09-17). Docs-only adjustments go in `globals.css`
+   (SETUP.md § Design tokens). Easy to get wrong:
+   - base type scale is **14px** (`--text-base`), not 16px;
+   - page background is `--color-paper`; `--color-white` is the *elevated*
+     surface and becomes `#1A1A1A` in dark mode — never Tailwind `text-white`
+     on a coloured background, use a literal `#fff`;
+   - radius is 0 by default (`--radius-pill` / `--radius-circle` are the only
+     exceptions); flat is the brand: no shadows except `--shadow-focus`.
 
 ---
 
 ## Git workflow
 
-**Never commit directly to `main`.** There is no `develop` branch.
+**Never commit directly to `main`.** This is a rule, not a guard: `main` has
+no branch protection (`gh api repos/tratto-email/tratto-docs/branches/main/protection`
+→ `404 Branch not protected`, 2026-09-18). There is no `develop`.
 
 ```
-<type>/<slug>  →  PR → main  →  merge  →  production + staging deploy (both from main)
+<type>/<slug>  →  PR → main  →  merge  →  production + staging rollout (both from main)
 ```
 
-Merging a PR publishes it. Both Firebase App Hosting backends roll out from
-`main`, on the same commit, in parallel — staging is not a gate before
-production, so the PR (local `pnpm lint && pnpm typecheck && pnpm build`, plus
-the CI check) is the only review step:
-
-| Branch | Backend | Config actually applied | Serves |
-|---|---|---|---|
-| `main` | `trattoemail` | `apphosting.yaml` | docs.tratto.email |
-| `main` | `tratto-staging` | `apphosting.yaml` + `apphosting.staging.yaml` | tratto-docs--tratto-staging.europe-west4.hosted.app |
-
-**The staging file is merged, not substituted.** The `tratto-staging` backend
-has environment name `staging` (checked 2026-09-14), so App Hosting layers
-`apphosting.staging.yaml` on top of `apphosting.yaml`: any variable the staging
-file does not repeat keeps its **production** value. Staging overrides
-`NEXT_PUBLIC_SITE_URL` (staging canonical, `robots.txt` `Disallow: /`,
-`X-Robots-Tag: noindex`), `TRATTO_OPENAPI_URL`, and `NEXT_PUBLIC_GTM_ID`
-(`none` — the layout loads GTM only for IDs starting with `GTM-`, because App
-Hosting treats empty strings as reserved). Adding a variable to
-`apphosting.yaml` means deciding its staging value in the same PR. The
-`docs.staging.tratto.email` domain has no DNS record and is not mapped.
-
-A green merge is not a deployed site: check that both
-`App Hosting - Rollout (…/tratto-docs)` check runs on the `main` commit
-succeeded (`gh api repos/{owner}/{repo}/commits/<sha>/check-runs`).
-
-**Wait for the fourth minute.** The rollout checks finish roughly 4 min after
-the merge commit (2026-09-16: commit 16:56:40Z, both rollouts completed
-17:00:56Z; every deploy commit since 2026-09-13 lands between 3m42s and
-4m36s). Reading the checks earlier reports a missing rollout that has simply
-not appeared yet.
-
-**And expect gaps in the check runs.** Only the merge commit carries rollouts
-— the branch commits in its history have none, which is normal — but on merge
-commits a backend's check run sometimes never shows up: 23e0ed1 (2026-09-14)
-reports only `trattoemail`, 9f49fb2 only `tratto-staging`. It is not specific
-to one backend, and it is **unresolved** whether the rollout failed to start
-or only failed to publish its check — the installed `gcloud` has no App
-Hosting surface to settle it. So "both green" is not always provable from the
-check runs: when one is missing, confirm against the served site instead of
-assuming either outcome.
+Merging publishes: both App Hosting backends roll out the same commit in
+parallel, so staging is not a gate and the PR is the only review step
+(SETUP.md § Branching and deployment for the backends and the staging
+overrides). After the merge, confirm both `App Hosting - Rollout (…/tratto-docs)`
+check runs on the merge commit succeeded
+(`gh api repos/tratto-email/tratto-docs/commits/<sha>/check-runs`); they land
+around the fourth minute (`../CLAUDE.md`, lesson 3) and one may be missing —
+SETUP.md explains what to do then.
 
 ### Releases
 
-Tratto has **one product version number**, shared by API, dashboard, site and
-docs; the SDKs (`tratto-node`, `tratto-python`) are versioned separately.
-`tratto-api` is the reference: keep `version` in `package.json` equal to its
-current release, and check it rather than assuming
-(`gh release list --repo tratto-email/tratto-api`).
-
-The other repos bump `version` on `develop`, before the release PR. **This
-repo has no `develop`** (see the workflow above), so the bump goes in the PR
-that accompanies the release — there is no integration branch here to put it
-on, and applying the `develop` rule by analogy just stalls the release.
-
-Tag the production commit on `main`:
-
-```bash
-gh release create vX.Y.Z --target "$(git rev-parse origin/main)" --title vX.Y.Z --generate-notes
-```
-
-`--target` needs the **full 40-character sha**: a short sha is rejected with
-`HTTP 422 … Release.target_commitish is invalid` (hit on `tratto-email/tratto`,
-2026-09-16).
-
-Use the same `vX.Y.Z` as `tratto-api`, `tratto-app` and `tratto`.
+One product version shared with `tratto-api`, `tratto-app`, `tratto`
+(`gh release list --repo tratto-email/tratto-api` is the reference; SDKs are
+versioned separately). No `develop` here, so the bump goes in the PR that
+accompanies the release. Every release gets a `vX.Y.Z` tag on the `main`
+commit that published it, created with the full sha — procedure in
+SETUP.md § Releases.
