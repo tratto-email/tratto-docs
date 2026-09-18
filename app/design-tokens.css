@@ -3,10 +3,6 @@
    Importa in entrambi i frontend:
      Next.js:  @import './design-tokens.css' in globals.css
      Angular:  @import 'design-tokens.css' in styles.scss
-
-   NOTE: shared file — keep byte-identical with the copy in
-   tratto-email/tratto. Docs-specific overrides belong in
-   globals.css, never here.
    ============================================================= */
 
 :root {
