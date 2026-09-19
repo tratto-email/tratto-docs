@@ -19,11 +19,14 @@ d'errore nomina il limite — `Rate limit exceeded: 100 requests/second per API 
 
 Il limite al minuto è **per IP client, non per tenant**. Due workspace che
 chiamano dallo stesso IP di uscita lo condividono; un workspace che chiama da
-più IP ha un'allowance per ciascun IP.
+più IP ha un'allowance per ciascun IP. Viene contato **prima
+dell'autenticazione**, quindi anche le richieste respinte con un 401 — chiave
+API sbagliata, revocata o assente — consumano l'allowance.
 
 `POST /v1/templates/render-preview` ha un proprio limite per IP di **60
-richieste / minuto**, che su quell'endpoint prende il posto delle 500/minuto. Il
-limite per chiave vale anche lì.
+richieste / minuto**, che si **somma** alle 500/minuto invece di sostituirle:
+una richiesta di preview consuma un'unità di entrambi i budget, e il 429 arriva
+da quello che si esaurisce per primo. Il limite per chiave vale anche lì.
 
 ## Header di Rate Limit
 
@@ -43,8 +46,9 @@ l'header `retry-after`, in secondi.
 Questi header descrivono soltanto il limite **per IP**: 500/minuto, o 60/minuto
 su `render-preview`. Il limite per chiave, 100/secondo, non vi compare: puoi
 essere a `x-ratelimit-remaining: 400` e ricevere comunque un 429 per aver
-mandato 100 richieste nello stesso secondo. Quel 429 per chiave non ha né questi
-header né `retry-after`.
+mandato 100 richieste nello stesso secondo. Un 429 per chiave questi header li
+porta — il contatore per IP gira prima dell'autenticazione — ma descrivono il
+limite per IP, non quello che hai superato, e `retry-after` non c'è mai.
 </Callout>
 
 ## Verificare lo Stato del Rate Limit
@@ -66,7 +70,7 @@ Entrambi i limiti rispondono con lo stesso codice. Oltre il limite per IP:
 {
   "error": {
     "code": "RATE_LIMITED",
-    "message": "Rate limit exceeded, retry in 47 seconds",
+    "message": "Rate limit exceeded, retry in 47s.",
     "docs": "https://docs.tratto.email/en/docs/error-codes"
   }
 }
@@ -75,9 +79,11 @@ Entrambi i limiti rispondono con lo stesso codice. Oltre il limite per IP:
 Oltre il limite per chiave, `message` è
 `Rate limit exceeded: 100 requests/second per API key.`
 
-Il body non contiene alcun campo `retryAfter`. Dopo un 429 per IP, attendi i
-secondi indicati da `retry-after`. Dopo un 429 per chiave non c'è un header da
-leggere, ma la finestra è di un secondo: basta un breve backoff.
+Il numero nel messaggio sono i secondi che restano nella finestra corrente,
+quindi varia. Il body non contiene alcun campo `retryAfter`: dopo un 429 per IP,
+attendi i secondi indicati da `retry-after`. Dopo un 429 per chiave non c'è
+nessun `retry-after` da leggere, ma la finestra è di un secondo: basta un breve
+backoff.
 
 ## Strategia di Retry
 

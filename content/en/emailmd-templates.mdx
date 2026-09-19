@@ -213,7 +213,9 @@ curl -X POST https://api.tratto.email/v1/templates/render-preview \
 **Response** (`200`): `{ "data": { "html": "...", "text": "...", "warnings": [] } }`
 
 It requires the same `templates:write` permission as saving, and has a
-tighter rate limit of **60 requests per minute** (the render is CPU-bound).
+tighter rate limit of **60 requests per minute** (the render is CPU-bound),
+which applies on top of the global 500/minute per-IP limit rather than
+replacing it — see [Rate Limits](/en/docs/rate-limits).
 
 ### 3. Iterate: update re-renders
 

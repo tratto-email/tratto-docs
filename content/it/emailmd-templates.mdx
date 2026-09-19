@@ -220,7 +220,9 @@ curl -X POST https://api.tratto.email/v1/templates/render-preview \
 **Risposta** (`200`): `{ "data": { "html": "...", "text": "...", "warnings": [] } }`
 
 Richiede lo stesso permesso `templates:write` del salvataggio, e ha un rate
-limit più stretto di **60 richieste al minuto** (il render è CPU-bound).
+limit più stretto di **60 richieste al minuto** (il render è CPU-bound), che si
+somma al limite globale di 500/minuto per IP invece di sostituirlo — vedi
+[Rate Limit](/it/docs/rate-limits).
 
 ### 3. Itera: l'aggiornamento ri-renderizza
 
