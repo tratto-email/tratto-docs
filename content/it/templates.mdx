@@ -117,10 +117,11 @@ motivo. Lo stesso vale se un template viene de-pubblicato dopo che un'email è
 già stata messa in coda con quel template.
 
 <Callout type="info">
-**I test-send sono esenti.** `POST /v1/templates/:id/test-send` e
-`POST /v1/campaigns/:id/test-send` funzionano anche su un template `draft`:
-controllare una bozza in una casella vera è esattamente il punto, ed è l'unico
-modo di rivederla prima di pubblicarla.
+**I test-send sono esenti.** `POST /v1/templates/:id/test-send` funziona anche
+su un template `draft`: controllare una bozza in una casella vera è esattamente
+il punto, ed è l'unico modo di rivederla prima di pubblicarla. Il test di una
+campagna non è toccato in nessun caso: invia la copia dell'HTML che la campagna
+possiede e non risolve mai un template.
 </Callout>
 
 <Callout type="warn">

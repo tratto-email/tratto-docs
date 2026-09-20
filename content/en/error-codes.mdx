@@ -128,9 +128,9 @@ A template has to be `published` before it can be used to send, so
 }
 ```
 
-A `templateId` that does not exist is a `NOT_FOUND` (404) instead. Test sends
-are exempt, and `POST /v1/emails` is not refused at all: it accepts the
-request and the email fails at delivery. See
+A `templateId` that does not exist is a `NOT_FOUND` (404) instead. The template
+test send is exempt, and `POST /v1/emails` is not refused at all: it accepts
+the request and the email fails at delivery. See
 [Templates](/en/docs/templates#publish-before-you-send).
 
 ## Two codes share 429

@@ -129,8 +129,8 @@ quindi `VALIDATION_ERROR` (422) copre anche `POST /v1/campaigns`, una
 }
 ```
 
-Un `templateId` inesistente è invece un `NOT_FOUND` (404). Gli invii di test
-sono esenti, e `POST /v1/emails` non viene rifiutata affatto: accetta la
+Un `templateId` inesistente è invece un `NOT_FOUND` (404). Il test-send del
+template è esente, e `POST /v1/emails` non viene rifiutata affatto: accetta la
 richiesta e l'email fallisce in consegna. Vedi
 [Template](/it/docs/templates#pubblica-prima-di-inviare).
 

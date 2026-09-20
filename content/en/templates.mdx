@@ -115,10 +115,11 @@ The same happens if a template is unpublished after an email has been queued
 with it.
 
 <Callout type="info">
-**Test sends are exempt.** `POST /v1/templates/:id/test-send` and
-`POST /v1/campaigns/:id/test-send` work on a `draft` template. Checking a
-draft in a real inbox is the whole point, and it is the only way to review one
-before publishing it.
+**Test sends are exempt.** `POST /v1/templates/:id/test-send` works on a
+`draft` template. Checking a draft in a real inbox is the whole point, and it
+is the only way to review one before publishing it. A campaign test send is
+unaffected either way: it sends the campaign's own copy of the HTML and never
+resolves a template.
 </Callout>
 
 <Callout type="warn">
