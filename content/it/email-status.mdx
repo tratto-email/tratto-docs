@@ -40,7 +40,7 @@ Un'email progredisce attraverso questi status:
 | `scheduled` | Email è programmata per consegna futura (hai impostato `scheduledAt`) |
 | `sent` | Email è stata consegnata al server di posta, ma non ancora confermata dal server del destinatario |
 | `delivered` | Server di posta ha confermato ricezione e consegna (senza rimbalzi) |
-| `failed` | Consegna email non riuscita (dominio non valido, mailbox piena, ecc.) |
+| `failed` | Consegna email non riuscita (dominio non valido, mailbox piena, un template non pubblicato, ecc.). Il motivo viene registrato sull'email e mostrato in dashboard; l'API restituisce lo status, non il motivo |
 
 ### Transizioni di Stato
 

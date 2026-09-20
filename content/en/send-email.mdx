@@ -175,6 +175,13 @@ curl -X POST https://api.tratto.email/v1/emails \
 (and, for a Markdown template, its pinned text part) are all rendered with
 the `variables` you pass; a variable you don't pass becomes an empty string.
 
+**The template has to be published.** This request does not read the template,
+so it still answers `202` for a `draft` one, but the email is then marked
+`status: "failed"` and never leaves, with
+`Template 'tmpl_abc123' is not published and cannot be used to send.` recorded
+as the reason. Publish it first: see
+[Templates](/en/docs/templates#publish-before-you-send).
+
 ## Schedule an Email
 
 Send an email at a future time using the `scheduledAt` field (ISO 8601 format):

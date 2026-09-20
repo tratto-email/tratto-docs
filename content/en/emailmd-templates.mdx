@@ -232,7 +232,10 @@ curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
 
 ### 4. Test send, publish, send
 
-From here on, a Markdown template behaves exactly like an HTML one:
+From here on, a Markdown template behaves exactly like an HTML one. The order
+matters: the test send works on a draft, but the transactional send at the end
+only works once the template is `published`
+(see [Templates](/en/docs/templates#publish-before-you-send)).
 
 ```bash
 # Test send to your own inbox, with sample variable values

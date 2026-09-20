@@ -111,6 +111,29 @@ template aggiunge due casi di `VALIDATION_ERROR` (422) da conoscere:
 - **Markdown vuoto.** Un campo `markdown` vuoto o di soli spazi fallisce con
   `"markdown must not be empty."` — il render non gira mai su input vuoto.
 
+### Template non pubblicato
+
+Un template deve essere `published` prima di poter essere usato per inviare,
+quindi `VALIDATION_ERROR` (422) copre anche `POST /v1/campaigns`, una
+`PATCH /v1/campaigns/:id` che sostituisce il template e
+`POST /v1/flows/:id/activate`:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Template 'tmpl_abc123' is not published and cannot be used to send.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
+    "suggestion": "Publish the template first: PATCH /v1/templates/:id with { \"status\": \"published\" }, or use the Publish button in the template editor."
+  }
+}
+```
+
+Un `templateId` inesistente è invece un `NOT_FOUND` (404). Gli invii di test
+sono esenti, e `POST /v1/emails` non viene rifiutata affatto: accetta la
+richiesta e l'email fallisce in consegna. Vedi
+[Template](/it/docs/templates#pubblica-prima-di-inviare).
+
 ## Due codici condividono il 429
 
 `RATE_LIMITED` e `QUOTA_EXCEEDED` restituiscono entrambi 429, ma richiedono

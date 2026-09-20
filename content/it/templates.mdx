@@ -61,20 +61,15 @@ curl -X POST https://api.tratto.email/v1/templates \
 }
 ```
 
-## `status` è un'etichetta, non un gate
+## Pubblica prima di inviare
 
 Un template nasce con `status: "draft"`, e `status` accetta `draft` o
-`published`. Finisce lì: è un'**etichetta editoriale per il tuo flusso di
-lavoro**, e l'API non la fa rispettare in alcun modo.
+`published`. **Solo un template `published` può essere usato per inviare.**
+Pubblicare è un passaggio, non un'etichetta: il controllo è
+`status !== "published"`, quindi qualsiasi valore diverso da `published` viene
+rifiutato.
 
-<Callout type="warn">
-**Un template `draft` si invia.** Il percorso di consegna carica il template e
-ne legge l'`html`: non guarda mai `status`. Se ti serve che «non pronto per
-l'invio» significhi davvero questo, imponilo nel tuo codice — non contare sul
-rifiuto dell'API.
-</Callout>
-
-Cambia l'etichetta come qualsiasi altro campo:
+Pubblicalo come qualsiasi altro aggiornamento di campo:
 
 **cURL**
 ```bash
@@ -84,12 +79,65 @@ curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
   -d '{"status":"published"}'
 ```
 
-È anche un filtro sull'endpoint di elenco: `GET /v1/templates?status=published`.
+`status` è anche un filtro sull'endpoint di elenco:
+`GET /v1/templates?status=published`.
+
+### Dove si applica il gate
+
+| Cosa fai con un template in bozza | Cosa succede |
+|---|---|
+| `POST /v1/campaigns` con `templateId` | **422** `VALIDATION_ERROR` |
+| `PATCH /v1/campaigns/:id` che sostituisce `templateId` | **422** `VALIDATION_ERROR` |
+| `POST /v1/flows/:id/activate` con uno step `send_email` che lo usa | **422** `VALIDATION_ERROR` (**404** se il template non esiste) |
+| `POST /v1/emails` con `templateId` | accettata, poi l'email viene marcata `failed` e non parte |
+| `POST /v1/templates/:id/test-send` | **permesso**, vedi sotto |
+
+Gli errori di campagne e flussi hanno questa forma:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Template 'tmpl_abc123' is not published and cannot be used to send.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
+    "suggestion": "Publish the template first: PATCH /v1/templates/:id with { \"status\": \"published\" }, or use the Publish button in the template editor."
+  }
+}
+```
+
+All'attivazione di un flusso il messaggio nomina anche lo step:
+`Template 'tmpl_abc123' on step 's0' is not published and cannot be used to send.`
+
+`POST /v1/emails` non legge il template quando accetta la richiesta, quindi
+risponde comunque `202`. Il gate viene applicato dal worker di consegna:
+l'email finisce con `status: "failed"` e non parte nulla. Il motivo registrato
+è `Template 'tmpl_abc123' is not published and cannot be used to send.`
+La dashboard lo mostra, `GET /v1/emails/:id` restituisce lo status ma non il
+motivo. Lo stesso vale se un template viene de-pubblicato dopo che un'email è
+già stata messa in coda con quel template.
+
+<Callout type="info">
+**I test-send sono esenti.** `POST /v1/templates/:id/test-send` e
+`POST /v1/campaigns/:id/test-send` funzionano anche su un template `draft`:
+controllare una bozza in una casella vera è esattamente il punto, ed è l'unico
+modo di rivederla prima di pubblicarla.
+</Callout>
+
+<Callout type="warn">
+**Il gate non è retroattivo.** Una campagna copia dentro di sé l'HTML del
+template al momento della creazione, quindi le campagne create prima che questo
+esistesse mantengono il loro contenuto e continuano a partire. Il gate si
+applica quando una campagna viene creata o le viene sostituito il template,
+quando un flusso viene attivato, e in consegna per le email che risolvono un
+template.
+</Callout>
 
 ## Invia Usando un Template
 
-Il template fornisce il corpo. **`subject` è obbligatorio sull'invio** e va
-passato ogni volta: se lo ometti la richiesta fallisce con 422.
+Il template fornisce il corpo e deve essere `published` (vedi
+[Pubblica prima di inviare](#pubblica-prima-di-inviare)). **`subject` è
+obbligatorio sull'invio** e va passato ogni volta: se lo ometti la richiesta
+fallisce con 422.
 
 **cURL**
 ```bash
@@ -344,8 +392,9 @@ Non comporre HTML per ogni email. Usa template e variabili per consistenza e riu
 ### 4. Fai un Test Prima di Usarlo
 
 Fai sempre un test-send del template prima di inviarlo a qualcuno, per
-intercettare problemi di rendering. Nulla impedisce a un template `draft` di
-partire: il test-send è l'unico controllo che esiste.
+intercettare problemi di rendering. Il test-send è l'unico invio che un
+template `draft` può fare, quindi è anche l'unica revisione possibile prima di
+pubblicarlo.
 
 ---
 
