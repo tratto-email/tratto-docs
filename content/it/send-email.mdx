@@ -178,6 +178,16 @@ per un template Markdown, la sua parte testuale fissata) vengono renderizzati
 con le `variables` che passi; una variabile che non passi diventa una stringa
 vuota.
 
+**Il template deve essere pubblicato.** Questa richiesta non legge il template,
+quindi risponde comunque `202` anche per uno in `draft`, ma l'email viene poi
+marcata `status: "failed"` e non parte. Il motivo,
+`Template 'tmpl_abc123' is not published and cannot be used to send.`, viene
+registrato sul documento dell'email e si ferma lì: `GET /v1/emails/:id` non lo
+restituisce, e nemmeno la dashboard, che legge quello stesso endpoint. Quindi
+quello che vedi è un'email `failed` e nessuna spiegazione. Pubblica il template
+prima di inviare: vedi
+[Template](/it/docs/templates#pubblica-prima-di-inviare).
+
 ## Programma un'Email
 
 Invia un'email a un orario futuro usando il campo `scheduledAt` (formato ISO 8601):

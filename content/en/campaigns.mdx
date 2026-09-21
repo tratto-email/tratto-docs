@@ -44,7 +44,7 @@ and stats.
 | `name` | yes | max 200 characters |
 | `subjectA` | yes | the subject line, max 998 characters |
 | `subjectB` | no | second subject for an A/B test |
-| `templateId` | one of | copies the template's content into the campaign. **Exactly one** of `templateId` or `html` — both, or neither, is a 422 |
+| `templateId` | one of | copies the template's content into the campaign. **Exactly one** of `templateId` or `html`: both, or neither, is a 422. The template must be `published`, or the request is a 422 too |
 | `html` | one of | inline HTML, no template needed |
 | `audienceId` | no | **omitted = every contact in the workspace** |
 | `fromName` | no | falls back to the workspace default sender |
@@ -56,6 +56,18 @@ with 422 and a message telling you to set a default sender.
 The campaign owns a **copy** of the template's content from creation onward:
 editing the template later does not change a campaign already created from it,
 and editing the campaign does not touch the template.
+
+<Callout type="warn">
+**The template has to be published.** Creating a campaign from a `draft`
+template, or swapping one in with `PATCH /v1/campaigns/:id`, fails with **422
+`TEMPLATE_NOT_PUBLISHED`** and the message
+`Template 'tmpl_abc123' is not published and cannot be used to send.` A missing
+template is a **404**. Publish it first: see
+[Templates](/en/docs/templates#publish-before-you-send).
+
+Because the content is copied at creation, the check is not retroactive:
+campaigns created before this gate existed keep their copy and still send.
+</Callout>
 
 ## Test Send
 

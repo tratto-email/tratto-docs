@@ -43,7 +43,7 @@ Usa `GET /v1/campaigns/{id}` per leggerne status, contenuto e statistiche.
 | `name` | sì | max 200 caratteri |
 | `subjectA` | sì | l'oggetto, max 998 caratteri |
 | `subjectB` | no | secondo oggetto per un test A/B |
-| `templateId` | uno dei due | copia il contenuto del template nella campagna. **Esattamente uno** fra `templateId` e `html`: entrambi, o nessuno, è un 422 |
+| `templateId` | uno dei due | copia il contenuto del template nella campagna. **Esattamente uno** fra `templateId` e `html`: entrambi, o nessuno, è un 422. Il template deve essere `published`, altrimenti la richiesta è un 422 anche in quel caso |
 | `html` | uno dei due | HTML inline, senza bisogno di un template |
 | `audienceId` | no | **omesso = tutti i contatti del workspace** |
 | `fromName` | no | in mancanza, il mittente di default del workspace |
@@ -55,6 +55,19 @@ Se né il body né il workspace forniscono un mittente, la richiesta fallisce co
 Dalla creazione in poi la campagna possiede una **copia** del contenuto del
 template: modificare il template dopo non cambia una campagna già creata da
 esso, e modificare la campagna non tocca il template.
+
+<Callout type="warn">
+**Il template deve essere pubblicato.** Creare una campagna da un template
+`draft`, o sostituirlo con `PATCH /v1/campaigns/:id`, fallisce con **422
+`TEMPLATE_NOT_PUBLISHED`** e il messaggio
+`Template 'tmpl_abc123' is not published and cannot be used to send.` Un
+template inesistente è invece un **404**. Pubblicalo prima: vedi
+[Template](/it/docs/templates#pubblica-prima-di-inviare).
+
+Poiché il contenuto viene copiato alla creazione, il controllo non è
+retroattivo: le campagne create prima che questo gate esistesse mantengono la
+loro copia e continuano a partire.
+</Callout>
 
 ## Invio di Test
 

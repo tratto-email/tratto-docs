@@ -129,6 +129,8 @@ See [Webhooks](/en/docs/webhooks) for signature verification code.
 
 A **template** is a versioned email template with placeholder variables. Instead of composing HTML in code, you create a template in Tratto and reference it by ID.
 
+A template starts as a `draft` and has to be `published` before it can be used to send. See [Templates](/en/docs/templates#publish-before-you-send).
+
 **Template structure:**
 ```
 Subject: Welcome {{firstName}}!

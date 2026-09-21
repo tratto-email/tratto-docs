@@ -240,7 +240,10 @@ curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
 
 ### 4. Test, pubblica, invia
 
-Da qui in poi un template Markdown si comporta esattamente come uno HTML:
+Da qui in poi un template Markdown si comporta esattamente come uno HTML.
+L'ordine conta: l'invio di test funziona su una bozza, ma l'invio
+transazionale finale funziona solo quando il template è `published`
+(vedi [Template](/it/docs/templates#pubblica-prima-di-inviare)).
 
 ```bash
 # Invio di test alla tua inbox, con valori di esempio per le variabili

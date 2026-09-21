@@ -207,6 +207,16 @@ curl -X POST https://api.tratto.email/v1/flows/flow_abc123/deactivate \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
+L'attivazione controlla ogni step `send_email` prima che il flusso possa
+iscrivere qualcuno: il mittente deve stare su un dominio verificato e **il
+template dello step deve essere `published`**. Se non lo è, la richiesta
+fallisce con **422 `TEMPLATE_NOT_PUBLISHED`** e
+`Template 'tmpl_abc123' on step 's0' is not published and cannot be used to send.`;
+un `templateId` inesistente fallisce con **404** e
+`Template 'tmpl_abc123' on step 's0' not found.` Pubblica prima il template
+(vedi [Template](/it/docs/templates#pubblica-prima-di-inviare)), poi riprova ad
+attivare.
+
 <Callout type="warn">
 Non puoi fare `PATCH` degli `steps` di un flusso `active` — disattiva prima, modifica, riattiva. `trigger` e `name` si possono ancora cambiare mentre è attivo.
 </Callout>

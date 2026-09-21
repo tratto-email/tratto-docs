@@ -40,7 +40,7 @@ An email progresses through these statuses:
 | `scheduled` | Email is scheduled for future delivery (you set `scheduledAt`) |
 | `sent` | Email was delivered to the mail server, but not yet confirmed by recipient's server |
 | `delivered` | Mail server confirmed receipt and delivery (bounce-free) |
-| `failed` | Email delivery failed (invalid domain, mailbox full, etc.) |
+| `failed` | Email delivery failed (invalid domain, mailbox full, an unpublished template, etc.). The reason is recorded on the email document, but nothing exposes it today: `GET /v1/emails/:id` returns the status and not the reason, and the dashboard reads that same endpoint |
 
 ### State Transitions
 
