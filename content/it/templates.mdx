@@ -65,9 +65,8 @@ curl -X POST https://api.tratto.email/v1/templates \
 
 Un template nasce con `status: "draft"`, e `status` accetta `draft` o
 `published`. **Solo un template `published` può essere usato per inviare.**
-Pubblicare è un passaggio, non un'etichetta: il controllo è
-`status !== "published"`, quindi qualsiasi valore diverso da `published` viene
-rifiutato.
+Pubblicare è un passaggio, non un'etichetta: il template deve essere
+`published`, e qualsiasi altro stato viene rifiutato.
 
 Pubblicalo come qualsiasi altro aggiornamento di campo:
 
@@ -110,11 +109,15 @@ All'attivazione di un flusso il messaggio nomina anche lo step:
 
 `POST /v1/emails` non legge il template quando accetta la richiesta, quindi
 risponde comunque `202`. Il gate viene applicato dal worker di consegna:
-l'email finisce con `status: "failed"` e non parte nulla. Il motivo registrato
-è `Template 'tmpl_abc123' is not published and cannot be used to send.`
-La dashboard lo mostra, `GET /v1/emails/:id` restituisce lo status ma non il
-motivo. Lo stesso vale se un template viene de-pubblicato dopo che un'email è
-già stata messa in coda con quel template.
+l'email finisce con `status: "failed"` e non parte nulla. Il motivo viene
+registrato sul documento dell'email come
+`Template 'tmpl_abc123' is not published and cannot be used to send.`, ma
+**oggi nessuno lo espone**: `GET /v1/emails/:id` restituisce lo status e non il
+motivo, e la dashboard legge quello stesso endpoint, quindi non può mostrarlo.
+Quello che osservi è solo un'email `failed` senza spiegazione, e già questo è
+un buon motivo per non inviare con una bozza. Lo stesso vale se un template
+viene de-pubblicato dopo che un'email è già stata messa in coda con quel
+template.
 
 <Callout type="info">
 **I test-send sono esenti.** `POST /v1/templates/:id/test-send` funziona anche

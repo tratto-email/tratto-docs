@@ -177,9 +177,12 @@ the `variables` you pass; a variable you don't pass becomes an empty string.
 
 **The template has to be published.** This request does not read the template,
 so it still answers `202` for a `draft` one, but the email is then marked
-`status: "failed"` and never leaves, with
-`Template 'tmpl_abc123' is not published and cannot be used to send.` recorded
-as the reason. Publish it first: see
+`status: "failed"` and never leaves. The reason,
+`Template 'tmpl_abc123' is not published and cannot be used to send.`, is
+recorded on the email document and stops there: `GET /v1/emails/:id` does not
+return it, and neither does the dashboard, which reads that same endpoint. So
+what you see is a `failed` email and no explanation. Publish the template
+before you send: see
 [Templates](/en/docs/templates#publish-before-you-send).
 
 ## Schedule an Email

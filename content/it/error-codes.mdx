@@ -186,6 +186,10 @@ try {
       case 'VALIDATION_ERROR':
         // Correggi il payload: riprovare invariato fallirà di nuovo.
         break;
+      case 'TEMPLATE_NOT_PUBLISHED':
+        // Arriva dalle chiamate su campagne e flussi. Pubblica il template,
+        // poi rifai la chiamata: riprovare così com'è non serve.
+        break;
       case 'RATE_LIMITED':
         await backoff();
         break;

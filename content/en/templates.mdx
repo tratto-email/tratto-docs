@@ -64,8 +64,8 @@ curl -X POST https://api.tratto.email/v1/templates \
 
 A template is created with `status: "draft"`, and `status` accepts `draft` or
 `published`. **Only a `published` template can be used to send.** Publishing is
-a step, not a label: the check is `status !== "published"`, so anything that is
-not exactly `published` is refused.
+a step, not a label: the template has to be `published`, and any other status
+is refused.
 
 Publish it like any other field update:
 
@@ -108,11 +108,14 @@ On flow activation the message names the step too:
 
 `POST /v1/emails` does not read the template when it accepts the request, so it
 still answers `202`. The gate is applied by the delivery worker: the email ends
-up with `status: "failed"` and nothing is sent. The recorded reason is
-`Template 'tmpl_abc123' is not published and cannot be used to send.`
-The dashboard shows it, `GET /v1/emails/:id` returns the status but not the reason.
-The same happens if a template is unpublished after an email has been queued
-with it.
+up with `status: "failed"` and nothing is sent. The reason is recorded on the
+email document as
+`Template 'tmpl_abc123' is not published and cannot be used to send.`, but
+**nothing surfaces it today**: `GET /v1/emails/:id` returns the status and not
+the reason, and the dashboard reads that same endpoint, so it cannot show it
+either. All you observe is a `failed` email with no explanation. That alone is
+a reason not to send with a draft. The same happens if a template is
+unpublished after an email has been queued with it.
 
 <Callout type="info">
 **Test sends are exempt.** `POST /v1/templates/:id/test-send` works on a

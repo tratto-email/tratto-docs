@@ -184,6 +184,10 @@ try {
       case 'VALIDATION_ERROR':
         // Fix the payload: retrying unchanged will fail again.
         break;
+      case 'TEMPLATE_NOT_PUBLISHED':
+        // Raised by the campaign and flow calls. Publish the template,
+        // then make the call again: retrying as is cannot help.
+        break;
       case 'RATE_LIMITED':
         await backoff();
         break;
