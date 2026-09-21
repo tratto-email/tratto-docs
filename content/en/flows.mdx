@@ -209,7 +209,7 @@ curl -X POST https://api.tratto.email/v1/flows/flow_abc123/deactivate \
 
 Activation checks every `send_email` step before the flow can enroll anyone:
 the sender must be on a verified domain, and **the step's template must be
-`published`**. An unpublished one fails with **422 `VALIDATION_ERROR`** and
+`published`**. An unpublished one fails with **422 `TEMPLATE_NOT_PUBLISHED`** and
 `Template 'tmpl_abc123' on step 's0' is not published and cannot be used to send.`;
 a `templateId` that does not exist fails with **404** and
 `Template 'tmpl_abc123' on step 's0' not found.` Publish the template first

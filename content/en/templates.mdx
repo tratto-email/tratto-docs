@@ -84,9 +84,9 @@ curl -X PATCH https://api.tratto.email/v1/templates/tmpl_abc123 \
 
 | What you do with a draft template | What happens |
 |---|---|
-| `POST /v1/campaigns` with `templateId` | **422** `VALIDATION_ERROR` |
-| `PATCH /v1/campaigns/:id` swapping in `templateId` | **422** `VALIDATION_ERROR` |
-| `POST /v1/flows/:id/activate` with a `send_email` step using it | **422** `VALIDATION_ERROR` (**404** if the template does not exist) |
+| `POST /v1/campaigns` with `templateId` | **422** `TEMPLATE_NOT_PUBLISHED` |
+| `PATCH /v1/campaigns/:id` swapping in `templateId` | **422** `TEMPLATE_NOT_PUBLISHED` |
+| `POST /v1/flows/:id/activate` with a `send_email` step using it | **422** `TEMPLATE_NOT_PUBLISHED` (**404** if the template does not exist) |
 | `POST /v1/emails` with `templateId` | accepted, then the email is marked `failed` and never leaves |
 | `POST /v1/templates/:id/test-send` | **allowed**, see below |
 
@@ -95,7 +95,7 @@ The campaign and flow errors look like this:
 ```json
 {
   "error": {
-    "code": "VALIDATION_ERROR",
+    "code": "TEMPLATE_NOT_PUBLISHED",
     "message": "Template 'tmpl_abc123' is not published and cannot be used to send.",
     "docs": "https://docs.tratto.email/en/docs/error-codes",
     "suggestion": "Publish the template first: PATCH /v1/templates/:id with { \"status\": \"published\" }, or use the Publish button in the template editor."

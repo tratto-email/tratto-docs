@@ -60,7 +60,7 @@ and editing the campaign does not touch the template.
 <Callout type="warn">
 **The template has to be published.** Creating a campaign from a `draft`
 template, or swapping one in with `PATCH /v1/campaigns/:id`, fails with **422
-`VALIDATION_ERROR`** and the message
+`TEMPLATE_NOT_PUBLISHED`** and the message
 `Template 'tmpl_abc123' is not published and cannot be used to send.` A missing
 template is a **404**. Publish it first: see
 [Templates](/en/docs/templates#publish-before-you-send).

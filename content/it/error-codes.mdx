@@ -34,6 +34,7 @@ Gli errori di validazione aggiungono un array `details`: vedi sotto.
 | `NOT_FOUND` | 404 | La risorsa non esiste | Verifica l'ID: potrebbe appartenere a un altro workspace |
 | `CONFLICT` | 409 | La risorsa esiste già, oppure il suo stato attuale non consente l'azione (ad esempio modificare una campagna che non è più in bozza) | Recupera la risorsa e verificane lo stato prima di riprovare |
 | `VALIDATION_ERROR` | 422 | Il corpo è stato letto ma non rispetta lo schema | Leggi `details` per i campi errati |
+| `TEMPLATE_NOT_PUBLISHED` | 422 | Il template indicato nella richiesta è ancora in bozza e non può essere usato per inviare | Pubblicalo (`PATCH /v1/templates/:id` con `status: "published"`), poi ripeti la richiesta |
 | `BAD_REQUEST` | 400 | La richiesta non è arrivata a un handler: il corpo non è interpretabile (JSON malformato) | Correggi la sintassi del corpo: il payload non è mai arrivato allo schema |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | Il `Content-Type` non è fra quelli che l'endpoint sa leggere | Usa il tipo atteso (`application/json` nella maggior parte dei casi, `text/csv` per l'import contatti, `image/png` o `image/jpeg` per il logo del marchio) |
 | `INVALID_TOKEN` | 400 | Un link firmato (disiscrizione, pagina preferenze) non è valido | Non c'è nulla da riprovare: serve un link nuovo |
@@ -47,9 +48,9 @@ Gli errori di validazione aggiungono un array `details`: vedi sotto.
 | `SERVICE_UNAVAILABLE` | 503 | Un servizio da cui dipende l'endpoint è disattivato, saturo o non risponde | Riprova più tardi, rispettando `Retry-After` se la risposta lo imposta; `suggestion` indica se attendere serve |
 
 <Callout type="warn">
-Non esistono codici specifici per risorsa. Un template inesistente, un contatto
-inesistente e una campagna inesistente restituiscono tutti `NOT_FOUND`: la
-risorsa è indicata in `message`, non in `code`.
+Una risorsa inesistente non ha un codice tutto suo. Un template inesistente, un
+contatto inesistente e una campagna inesistente restituiscono tutti
+`NOT_FOUND`: la risorsa è indicata in `message`, non in `code`.
 </Callout>
 
 ## `BAD_REQUEST` (400) e `VALIDATION_ERROR` (422)
@@ -111,23 +112,28 @@ template aggiunge due casi di `VALIDATION_ERROR` (422) da conoscere:
 - **Markdown vuoto.** Un campo `markdown` vuoto o di soli spazi fallisce con
   `"markdown must not be empty."` — il render non gira mai su input vuoto.
 
-### Template non pubblicato
+## `TEMPLATE_NOT_PUBLISHED` (422)
 
-Un template deve essere `published` prima di poter essere usato per inviare,
-quindi `VALIDATION_ERROR` (422) copre anche `POST /v1/campaigns`, una
-`PATCH /v1/campaigns/:id` che sostituisce il template e
-`POST /v1/flows/:id/activate`:
+Un template deve essere `published` prima di poter essere usato per inviare.
+È un codice a sé, non una variante di `VALIDATION_ERROR`: non porta l'array
+`details`, perché nessuno schema ha rifiutato il corpo. Lo restituiscono
+`POST /v1/campaigns`, una `PATCH /v1/campaigns/:id` che sostituisce il template
+e `POST /v1/flows/:id/activate`:
 
 ```json
 {
   "error": {
-    "code": "VALIDATION_ERROR",
+    "code": "TEMPLATE_NOT_PUBLISHED",
     "message": "Template 'tmpl_abc123' is not published and cannot be used to send.",
     "docs": "https://docs.tratto.email/en/docs/error-codes",
     "suggestion": "Publish the template first: PATCH /v1/templates/:id with { \"status\": \"published\" }, or use the Publish button in the template editor."
   }
 }
 ```
+
+All'attivazione di un flow il messaggio indica anche lo step che usa il
+template:
+`Template 'tmpl_abc123' on step 's0' is not published and cannot be used to send.`
 
 Un `templateId` inesistente è invece un `NOT_FOUND` (404). Il test-send del
 template è esente, e `POST /v1/emails` non viene rifiutata affatto: accetta la

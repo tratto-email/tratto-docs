@@ -59,7 +59,7 @@ esso, e modificare la campagna non tocca il template.
 <Callout type="warn">
 **Il template deve essere pubblicato.** Creare una campagna da un template
 `draft`, o sostituirlo con `PATCH /v1/campaigns/:id`, fallisce con **422
-`VALIDATION_ERROR`** e il messaggio
+`TEMPLATE_NOT_PUBLISHED`** e il messaggio
 `Template 'tmpl_abc123' is not published and cannot be used to send.` Un
 template inesistente è invece un **404**. Pubblicalo prima: vedi
 [Template](/it/docs/templates#pubblica-prima-di-inviare).
