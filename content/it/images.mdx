@@ -1,0 +1,182 @@
+---
+title: Immagini e icone
+description: Il set di icone che Tratto ospita per i tuoi template, come si inserisce un'immagine con un alt che funziona, e perché non si linkano mai immagini dal dominio di qualcun altro.
+---
+
+Tratto ospita un piccolo set di icone PNG pensate per le email, che puoi linkare
+direttamente da un template: frecce, una busta, un segnaposto mappa, separatori,
+uno spaziatore e i marchi X e LinkedIn. Sono servite da un nostro dominio, i byte
+dietro un URL non cambiano mai, e usarle significa che nessuna parte della tua
+email dipende dal server di qualcun altro.
+
+## Dove stanno
+
+```
+https://assets.tratto.email/icons/v1/<nome>.png
+```
+
+Su staging gli stessi percorsi sono serviti da `assets-staging.tratto.email`. Un
+nome che non è nel set risponde `404`, quindi un errore di battitura si vede come
+immagine mancante nella preview, non nella casella del destinatario.
+
+## Il set
+
+Ogni file è un PNG a 2x, così resta nitido sugli schermi a densità alta: mettilo
+a metà della sua dimensione nativa. Copia tutta la lista e tieni quello che ti
+serve.
+
+```
+# Nostre
+https://assets.tratto.email/icons/v1/arrow-down-charcoal.png     48x48     metti a 24x24
+https://assets.tratto.email/icons/v1/arrow-down-white.png        48x48     metti a 24x24
+https://assets.tratto.email/icons/v1/arrow-right-charcoal.png    48x48     metti a 24x24
+https://assets.tratto.email/icons/v1/arrow-right-white.png       48x48     metti a 24x24
+https://assets.tratto.email/icons/v1/divider-charcoal.png        1200x2    metti a qualsiasi larghezza x 1
+https://assets.tratto.email/icons/v1/divider-white.png           1200x2    metti a qualsiasi larghezza x 1
+https://assets.tratto.email/icons/v1/envelope-charcoal.png       48x48     metti a 24x24
+https://assets.tratto.email/icons/v1/envelope-white.png          48x48     metti a 24x24
+https://assets.tratto.email/icons/v1/map-pin-charcoal.png        48x48     metti a 24x24
+https://assets.tratto.email/icons/v1/map-pin-white.png           48x48     metti a 24x24
+https://assets.tratto.email/icons/v1/spacer.png                  2x2       metti a qualsiasi larghezza x altezza
+
+# Marchi, proprietà dei rispettivi titolari (vedi sotto)
+https://assets.tratto.email/icons/v1/x-black.png                 47x48     metti a 23x24
+https://assets.tratto.email/icons/v1/x-white.png                 47x48     metti a 23x24
+https://assets.tratto.email/icons/v1/linkedin-black.png          48x44     metti a 24x22
+https://assets.tratto.email/icons/v1/linkedin-white.png          48x44     metti a 24x22
+https://assets.tratto.email/icons/v1/linkedin-blue.png           48x41     metti a 24x21
+```
+
+`charcoal` è `#3D3D3D`, per sfondi chiari; `white` è per quelli scuri. `spacer` è
+un quadrato trasparente che puoi allargare a qualsiasi spazio, `divider` è una
+riga sottile da allargare alla larghezza del contenuto.
+
+## Come si inserisce un'immagine in un template
+
+La forma dipende dal formato del template.
+
+**Template markdown** (`format: "emailmd"`):
+
+```markdown
+![Il nostro ufficio](https://assets.tratto.email/icons/v1/map-pin-charcoal.png){width="24"}
+```
+
+Il blocco di attributi imposta la larghezza di resa; l'altezza segue le
+proporzioni da sola (il renderer scrive `height="auto"`). Una larghezza maggiore
+della colonna di contenuto viene ridotta alla larghezza della colonna: per questo
+al `divider` puoi dare qualsiasi numero, mettici `600` e riempie la colonna.
+
+In un template markdown l'HTML grezzo viene escapato, quindi un tag `<img>`
+scritto lì arriva al destinatario come testo visibile, non come immagine. Usa la
+forma markdown.
+
+**Template HTML** (`format: "html"`):
+
+```html
+<img src="https://assets.tratto.email/icons/v1/x-black.png" alt="X" width="23" height="24">
+```
+
+Qui imposta sia `width` sia `height`: senza, Outlook desktop disegna il file alla
+sua dimensione in pixel, che per questi file è il doppio di quella che vuoi. Su
+un tag `img` il sanitizer conserva `src`, `alt`, `width`, `height` e `style`;
+tutto il resto viene rimosso.
+
+Una riga di link social, in un template markdown:
+
+```markdown
+[![X](https://assets.tratto.email/icons/v1/x-black.png){width="23"}](https://x.com/acme)
+[![LinkedIn](https://assets.tratto.email/icons/v1/linkedin-blue.png){width="24"}](https://www.linkedin.com/company/acme)
+```
+
+## L'alt non è facoltativo
+
+Outlook desktop blocca le immagini remote finché il destinatario non lo consente,
+e c'è chi le tiene spente per scelta. Per quei destinatari l'alt non è un dettaglio
+di accessibilità: è la differenza tra vedere quella parte dell'email e non vederla
+alla prima apertura. Un lettore di schermo ha lo stesso problema, e così chi legge
+la parte testuale.
+
+Scrivere `![](url)` con le parentesi vuote non risolve. Produce un'immagine con
+alt vuoto, e il controllo pre-invio la segnala esattamente come segnala
+un'immagine senza alcun attributo `alt`: l'avviso `image_without_alt` scatta
+quando l'alt è assente, vuoto o composto di soli spazi. Nemmeno `data-alt` conta
+come descrizione. Le uniche immagini che il controllo lascia passare sono quelle
+messe a `width="1"` o `height="1"`, cioè in pratica spaziatori e pixel di
+tracciamento scritti a mano.
+
+Quindi dai un alt breve anche a quelle decorative. In un template markdown
+l'altezza è sempre resa come `auto`, per cui un separatore o uno spaziatore lì
+non viene mai trattato come immagine da un pixel:
+
+```markdown
+![Separatore](https://assets.tratto.email/icons/v1/divider-charcoal.png){width="600"}
+```
+
+## Perché i percorsi sono versionati
+
+Ogni file sotto `/icons/v1/` è servito con
+`Cache-Control: public, max-age=31536000, immutable`, e i proxy immagine dei
+grandi provider di posta lo rispettano. I byte dietro uno di questi URL restano
+quindi fissati per un anno dentro le caselle, in email che nessuno può rispedire.
+
+Per questo il percorso è versionato e il contenuto di un file in `/v1/` non cambia
+mai. Una correzione, un ridisegno o un colore nuovo escono come `/icons/v2/`, una
+cartella nuova con URL nuovi, mentre `v1` continua a servire quello che è già in
+giro. Le email che hai spedito il mese scorso continuano a rendersi esattamente
+come quando le hai mandate. A `v1` si possono aggiungere nomi nuovi; quelli
+esistenti sono congelati.
+
+## Cosa non fare: linkare immagini da domini di terzi
+
+È l'errore che vediamo più spesso, e di solito arriva con un template copiato da
+un altro servizio di invio: passa il markup, e con lui gli URL delle immagini che
+puntano ai server di quel fornitore. Nella preview l'email sembra giusta, quindi
+nessuno se ne accorge. Ne seguono due cose:
+
+- **Ogni apertura scarica quei file da loro.** La richiesta porta nei log di una
+  società che non è il tuo fornitore, e che con te non ha alcun contratto, il
+  provider di posta del destinatario, la sua posizione approssimativa e il momento
+  in cui ha aperto la tua email.
+- **Il giorno che spostano o cancellano quei file, la tua email si rompe a
+  posteriori.** Le email già consegnate iniziano a mostrare riquadri vuoti, e non
+  c'è nulla da correggere: sono nelle caselle di altri.
+
+Lo stesso vale per qualsiasi immagine ospitata dove non controlli tu il ciclo di
+vita: una CDN qualsiasi, un servizio gratuito di hosting immagini, un server di
+staging. Linka le nostre icone, oppure ospita le tue immagini su un dominio tuo
+con una policy di cache che hai scelto tu.
+
+## I marchi restano dei rispettivi proprietari
+
+I glifi X e LinkedIn arrivano dai kit ufficiali delle piattaforme e sono stati
+solo riscalati a 2x. Forma, proporzioni e colori non sono stati toccati, come
+richiedono quelle linee guida, e così vanno lasciati: un marchio non si ricolora,
+non si ruota, non si deforma, non si ritaglia e non gli si aggiungono effetti.
+
+Questi marchi restano proprietà dei rispettivi titolari. Tratto non rivendica
+alcun diritto su di essi e li distribuisce solo per comodità; il tuo uso è
+soggetto alle regole di ciascuna piattaforma:
+
+- X: [brand toolkit](https://about.x.com/en/who-we-are/brand-toolkit)
+- LinkedIn: [brand policies](https://brand.linkedin.com/policies) e
+  [brand downloads](https://brand.linkedin.com/downloads)
+
+### Instagram, Facebook e YouTube non ci sono
+
+I loro kit ufficiali stanno dietro URL di download legati a una sessione di
+browser (Meta) o dietro il brand resource center di Google (YouTube), e non
+possiamo ridistribuirli. E non li abbiamo ridisegnati: sono marchi registrati, e
+un'approssimazione è sbagliata a vedersi e contraria a quelle stesse linee guida.
+
+Se ti servono, prendi il file ufficiale dalla fonte e ospitalo su un dominio che
+controlli tu:
+
+- Facebook e Instagram: [risorse brand Meta](https://www.meta.com/brand/resources/)
+- YouTube: [risorse brand](https://brand.youtube/)
+
+## Prossimi passi
+
+- [Template markdown](/it/docs/emailmd-templates) per il resto della sintassi
+  markdown.
+- [Footer Email & Branding](/it/docs/branding) per il footer che Tratto aggiunge e per
+  il tuo logo.
