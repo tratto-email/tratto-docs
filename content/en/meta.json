@@ -13,6 +13,7 @@
     "templates",
     "emailmd-templates",
     "emailmd-dashboard",
+    "images",
     "branding",
     "domains",
     "idempotency",

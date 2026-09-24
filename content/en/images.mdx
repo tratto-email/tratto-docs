@@ -1,0 +1,177 @@
+---
+title: Images & Icons
+description: The icon set Tratto hosts for your templates, how to place an image with a working alt text, and why you should never link images from someone else's domain.
+---
+
+Tratto hosts a small set of email-safe PNG icons you can link straight from a
+template: arrows, an envelope, a map pin, dividers, a spacer, and the X and
+LinkedIn marks. They are served from our own domain, the bytes behind a URL
+never change, and using them means no part of your email depends on somebody
+else's server.
+
+## Where they live
+
+```
+https://assets.tratto.email/icons/v1/<name>.png
+```
+
+On staging the same paths are served by `assets-staging.tratto.email`. A name
+that is not in the set answers `404`, so a typo shows up as a missing image in
+your preview rather than in the inbox.
+
+## The set
+
+Every file is a PNG at 2x, so it stays sharp on high-density screens: place it
+at half its native size. Copy the whole list and keep what you need.
+
+```
+# Ours
+https://assets.tratto.email/icons/v1/arrow-down-charcoal.png     48x48     place at 24x24
+https://assets.tratto.email/icons/v1/arrow-down-white.png        48x48     place at 24x24
+https://assets.tratto.email/icons/v1/arrow-right-charcoal.png    48x48     place at 24x24
+https://assets.tratto.email/icons/v1/arrow-right-white.png       48x48     place at 24x24
+https://assets.tratto.email/icons/v1/divider-charcoal.png        1200x2    place at any width x 1
+https://assets.tratto.email/icons/v1/divider-white.png           1200x2    place at any width x 1
+https://assets.tratto.email/icons/v1/envelope-charcoal.png       48x48     place at 24x24
+https://assets.tratto.email/icons/v1/envelope-white.png          48x48     place at 24x24
+https://assets.tratto.email/icons/v1/map-pin-charcoal.png        48x48     place at 24x24
+https://assets.tratto.email/icons/v1/map-pin-white.png           48x48     place at 24x24
+https://assets.tratto.email/icons/v1/spacer.png                  2x2       place at any width x height
+
+# Brand marks, property of their owners (see below)
+https://assets.tratto.email/icons/v1/x-black.png                 47x48     place at 23x24
+https://assets.tratto.email/icons/v1/x-white.png                 47x48     place at 23x24
+https://assets.tratto.email/icons/v1/linkedin-black.png          48x44     place at 24x22
+https://assets.tratto.email/icons/v1/linkedin-white.png          48x44     place at 24x22
+https://assets.tratto.email/icons/v1/linkedin-blue.png           48x41     place at 24x21
+```
+
+`charcoal` is `#3D3D3D`, for light backgrounds; `white` is for dark ones. The
+`spacer` is a transparent square you can stretch to any gap, and `divider` is a
+hairline rule you stretch to the width of your content.
+
+## Putting an image in a template
+
+Which form you use depends on the template format.
+
+**Markdown template** (`format: "emailmd"`):
+
+```markdown
+![Our office](https://assets.tratto.email/icons/v1/map-pin-charcoal.png){width="24"}
+```
+
+The attribute block sets the rendered width; the height follows the proportions
+on its own (the renderer writes `height="auto"`). A width larger than the
+content column is reduced to the column width, which is why the `divider` takes
+any number: give it `600` and it fills the column.
+
+Raw HTML is escaped in a markdown template, so an `<img>` tag written there is
+delivered as visible text, not as an image. Use the markdown form.
+
+**HTML template** (`format: "html"`):
+
+```html
+<img src="https://assets.tratto.email/icons/v1/x-black.png" alt="X" width="23" height="24">
+```
+
+Set both `width` and `height` here: without them desktop Outlook draws the file
+at its own pixel size, which for these files is twice what you want. On an `img`
+tag the sanitizer keeps `src`, `alt`, `width`, `height` and `style`; anything
+else is dropped.
+
+A row of social links, in a markdown template:
+
+```markdown
+[![X](https://assets.tratto.email/icons/v1/x-black.png){width="23"}](https://x.com/acme)
+[![LinkedIn](https://assets.tratto.email/icons/v1/linkedin-blue.png){width="24"}](https://www.linkedin.com/company/acme)
+```
+
+## The alt text is not optional
+
+Desktop Outlook blocks remote images until the recipient allows them, and some
+readers keep images off on purpose. For those recipients the alt text is not an
+accessibility nicety: it is whether that part of your email exists at all on
+first open. A screen reader has the same problem, and so does anyone reading the
+plain-text part.
+
+Writing `![](url)` with empty brackets is not a fix. It produces an image with
+an empty alt, and the pre-send check flags it exactly as it flags an image with
+no alt attribute at all: the `image_without_alt` content warning fires when the
+alt is absent, empty, or only spaces. `data-alt` is not a description either.
+The only images the check passes over are those placed at `width="1"` or
+`height="1"`, which in practice means hand-written spacers and tracking pixels.
+
+So give the decorative ones a short alt too. In a markdown template the height
+is always rendered as `auto`, so a divider or a spacer there is never treated as
+a one-pixel image:
+
+```markdown
+![Separator](https://assets.tratto.email/icons/v1/divider-charcoal.png){width="600"}
+```
+
+## Why the paths carry a version
+
+Every file under `/icons/v1/` is served with
+`Cache-Control: public, max-age=31536000, immutable`, and the image proxies of
+the big mailbox providers honour it. The bytes behind one of these URLs are
+therefore pinned for a year inside mailboxes, in mail nobody can re-send.
+
+That is why the path is versioned and why the content of a file in `/v1/` never
+changes. A correction, a redraw or a new colour ships as `/icons/v2/`, a new
+folder with new URLs, while `v1` keeps serving what is already out there. Your
+emails from last month keep rendering exactly as they did when you sent them.
+New names can be added to `v1`; existing ones are frozen.
+
+## Do not link images from a third-party domain
+
+This is the mistake we see most often, and it usually arrives with a template
+copied from another sending service: the markup comes over, and so do the image
+URLs pointing at that vendor's servers. The email looks right in the preview, so
+nobody notices. Two things follow:
+
+- **Every open fetches those files from them.** The request carries the
+  recipient's mailbox provider, their approximate location and the moment they
+  opened your email, into the logs of a company that is not your provider and
+  has no contract with you.
+- **The day they move or delete those files, your email breaks retroactively.**
+  Mail already delivered starts showing empty boxes, and there is nothing to fix
+  in it: it is sitting in other people's inboxes.
+
+The same applies to any image hosted where you do not control the lifecycle: a
+random CDN, a free image host, a staging server. Link our icons, or host your
+images on a domain you own with a cache policy you chose.
+
+## Brand marks belong to their owners
+
+The X and LinkedIn glyphs come from the platforms' own brand kits and were only
+rescaled to 2x. Shape, proportions and colours are untouched, as those
+guidelines require, and you should keep them that way: do not recolour, rotate,
+stretch, crop or add effects to a mark.
+
+These marks remain the property of their respective owners. Tratto claims no
+rights in them and distributes them only as a convenience; your use of them is
+subject to each platform's own rules:
+
+- X: [brand toolkit](https://about.x.com/en/who-we-are/brand-toolkit)
+- LinkedIn: [brand policies](https://brand.linkedin.com/policies) and
+  [brand downloads](https://brand.linkedin.com/downloads)
+
+### Instagram, Facebook and YouTube are not in the set
+
+Their official kits sit behind download URLs bound to a browser session (Meta)
+or behind Google's brand resource centre (YouTube), which we cannot
+redistribute. We did not redraw them either: they are registered trademarks, and
+an approximation is both visibly wrong and against those same guidelines.
+
+If you need them, take the official file from the source and host it on a domain
+you control:
+
+- Facebook and Instagram: [Meta brand resources](https://www.meta.com/brand/resources/)
+- YouTube: [brand resources](https://brand.youtube/)
+
+## Next steps
+
+- [Markdown templates](/en/docs/emailmd-templates) for the rest of the markdown
+  syntax.
+- [Email Footer & Branding](/en/docs/branding) for the footer Tratto appends and
+  for your own logo.
