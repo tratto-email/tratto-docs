@@ -380,9 +380,10 @@ di `{{firstName}}` almeno si notava nell'anteprima; con la sostituzione vuota
 sparisce senza lasciare traccia.
 
 Il controllo automatico esiste solo per le **campagne**, dove Tratto conosce
-l'insieme delle variabili disponibili (`email`, `firstName`, `lastName`,
-`unsubscribe_url`) e può quindi segnalare in bozza quelle che non ne fanno
-parte. Per un template non è possibile: le variabili arrivano da chi chiama
+l'insieme delle variabili disponibili e può quindi segnalare in bozza quelle
+che non ne fanno parte. L'insieme è elencato in
+[Variabili di una Campagna](/it/docs/campaigns#campaign-variables). Per un
+template non è possibile: le variabili arrivano da chi chiama
 `POST /v1/emails`, quindi non esiste un insieme contro cui verificarle e ogni
 controllo sarebbe un'ipotesi.
 

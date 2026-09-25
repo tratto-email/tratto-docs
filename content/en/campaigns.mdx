@@ -69,6 +69,50 @@ Because the content is copied at creation, the check is not retroactive:
 campaigns created before this gate existed keep their copy and still send.
 </Callout>
 
+## Campaign Variables [#campaign-variables]
+
+A campaign fills exactly four variables, resolved per recipient when the send
+goes out:
+
+| Variable | Value |
+|---|---|
+| `email` | the contact's email address |
+| `firstName` | the contact's first name |
+| `lastName` | the contact's last name |
+| `unsubscribe_url` | the unsubscribe link for that contact |
+
+Write them with **double** braces, in the subject line and in the body:
+
+```html
+<p>Hi {{firstName}}, the summer sale starts today.</p>
+<p><a href="{{unsubscribe_url}}">Unsubscribe</a></p>
+```
+
+Three things decide whether they work.
+
+**Case matters.** `{{firstName}}` is filled, `{{firstname}}` is not. The
+spelling in the table above is the only spelling that works.
+
+**A single brace is not a variable.** `{firstName}` is left untouched and the
+recipient reads it as text. Only `{{firstName}}` is substituted.
+
+**A name outside the four becomes an empty string.** `{{companyName}}` in a
+campaign does not fail the send, and it does not leave the placeholder on
+screen either. It disappears, and the sentence around it arrives with a hole
+in it: `Hi {{companyName}} customer` is delivered as `Hi  customer`. Nothing
+in the inbox shows that a variable was ever there, which is why the draft is
+the place to catch it.
+
+### Why the check exists on campaigns and not on templates
+
+A campaign is sent to contacts, so Tratto knows the four names above and can
+flag anything outside them while the campaign is still a draft. A template sent
+with [`POST /v1/emails`](/en/docs/send-email) gets its variables from whoever
+calls the API, so there is no closed set to check against and any check would
+be a guess. On a template the only defence is passing every placeholder the
+template uses on every send. See
+[Templates](/en/docs/templates#2-always-pass-every-variable).
+
 ## Test Send
 
 Send a test email before launching to make sure everything looks correct.
