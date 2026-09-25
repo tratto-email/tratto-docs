@@ -69,6 +69,51 @@ retroattivo: le campagne create prima che questo gate esistesse mantengono la
 loro copia e continuano a partire.
 </Callout>
 
+## Variabili di una Campagna [#campaign-variables]
+
+Una campagna valorizza esattamente quattro variabili, risolte per destinatario
+al momento dell'invio:
+
+| Variabile | Valore |
+|---|---|
+| `email` | l'indirizzo email del contatto |
+| `firstName` | il nome del contatto |
+| `lastName` | il cognome del contatto |
+| `unsubscribe_url` | il link di disiscrizione di quel contatto |
+
+Scrivile con le graffe **doppie**, nell'oggetto e nel corpo:
+
+```html
+<p>Ciao {{firstName}}, i saldi estivi iniziano oggi.</p>
+<p><a href="{{unsubscribe_url}}">Disiscriviti</a></p>
+```
+
+Tre cose decidono se funzionano.
+
+**Maiuscole e minuscole contano.** `{{firstName}}` viene valorizzata,
+`{{firstname}}` no. La grafia della tabella qui sopra è l'unica che funziona.
+
+**Una graffa singola non è una variabile.** `{firstName}` resta intatta e il
+destinatario la legge come testo. Solo `{{firstName}}` viene sostituita.
+
+**Un nome fuori da quei quattro diventa una stringa vuota.**
+`{{companyName}}` in una campagna non fa fallire l'invio, e non lascia nemmeno
+il segnaposto a schermo. Sparisce, e la frase intorno arriva con un buco:
+`Ciao {{companyName}} cliente` viene consegnato come `Ciao  cliente`. Niente,
+nella casella del destinatario, dice che lì c'era una variabile: è per questo
+che il punto in cui accorgersene è la bozza.
+
+### Perché il controllo esiste sulle campagne e non sui template
+
+Una campagna viene inviata a dei contatti, quindi Tratto conosce i quattro nomi
+qui sopra e può segnalare tutto ciò che ne sta fuori mentre la campagna è
+ancora in bozza. Un template inviato con
+[`POST /v1/emails`](/it/docs/send-email) prende le variabili da chi chiama
+l'API, quindi non esiste un insieme chiuso contro cui verificarle e ogni
+controllo sarebbe un'ipotesi. Su un template l'unica difesa è passare a ogni
+invio tutti i segnaposto che il template usa. Vedi
+[Template](/it/docs/templates#2-passa-sempre-tutte-le-variabili).
+
 ## Invio di Test
 
 Invia un'email di test prima del lancio per assicurarti che tutto appaia corretto.

@@ -375,11 +375,11 @@ typo like `{{firstname}}` for `{{firstName}}` at least showed up in the
 preview; with empty substitution it vanishes without a trace.
 
 The automatic check exists for **campaigns** only, where Tratto knows the set
-of available variables (`email`, `firstName`, `lastName`, `unsubscribe_url`)
-and can flag anything outside it while the campaign is still a draft. For a
-template it isn't possible: the variables come from whoever calls
-`POST /v1/emails`, so there is no set to check against and every check would
-be a guess.
+of available variables and can flag anything outside it while the campaign is
+still a draft. The set is listed in
+[Campaign Variables](/en/docs/campaigns#campaign-variables). For a template it
+isn't possible: the variables come from whoever calls `POST /v1/emails`, so
+there is no set to check against and every check would be a guess.
 
 On a template, then, the only defence is passing every placeholder the
 template uses on every send.
