@@ -213,6 +213,26 @@ ri-renderizza l'HTML e incrementa la versione allo stesso modo. `html` e
 `markdown` sono mutuamente esclusivi in una PATCH, e ciascuno è accettato solo
 da un template del formato corrispondente (422 altrimenti).
 
+
+### De-pubblicare un template usato da un flusso attivo
+
+Riportare `status` a `draft` risponde **409** se un flusso **attivo** sta usando
+quel template:
+
+```json
+{
+  "error": {
+    "code": "CONFLICT",
+    "message": "This template is used by flow 'Benvenuto' (active). Unpublishing it would break the next send.",
+    "suggestion": "Pause the flow, or point that step at another template first."
+  }
+}
+```
+
+Il motivo è il gate descritto sopra: un template non pubblicato viene rifiutato
+in consegna, quindi de-pubblicarlo mentre un flusso lo usa lo romperebbe al
+prossimo step. Un flusso in bozza non blocca nulla, perché non spedisce.
+
 ## Cronologia delle Versioni
 
 Elenca le versioni di un template, dalla più recente (fino a 20). Ogni voce
@@ -317,8 +337,30 @@ curl -X DELETE https://api.tratto.email/v1/templates/tmpl_abc123 \
 ```
 
 <Callout type="warning">
-L'eliminazione di un template non può essere annullata. Le campagne e i flussi che usano quel template falliranno.
+L'eliminazione di un template non può essere annullata: se ne va anche tutta la
+cronologia delle versioni, con l'HTML e il markdown di ogni revisione passata.
 </Callout>
+
+**Un template in uso non si elimina.** Se un flusso lo referenzia, o se una
+campagna non ancora conclusa (`scheduled`, `sending`, `paused`) lo usa, la
+richiesta risponde **409** e dice chi lo sta usando:
+
+```json
+{
+  "error": {
+    "code": "CONFLICT",
+    "message": "This template is used by flow 'Benvenuto' (active).",
+    "suggestion": "Remove it from those first, or leave the template in place."
+  }
+}
+```
+
+Una campagna già `completed` non blocca l'eliminazione: non spedirà più.
+
+Prima del 29 settembre 2026 l'eliminazione passava comunque, e il flusso falliva
+al primo invio successivo: l'email veniva segnata `failed` e l'iscrizione
+avanzava lo stesso, quindi il destinatario non riceveva nulla e in dashboard non
+compariva alcun errore.
 
 ## Sintassi Variabile del Template
 
