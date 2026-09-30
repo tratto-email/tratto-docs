@@ -192,14 +192,24 @@ A **campaign** is a one-time email broadcast to an audience. Create a campaign, 
 
 **Campaign lifecycle:**
 ```
-draft → (optional test send) → send → scheduled → sending → sent
+draft ─┬─→ send               → sending → completed
+       └─→ send + scheduledAt → scheduled → sending → completed
 ```
+
+A test send does not change the status, and either path can end up `paused`:
+by you, or by Tratto when the send runs out of quota, misses its schedule or
+bounces too much. The five statuses are `draft`, `scheduled`, `sending`,
+`paused` and `completed`. There is no `sent`.
+
+The full diagram, the two meanings of `scheduled` and the reasons behind
+`paused` live on the campaigns page:
+[Campaign status lifecycle](/en/docs/campaigns#lifecycle).
 
 **Key properties:**
 - `name`: Campaign name
 - `templateId`: Which template to use
 - `audienceId`: Who receives it
-- `sendAt`: Schedule for later (optional)
+- `scheduledAt`: Schedule for later (ISO 8601, optional)
 - `status`: Current state
 
 **After sending:**

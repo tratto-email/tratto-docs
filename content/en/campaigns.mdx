@@ -228,7 +228,7 @@ tells this apart from a date you set: see
 If the wave's bounce rate crosses the threshold the campaign pauses itself.
 See [Why a campaign is paused](#paused-reason).
 
-## Campaign Status Lifecycle
+## Campaign Status Lifecycle [#lifecycle]
 
 The five statuses are `draft`, `scheduled`, `sending`, `paused` and
 `completed`. **There is no `sent`.**
@@ -291,7 +291,7 @@ campaign, and it has three values plus `null`:
 
 | `pausedReason` | What happened | What to do |
 |---|---|---|
-| `null` | You paused it yourself, with `POST /:id/pause` | Resume when you want |
+| `null` | No reason was recorded. Normally it means you paused it yourself, with `POST /:id/pause` | Resume when you want |
 | `"quota_exceeded"` | The send did not fit the remaining [monthly quota](/en/docs/rate-limits), either before it started or mid-flight | Wait for the reset or raise the plan, then resume. It reaches only the recipients it missed |
 | `"schedule_missed"` | A campaign **you** scheduled was picked up more than an hour after its `scheduledAt` and was not sent that late | Resume by hand if the send is still wanted, or reschedule it |
 | `"bounce_rate"` | Too many permanent bounces among the emails already sent | **Clean the list before resuming.** See below |
