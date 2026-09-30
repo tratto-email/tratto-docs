@@ -190,8 +190,9 @@ curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/unschedule \
 - **l'invio è già partito** (`status` è `sending`): il dispatcher ha preso la
   campagna prima che tu la annullassi
 - **la campagna sta aspettando la sua [ondata di prova](#ondata-di-prova)**:
-  risulta `scheduled`, ma una parte della lista ha già ricevuto l'email, quindi
-  non c'è più niente da riportare a `draft`
+  risulta `scheduled` con `scheduledReason: "bounce_check"`, ma una parte della
+  lista ha già ricevuto l'email, quindi non c'è più niente da riportare a
+  `draft`
 
 In entrambi i casi metti in pausa: i destinatari già raggiunti non si possono
 disinviare.
@@ -214,6 +215,9 @@ quel costo a poche decine di email invece che all'intera lista.
 **`scheduled`** per quei 15 minuti, con uno `scheduledAt` fra un quarto d'ora.
 Una campagna che non hai mai programmato può quindi risultare `scheduled` poco
 dopo che l'hai inviata. Riparte da sola, e `stats.sent` conta già l'ondata.
+Per tutta l'attesa **`scheduledReason`** vale `"bounce_check"`, ed è quello che
+distingue questo caso da una data impostata da te: vedi
+[Quale dei due `scheduled`](#scheduled-reason).
 
 **Quando l'ondata non c'è:**
 
@@ -248,7 +252,22 @@ sending / scheduled  ─→ pause → paused ─→ send (ripresa) → sending
 `scheduled` significa quindi due cose: un invio che hai programmato tu, oppure
 una campagna che sta aspettando la sua [ondata di prova](#ondata-di-prova). Per
 l'ondata non è stato aggiunto nessuno status, quindi un client che ragiona solo
-su `status` non va toccato.
+su `status` non riesce a distinguere i due casi. Il campo che li distingue è
+**`scheduledReason`**.
+
+### Quale dei due `scheduled` [#scheduled-reason]
+
+`scheduledReason` è di sola lettura, `string | null`, e torna in
+`GET /v1/campaigns/{id}` e in `GET /v1/campaigns`. Oggi ha un solo valore:
+
+| `scheduledReason` | Cosa significa | Cosa puoi fare |
+|---|---|---|
+| `null` | La programmazione l'hai chiesta tu, con `scheduledAt` | `unschedule` la riporta a `draft`; anche `pause` funziona |
+| `"bounce_check"` | La campagna **non è programmata, sta spedendo.** È già uscita verso la sua [ondata di prova](#ondata-di-prova) e sta aspettando i 15 minuti del controllo rimbalzi | Niente: l'attesa finisce da sola. `unschedule` risponde **409**, perché una parte della lista ha già l'email e quelle non si richiamano indietro. `pause` ferma il resto |
+
+Il campo è **additivo e nullable**: si aggiunge a campi che c'erano già, quindi
+nessun client esistente si rompe ignorandolo. Quello che si rompe è dare per
+scontato che ogni campagna `scheduled` si possa ancora deprogrammare.
 
 ## Pausa una Campagna
 
@@ -271,15 +290,24 @@ eliminata.
 ### Perché una campagna è in pausa [#motivo-della-pausa]
 
 Una campagna può anche essere messa in pausa *per te*, e `paused` da solo non
-dice da chi. **`pausedReason` è l'unico campo che distingue i casi**, e ha tre
-valori più `null`:
+dice da chi. **`pausedReason` è il campo che distingue i casi** (l'equivalente
+di [`scheduledReason`](#scheduled-reason) per una campagna `scheduled`), e ha
+tre valori più `null`:
 
 | `pausedReason` | Cosa è successo | Cosa fare |
 |---|---|---|
 | `null` | L'hai messa in pausa tu, con `POST /:id/pause` | Riprendila quando vuoi |
 | `"quota_exceeded"` | L'invio non stava nella [quota mensile](/it/docs/rate-limits) residua, prima di partire o a metà strada | Aspetta l'azzeramento o passa a un piano superiore, poi riprendi. Raggiunge solo i destinatari mancati |
-| `"schedule_missed"` | Una campagna `scheduled` è stata presa più di un'ora dopo il suo `scheduledAt` e non è stata inviata così in ritardo | Riprendila a mano se l'invio serve ancora, oppure riprogrammala |
+| `"schedule_missed"` | Una campagna programmata **da te** è stata presa più di un'ora dopo il suo `scheduledAt` e non è stata inviata così in ritardo | Riprendila a mano se l'invio serve ancora, oppure riprogrammala |
 | `"bounce_rate"` | Troppi rimbalzi permanenti fra le email già inviate | **Pulisci la lista prima di riprendere.** Vedi qui sotto |
+
+**`schedule_missed` vale solo per una data impostata da te.** Anche una
+campagna parcheggiata per la sua [ondata di prova](#ondata-di-prova) risulta
+`scheduled`, ma non viene messa in pausa così per quanto l'attesa sfori l'ora:
+il resto della lista non è un invio che nessuno si aspetta più, è la fine di
+quello che hai chiesto, quindi parte. Li distingue
+[`scheduledReason`](#scheduled-reason): `"bounce_check"` non viene mai messa in
+pausa per un orario mancato, `null` sì.
 
 La `POST /:id/send` successiva azzera `pausedReason`: leggilo prima di
 riprendere.
