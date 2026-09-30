@@ -1,7 +1,7 @@
 ---
 title: "Campagne: Draft, Programma e Invia"
 description: Crea e invia campagne email alle audience
-updatedAt: 2026-09-10
+updatedAt: 2026-09-30
 ---
 
 Una **campagna** è una trasmissione email una tantum a un'audience. Crea una campagna, opzionalmente testala, poi inviala a centinaia o migliaia di destinatari.
@@ -153,6 +153,15 @@ L'invio è rifiutato con 409 se la campagna non è `draft` o `paused`, e prima d
 partire viene confrontato con la
 [quota mensile](/it/docs/rate-limits) residua.
 
+**L'invio è progressivo, non istantaneo.** Le email escono con un tetto al
+secondo, quindi una campagna con molti destinatari resta `sending` per un po'
+prima di completarsi. È l'invio che lavora, non un guasto. Il tetto è un
+parametro operativo e può cambiare: non costruire un timeout su un numero
+misurato una volta sola.
+
+In più, una campagna abbastanza grande parte con un'[ondata di
+prova](#ondata-di-prova) e si ferma a metà di proposito.
+
 ## Programma per Dopo
 
 Programma la campagna con **`scheduledAt`** (ISO 8601). Il campo non si chiama
@@ -176,8 +185,47 @@ curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/unschedule \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
-Risponde `409` se il dispatcher ha già iniziato l'invio: in quel caso metti in
-pausa.
+**Qui rispondono `409` due situazioni diverse**, e il messaggio le distingue:
+
+- **l'invio è già partito** (`status` è `sending`): il dispatcher ha preso la
+  campagna prima che tu la annullassi
+- **la campagna sta aspettando la sua [ondata di prova](#ondata-di-prova)**:
+  risulta `scheduled`, ma una parte della lista ha già ricevuto l'email, quindi
+  non c'è più niente da riportare a `draft`
+
+In entrambi i casi metti in pausa: i destinatari già raggiunti non si possono
+disinviare.
+
+## L'Ondata di Prova [#ondata-di-prova]
+
+Una campagna abbastanza grande non parte verso tutta la lista in una volta. Il
+primo invio raggiunge un'**ondata di prova**: il 5% dei destinatari rimanenti,
+mai meno di 50 e mai più di 500. Tratto aspetta poi **15 minuti**, conta quanti
+di quegli indirizzi hanno rimbalzato in modo permanente, e solo allora fa
+partire il resto.
+
+**Perché esiste.** Tratto invia su un pool condiviso
+([IP Warming](/it/docs/ip-warming)) e il tasso di rimbalzi permanenti è ciò che
+decide se l'invio viene bloccato su quel pool, per tutti i workspace che lo
+usano. Una lista mai pulita non costa solo a chi la possiede. L'ondata limita
+quel costo a poche decine di email invece che all'intera lista.
+
+**Cosa vedi mentre è in corso.** Dopo l'ondata la campagna torna
+**`scheduled`** per quei 15 minuti, con uno `scheduledAt` fra un quarto d'ora.
+Una campagna che non hai mai programmato può quindi risultare `scheduled` poco
+dopo che l'hai inviata. Riparte da sola, e `stats.sent` conta già l'ondata.
+
+**Quando l'ondata non c'è:**
+
+- l'ondata coprirebbe comunque tutta la lista rimanente. Non dimostrerebbe
+  niente, quindi la campagna parte e si completa come prima. Le campagne
+  piccole non cambiano comportamento
+- la campagna ha già raggiunto qualcuno. L'ondata si fa **una volta per
+  campagna**: una ripresa dopo una pausa, un orario mancato o una quota
+  esaurita riparte da dove si era fermata, senza una seconda attesa
+
+Se il tasso di rimbalzi dell'ondata supera la soglia la campagna si mette in
+pausa da sola: vedi [Perché una campagna è in pausa](#motivo-della-pausa).
 
 ## Ciclo di Vita dello Status della Campagna
 
@@ -191,8 +239,16 @@ draft
   └─→ send + scheduledAt   → scheduled → sending → completed
                                 └─→ unschedule → draft
 
+sending ─→ ondata di prova ─→ scheduled (15 min) ─→ sending → completed
+                                                └─→ paused (bounce_rate)
+
 sending / scheduled  ─→ pause → paused ─→ send (ripresa) → sending
 ```
+
+`scheduled` significa quindi due cose: un invio che hai programmato tu, oppure
+una campagna che sta aspettando la sua [ondata di prova](#ondata-di-prova). Per
+l'ondata non è stato aggiunto nessuno status, quindi un client che ragiona solo
+su `status` non va toccato.
 
 ## Pausa una Campagna
 
@@ -209,13 +265,48 @@ curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/pause \
 esiste un endpoint di ripresa separato. Riparte dai soli destinatari mai
 raggiunti, quindi nessuno riceve l'email due volte.
 
-Una campagna può anche essere messa in pausa *per te*: se l'invio esaurisce la
-quota mensile a metà strada, il dispatcher la mette in pausa e imposta
-`pausedReason` a `"quota_exceeded"`. Su una campagna che hai messo in pausa tu,
-`pausedReason` è `null`: quel campo è l'unico modo per distinguere i due casi.
-
 Una campagna in pausa può essere ripresa; solo una in `draft` può essere
 eliminata.
+
+### Perché una campagna è in pausa [#motivo-della-pausa]
+
+Una campagna può anche essere messa in pausa *per te*, e `paused` da solo non
+dice da chi. **`pausedReason` è l'unico campo che distingue i casi**, e ha tre
+valori più `null`:
+
+| `pausedReason` | Cosa è successo | Cosa fare |
+|---|---|---|
+| `null` | L'hai messa in pausa tu, con `POST /:id/pause` | Riprendila quando vuoi |
+| `"quota_exceeded"` | L'invio non stava nella [quota mensile](/it/docs/rate-limits) residua, prima di partire o a metà strada | Aspetta l'azzeramento o passa a un piano superiore, poi riprendi. Raggiunge solo i destinatari mancati |
+| `"schedule_missed"` | Una campagna `scheduled` è stata presa più di un'ora dopo il suo `scheduledAt` e non è stata inviata così in ritardo | Riprendila a mano se l'invio serve ancora, oppure riprogrammala |
+| `"bounce_rate"` | Troppi rimbalzi permanenti fra le email già inviate | **Pulisci la lista prima di riprendere.** Vedi qui sotto |
+
+La `POST /:id/send` successiva azzera `pausedReason`: leggilo prima di
+riprendere.
+
+### Fermata sul tasso di rimbalzi [#tasso-di-rimbalzi]
+
+Tratto conta i rimbalzi **permanenti** delle email che una campagna ha
+effettivamente fatto uscire: quelli temporanei non contano. Oltre il **5%**,
+con un minimo di 3 rimbalzi, la campagna si mette in pausa da sola con
+`pausedReason: "bounce_rate"` e un'email arriva al proprietario del workspace.
+(I due numeri sono la stessa decisione vista due volte: 3 è il 5% di 50, cioè
+dell'[ondata di prova](#ondata-di-prova) più piccola.)
+
+Il 5% è la stessa linea su cui viene giudicato il pool di invio condiviso: per
+questo ci fermiamo lì e non più tardi.
+
+**Niente riparte da solo.** Non c'è nessun tentativo automatico e nessun timer:
+la campagna resta `paused` finché non la reinvii tu. È una scelta: una lista
+che ha rimbalzato a quel ritmo rimbalzerà di nuovo, a meno che la lista non
+cambi.
+
+Prima di riprendere, togli gli indirizzi che hanno rimbalzato (Tratto li
+sopprime per gli invii futuri, ma restano nella tua lista finché non li
+elimini) e controlla da dove arriva la lista. Una campagna fermata così, quando
+la riprendi, normalmente riparte con una nuova ondata di prova da 50
+destinatari e la stessa attesa di 15 minuti: una lista non pulita viene quindi
+ripresa dopo 50 email invece che dopo tutto il resto.
 
 ## Ottieni Statistiche Campagna
 

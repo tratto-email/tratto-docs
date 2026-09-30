@@ -153,9 +153,10 @@ reazioni opposte:
 
 Il lavoro in background non risponde mai con questo codice. Una campagna che il
 dispatcher non riesce a far stare nella quota rimasta, prima di partire o a
-metà invio, viene messa in pausa con `pausedReason: "quota_exceeded"` (vedi
-[Campagne](/it/docs/campaigns)); riprenderla più tardi raggiunge solo i
-destinatari mancati. Un flusso il cui step di invio trova la quota esaurita
+metà invio, viene messa in pausa con `pausedReason: "quota_exceeded"` (uno dei
+tre valori elencati in
+[Campagne](/it/docs/campaigns#motivo-della-pausa)); riprenderla più tardi
+raggiunge solo i destinatari mancati. Un flusso il cui step di invio trova la quota esaurita
 salta quell'email e prosegue: l'email non viene inviata in seguito.
 
 Trattarli allo stesso modo significa riprovare all'infinito contro un muro:
