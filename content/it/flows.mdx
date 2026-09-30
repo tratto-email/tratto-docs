@@ -221,6 +221,22 @@ attivare.
 Non puoi fare `PATCH` degli `steps` di un flusso `active` — disattiva prima, modifica, riattiva. `trigger` e `name` si possono ancora cambiare mentre è attivo.
 </Callout>
 
+### Disattivare ferma anche chi è già dentro
+
+Disattivare un flusso non ferma solo le nuove iscrizioni: **ferma anche i
+contatti già iscritti**. L'iscrizione passa in pausa e gli step successivi non
+partono, comprese le attese già in corso.
+
+<Callout type="warn">
+Le iscrizioni fermate **non riprendono** se riattivi il flusso. Riprendere
+vorrebbe dire decidere da quale step ripartire e cosa fare delle attese già
+scadute, e quel comportamento non esiste: un contatto fermato a metà sequenza
+resta fermo. Se ti serve che completi, va iscritto di nuovo.
+</Callout>
+
+Fino al 29 settembre 2026 il comportamento era l'opposto — chi era già dentro
+proseguiva — e chi disattivava un flusso per fermare degli invii non li fermava.
+
 ## Elenca, Recupera, Elimina
 
 ```bash

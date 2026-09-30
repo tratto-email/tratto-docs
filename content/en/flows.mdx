@@ -220,6 +220,22 @@ again.
 You cannot `PATCH` the `steps` of an `active` flow — deactivate first, edit, reactivate. `trigger` and `name` can still be changed while active.
 </Callout>
 
+### Deactivating also stops contacts already in the flow
+
+Deactivating a flow does not only stop new enrolments: it **also stops contacts
+already enrolled**. The enrolment is paused and the following steps never run,
+including waits already counting down.
+
+<Callout type="warn">
+Paused enrolments **do not resume** when you reactivate the flow. Resuming would
+mean deciding which step to restart from and what to do with waits that have
+already elapsed, and that behaviour does not exist: a contact stopped mid
+sequence stays stopped. If you need it to finish, enrol it again.
+</Callout>
+
+Until 29 September 2026 the behaviour was the opposite — contacts already in the
+flow kept going — so deactivating a flow to stop sends did not stop them.
+
 ## List, Get, Delete
 
 ```bash

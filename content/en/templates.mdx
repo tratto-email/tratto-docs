@@ -209,6 +209,26 @@ re-renders the HTML and increments the version the same way. `html` and
 `markdown` are mutually exclusive in a PATCH, and each one is only accepted by
 a template of the matching format (422 otherwise).
 
+
+### Unpublishing a template an active flow uses
+
+Setting `status` back to `draft` answers **409** when an **active** flow is using
+that template:
+
+```json
+{
+  "error": {
+    "code": "CONFLICT",
+    "message": "This template is used by flow 'Welcome' (active). Unpublishing it would break the next send.",
+    "suggestion": "Pause the flow, or point that step at another template first."
+  }
+}
+```
+
+The reason is the gate described above: an unpublished template is refused at
+delivery, so unpublishing it while a flow uses it would break that flow on its
+next step. A draft flow blocks nothing, because it does not send.
+
 ## Version History
 
 List the versions of a template, newest first (up to 20). Each entry carries
@@ -312,8 +332,30 @@ curl -X DELETE https://api.tratto.email/v1/templates/tmpl_abc123 \
 ```
 
 <Callout type="warning">
-Deleting a template cannot be undone. Campaigns and flows using that template will fail.
+Deleting a template cannot be undone: the full version history goes with it,
+including the HTML and markdown of every past revision.
 </Callout>
+
+**A template in use cannot be deleted.** If a flow references it, or a campaign
+that has not finished yet (`scheduled`, `sending`, `paused`) uses it, the request
+answers **409** and names what is using it:
+
+```json
+{
+  "error": {
+    "code": "CONFLICT",
+    "message": "This template is used by flow 'Welcome' (active).",
+    "suggestion": "Remove it from those first, or leave the template in place."
+  }
+}
+```
+
+A campaign that is already `completed` does not block deletion: it will not send
+again.
+
+Before 29 September 2026 the deletion went through anyway, and the flow failed on
+its next send: the email was marked `failed` while the enrolment moved on, so the
+recipient got nothing and no error showed up in the dashboard.
 
 ## Template Variable Syntax
 
