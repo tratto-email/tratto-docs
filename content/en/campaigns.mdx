@@ -189,8 +189,8 @@ curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/unschedule \
 - **the send has already started** (`status` is `sending`): the dispatcher
   picked the campaign up before you cancelled it
 - **the campaign is waiting out its [probe wave](#probe-wave)**: it reads
-  `scheduled`, but part of the list has already received the email, so there is
-  nothing left to return to `draft`
+  `scheduled` with `scheduledReason: "bounce_check"`, but part of the list has
+  already received the email, so there is nothing left to return to `draft`
 
 Either way, pause it instead: the recipients already reached cannot be
 un-sent.
@@ -213,6 +213,9 @@ caps that cost at a few dozen emails instead of the whole list.
 **`scheduled`** for those 15 minutes, with a `scheduledAt` 15 minutes ahead.
 A campaign you never scheduled can therefore read as `scheduled` a moment after
 you sent it. It resumes on its own, and `stats.sent` already counts the wave.
+For the whole wait **`scheduledReason`** reads `"bounce_check"`, which is what
+tells this apart from a date you set: see
+[Which kind of `scheduled`](#scheduled-reason).
 
 **When there is no wave at all:**
 
@@ -245,7 +248,22 @@ sending / scheduled  ─→ pause → paused ─→ send (resume) → sending
 
 `scheduled` therefore means one of two things: a send you scheduled, or a
 campaign waiting out its [probe wave](#probe-wave). No status was added for the
-wave, so a client that switches on `status` alone needs no change.
+wave, so a client that switches on `status` alone cannot tell the two apart.
+**`scheduledReason`** is the field that can.
+
+### Which kind of `scheduled` [#scheduled-reason]
+
+`scheduledReason` is read-only, `string | null`, and comes back on
+`GET /v1/campaigns/{id}` and on `GET /v1/campaigns`. It has one value today:
+
+| `scheduledReason` | What it means | What you can do |
+|---|---|---|
+| `null` | You scheduled the send yourself, with `scheduledAt` | `unschedule` returns it to `draft`; `pause` works too |
+| `"bounce_check"` | The campaign **is not scheduled, it is sending.** It has already gone out to its [probe wave](#probe-wave) and is waiting out the 15-minute bounce check | Nothing: the wait ends on its own. `unschedule` answers **409**, because part of the list already has the email and those cannot be recalled. `pause` stops the rest |
+
+The field is **additive and nullable**: it appears next to fields that were
+already there, so no existing client breaks by ignoring it. What does break is
+assuming every `scheduled` campaign is one you can still unschedule.
 
 ## Pause a Campaign
 
@@ -267,15 +285,24 @@ A paused campaign can be resumed; only a `draft` one can be deleted.
 ### Why a campaign is paused [#paused-reason]
 
 A campaign can also be paused *for* you, and `paused` alone does not say by
-whom. **`pausedReason` is the only field that tells the cases apart**, and it
-has three values plus `null`:
+whom. **`pausedReason` is the field that tells the cases apart**, the
+counterpart of [`scheduledReason`](#scheduled-reason) on a `scheduled`
+campaign, and it has three values plus `null`:
 
 | `pausedReason` | What happened | What to do |
 |---|---|---|
 | `null` | You paused it yourself, with `POST /:id/pause` | Resume when you want |
 | `"quota_exceeded"` | The send did not fit the remaining [monthly quota](/en/docs/rate-limits), either before it started or mid-flight | Wait for the reset or raise the plan, then resume. It reaches only the recipients it missed |
-| `"schedule_missed"` | A `scheduled` campaign was picked up more than an hour after its `scheduledAt` and was not sent that late | Resume by hand if the send is still wanted, or reschedule it |
+| `"schedule_missed"` | A campaign **you** scheduled was picked up more than an hour after its `scheduledAt` and was not sent that late | Resume by hand if the send is still wanted, or reschedule it |
 | `"bounce_rate"` | Too many permanent bounces among the emails already sent | **Clean the list before resuming.** See below |
+
+**`schedule_missed` only applies to a date you set.** A campaign parked for
+its [probe wave](#probe-wave) also reads `scheduled`, but it is not paused this
+way however long the wait runs over the hour: the rest of the list is not a
+send nobody expects any more, it is the end of the one you asked for, so it
+goes out. Told apart by
+[`scheduledReason`](#scheduled-reason): `"bounce_check"` is never paused for a
+missed schedule, `null` can be.
 
 The next `POST /:id/send` clears `pausedReason`, so read it before resuming.
 
