@@ -192,14 +192,24 @@ Una **campagna** è una trasmissione email una tantum a un'audience. Crea una ca
 
 **Ciclo di vita della campagna:**
 ```
-draft → (invio di prova opzionale) → send → scheduled → sending → sent
+draft ─┬─→ send               → sending → completed
+       └─→ send + scheduledAt → scheduled → sending → completed
 ```
+
+L'invio di prova non cambia lo status, ed entrambi i percorsi possono finire in
+`paused`: per tua scelta, o per decisione di Tratto quando l'invio esaurisce la
+quota, manca l'orario programmato o rimbalza troppo. Gli status sono cinque:
+`draft`, `scheduled`, `sending`, `paused` e `completed`. `sent` non esiste.
+
+Lo schema completo, i due significati di `scheduled` e i motivi dietro
+`paused` stanno nella pagina delle campagne:
+[Ciclo di vita dello status della campagna](/it/docs/campaigns#lifecycle).
 
 **Proprietà chiave:**
 - `name`: Nome della campagna
 - `templateId`: Quale template usare
 - `audienceId`: Chi la riceve
-- `sendAt`: Programma per dopo (opzionale)
+- `scheduledAt`: Programma per dopo (ISO 8601, opzionale)
 - `status`: Stato attuale
 
 **Dopo l'invio:**

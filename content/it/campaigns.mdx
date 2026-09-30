@@ -231,7 +231,7 @@ distingue questo caso da una data impostata da te: vedi
 Se il tasso di rimbalzi dell'ondata supera la soglia la campagna si mette in
 pausa da sola: vedi [Perché una campagna è in pausa](#motivo-della-pausa).
 
-## Ciclo di Vita dello Status della Campagna
+## Ciclo di Vita dello Status della Campagna [#lifecycle]
 
 Gli status sono cinque: `draft`, `scheduled`, `sending`, `paused` e
 `completed`. **`sent` non esiste.**
@@ -296,7 +296,7 @@ tre valori più `null`:
 
 | `pausedReason` | Cosa è successo | Cosa fare |
 |---|---|---|
-| `null` | L'hai messa in pausa tu, con `POST /:id/pause` | Riprendila quando vuoi |
+| `null` | Nessun motivo registrato. Di norma significa che l'hai messa in pausa tu, con `POST /:id/pause` | Riprendila quando vuoi |
 | `"quota_exceeded"` | L'invio non stava nella [quota mensile](/it/docs/rate-limits) residua, prima di partire o a metà strada | Aspetta l'azzeramento o passa a un piano superiore, poi riprendi. Raggiunge solo i destinatari mancati |
 | `"schedule_missed"` | Una campagna programmata **da te** è stata presa più di un'ora dopo il suo `scheduledAt` e non è stata inviata così in ritardo | Riprendila a mano se l'invio serve ancora, oppure riprogrammala |
 | `"bounce_rate"` | Troppi rimbalzi permanenti fra le email già inviate | **Pulisci la lista prima di riprendere.** Vedi qui sotto |
