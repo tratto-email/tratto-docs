@@ -151,10 +151,10 @@ responses:
 
 Work that runs in the background never answers with this code. A campaign the
 dispatcher cannot fit in the remaining quota, before it starts or mid-send, is
-paused with `pausedReason: "quota_exceeded"` (see
-[Campaigns](/en/docs/campaigns)); resuming it later reaches only the recipients
-it missed. A flow whose send step finds the quota exhausted skips that email
-and moves on: the email is not sent later.
+paused with `pausedReason: "quota_exceeded"` (one of the three values listed in
+[Campaigns](/en/docs/campaigns#paused-reason)); resuming it later reaches only
+the recipients it missed. A flow whose send step finds the quota exhausted
+skips that email and moves on: the email is not sent later.
 
 Treating them the same means retrying forever against a quota wall:
 

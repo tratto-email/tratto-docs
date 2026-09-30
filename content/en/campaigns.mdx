@@ -1,7 +1,7 @@
 ---
 title: "Campaigns: Draft, Schedule & Send"
 description: Create and send email campaigns to audiences
-updatedAt: 2026-09-10
+updatedAt: 2026-09-30
 ---
 
 A **campaign** is a one-time email broadcast to an audience. Create a campaign, optionally test it, then send it to hundreds or thousands of recipients.
@@ -152,6 +152,15 @@ Sending is refused with 409 unless the campaign is `draft` or `paused`, and it
 is checked against your remaining [monthly quota](/en/docs/rate-limits) before
 it starts.
 
+**The send is progressive, not instantaneous.** Emails leave at a capped rate
+per second, so a campaign with many recipients stays `sending` for a while
+before it completes. That is the send working, not a fault. The cap is an
+operational setting and can change, so do not build a timeout around a number
+you measured once.
+
+On top of that, a campaign large enough for it starts with a
+[probe wave](#probe-wave) and pauses in the middle on purpose.
+
 ## Schedule for Later
 
 Schedule the campaign with **`scheduledAt`** (ISO 8601). The field is not
@@ -175,8 +184,46 @@ curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/unschedule \
   -H "Authorization: Bearer tratto_live_..."
 ```
 
-That returns `409` if the dispatcher has already started the send — pause it
-instead.
+**Two different sends answer `409` here**, and the message tells them apart:
+
+- **the send has already started** (`status` is `sending`): the dispatcher
+  picked the campaign up before you cancelled it
+- **the campaign is waiting out its [probe wave](#probe-wave)**: it reads
+  `scheduled`, but part of the list has already received the email, so there is
+  nothing left to return to `draft`
+
+Either way, pause it instead: the recipients already reached cannot be
+un-sent.
+
+## The Probe Wave [#probe-wave]
+
+A campaign big enough for it does not go out to the whole list at once. The
+first send reaches a **probe wave**: 5% of the remaining recipients, never
+fewer than 50 and never more than 500. Tratto then waits **15 minutes**, counts
+how many of those addresses bounced permanently, and only then releases the
+rest.
+
+**Why it exists.** Tratto sends over a shared pool
+([IP Warming](/en/docs/ip-warming)) and the permanent bounce rate is what
+decides whether sending is cut off on that pool, for every workspace on it. A
+list that was never cleaned does not cost only the sender who owns it. The wave
+caps that cost at a few dozen emails instead of the whole list.
+
+**What you see while it runs.** After the wave the campaign goes back to
+**`scheduled`** for those 15 minutes, with a `scheduledAt` 15 minutes ahead.
+A campaign you never scheduled can therefore read as `scheduled` a moment after
+you sent it. It resumes on its own, and `stats.sent` already counts the wave.
+
+**When there is no wave at all:**
+
+- the wave would cover the whole remaining list anyway. It would prove nothing,
+  so the campaign sends and completes as before. Small campaigns are unaffected
+- the campaign has already reached somebody. The wave happens **once per
+  campaign**: resuming after a pause, a missed schedule or an exhausted quota
+  picks up where it left off without a second wait
+
+If the wave's bounce rate crosses the threshold the campaign pauses itself.
+See [Why a campaign is paused](#paused-reason).
 
 ## Campaign Status Lifecycle
 
@@ -190,8 +237,15 @@ draft
   └─→ send + scheduledAt → scheduled → sending → completed
                               └─→ unschedule → draft
 
+sending ─→ probe wave sent ─→ scheduled (15 min) ─→ sending → completed
+                                                └─→ paused (bounce_rate)
+
 sending / scheduled  ─→ pause → paused ─→ send (resume) → sending
 ```
+
+`scheduled` therefore means one of two things: a send you scheduled, or a
+campaign waiting out its [probe wave](#probe-wave). No status was added for the
+wave, so a client that switches on `status` alone needs no change.
 
 ## Pause a Campaign
 
@@ -208,12 +262,45 @@ curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/pause \
 separate resume endpoint. It picks up only the recipients it never reached, so
 nobody is mailed twice.
 
-A campaign can also be paused *for* you: when a send exhausts the monthly
-quota mid-flight, the dispatcher pauses it and sets `pausedReason` to
-`"quota_exceeded"`. On a campaign you paused by hand, `pausedReason` is
-`null` — that field is the only way to tell the two apart.
-
 A paused campaign can be resumed; only a `draft` one can be deleted.
+
+### Why a campaign is paused [#paused-reason]
+
+A campaign can also be paused *for* you, and `paused` alone does not say by
+whom. **`pausedReason` is the only field that tells the cases apart**, and it
+has three values plus `null`:
+
+| `pausedReason` | What happened | What to do |
+|---|---|---|
+| `null` | You paused it yourself, with `POST /:id/pause` | Resume when you want |
+| `"quota_exceeded"` | The send did not fit the remaining [monthly quota](/en/docs/rate-limits), either before it started or mid-flight | Wait for the reset or raise the plan, then resume. It reaches only the recipients it missed |
+| `"schedule_missed"` | A `scheduled` campaign was picked up more than an hour after its `scheduledAt` and was not sent that late | Resume by hand if the send is still wanted, or reschedule it |
+| `"bounce_rate"` | Too many permanent bounces among the emails already sent | **Clean the list before resuming.** See below |
+
+The next `POST /:id/send` clears `pausedReason`, so read it before resuming.
+
+### Stopped on the bounce rate [#bounce-rate]
+
+Tratto counts the **permanent** bounces of the emails a campaign has actually
+released. Temporary ones do not count. Over **5% of them**, with a floor of 3
+bounces, the campaign pauses itself with `pausedReason: "bounce_rate"` and an
+email goes to the workspace owner. (The two numbers are one decision seen
+twice: 3 is 5% of 50, the smallest [probe wave](#probe-wave).)
+
+5% is the same line the shared sending pool is judged on, which is why we stop
+there rather than later.
+
+**Nothing restarts by itself.** There is no automatic retry and no timer: the
+campaign stays `paused` until you send it again. That is deliberate: a list
+that bounced at that rate will bounce again unless something changes about the
+list.
+
+Before resuming, remove the addresses that bounced (Tratto suppresses them for
+future sends, but they stay on your list until you delete them) and check where
+the list came from. Resuming a campaign stopped this way normally starts with a
+fresh probe wave of 50 recipients and the same 15-minute wait, so a list that
+was not cleaned is caught again after 50 emails instead of after the rest of
+it.
 
 ## Get Campaign Stats
 
