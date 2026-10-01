@@ -51,7 +51,7 @@ Da sapere:
 
 - `keepTrattoBranding` è accettato su **qualsiasi** piano. Su un piano che richiede il footer non ha effetto: il footer c'è comunque.
 - L'impostazione **persiste ai cambi di piano**: passare a un piano che richiede il footer e poi tornare indietro non azzera la tua scelta.
-- Supporto SDK: l'SDK Node.js (`@tratto/email`) accetterà `keepTrattoBranding` nella chiamata di aggiornamento del workspace a partire dalla **versione 1.1.0**, non ancora pubblicata. Fino ad allora, usa la dashboard o chiama direttamente l'endpoint HTTP.
+- Supporto SDK: l'SDK Node.js (`@tratto/email`) accetta `keepTrattoBranding` in `workspace.update()` dalla **1.1.0**. L'SDK Python non lo espone ancora (la 1.1.1 non ha `keep_tratto_branding`): lì usa la dashboard o chiama direttamente l'endpoint HTTP.
 
 ## Il comportamento in sintesi
 

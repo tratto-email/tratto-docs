@@ -54,9 +54,8 @@ result = client.emails.send(SendEmailOptions(
 ## Invia con Markdown
 
 <Callout type="info">
-Il campo `markdown` arriva nella versione **1.1.0** dell'SDK, non ancora
-pubblicata. Sulla release 1.0.0 attuale questi esempi falliscono — nel
-frattempo usa direttamente la [REST API](/it/docs/send-email#invia-con-markdown).
+Il campo `markdown` richiede la **1.1.0 o successiva**. `pip install tratto-email`
+installa la 1.1.1, quindi un'installazione nuova ce l'ha; un pin più vecchio no.
 </Callout>
 
 Invia [Markdown](/it/docs/emailmd-templates) e lascia che il server
@@ -64,7 +63,6 @@ renderizzi HTML responsive per email — `markdown` è mutuamente esclusivo con
 `html`:
 
 ```python
-# In arrivo nella 1.1.0
 result = client.emails.send(SendEmailOptions(
     from_='hello@tuodominio.it',
     to='user@example.com',
@@ -74,7 +72,7 @@ result = client.emails.send(SendEmailOptions(
 ))
 ```
 
-La stessa release aggiunge `markdown` a `templates.create` /
+La stessa release ha aggiunto `markdown` a `templates.create` /
 `templates.update` (creando template `format: 'emailmd'`), con `format`,
 `source` e `renderWarnings` nelle risposte dei template.
 
