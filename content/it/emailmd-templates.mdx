@@ -313,12 +313,12 @@ payload.
 ## Con gli SDK
 
 <Callout type="info">
-Il supporto markdown arriva nella versione **1.1.0** degli SDK, non ancora
-pubblicata — gli esempi qui sotto sono un'anteprima di quella release. Con gli
-SDK 1.0.0 attuali usa direttamente la REST API come mostrato sopra.
+Il supporto markdown richiede la **1.1.0 o successiva** degli SDK. Entrambi sono
+alla 1.1.1 su npm e PyPI, quindi un'installazione nuova ce l'ha; con un pin più
+vecchio usa direttamente la REST API come mostrato sopra.
 </Callout>
 
-**Node.js (`@tratto/email` — in arrivo nella 1.1.0)**
+**Node.js (`@tratto/email`, 1.1.0+)**
 
 ```typescript
 // Email markdown una tantum — senza template
@@ -339,7 +339,7 @@ console.log(template.format);          // 'emailmd'
 console.log(template.renderWarnings);  // []
 ```
 
-**Python (`tratto-email` — in arrivo nella 1.1.0)**
+**Python (`tratto-email`, 1.1.0+)**
 
 ```python
 from tratto import SendEmailOptions, CreateTemplateOptions

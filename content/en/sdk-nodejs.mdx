@@ -1,13 +1,14 @@
 ---
 title: Node.js / TypeScript SDK
 description: Official Node.js SDK for the Tratto Email API
-updatedAt: 2026-09-10
+updatedAt: 2026-10-01
 ---
 
 The official SDK for Node.js and TypeScript: **`@tratto/email`**
 
-Every example on this page is written against the published **1.1.0** release
-and typechecks against it.
+Every example on this page is written against **1.1.1**, the current release
+on npm, and typechecks against it. Where a feature needs a particular version,
+the page names the minimum one.
 
 ## Installation
 
@@ -112,7 +113,7 @@ const { id } = await tratto.emails.send({
 
 Canceling or rescheduling a scheduled email is available over
 [HTTP](/en/docs/sdk-http) but has no SDK method yet — see
-[What 1.1.0 does not cover](#what-110-does-not-cover-yet).
+[What the SDK does not cover](#what-the-sdk-does-not-cover-yet).
 
 ## Get Email Status
 
@@ -242,15 +243,16 @@ console.log(webhook.secret); // whsec_xyz789...
 
 ## Analytics
 
-`AnalyticsPeriod` in 1.1.0 is `'7d' | '30d' | '90d'`:
+`AnalyticsPeriod` is `'7d' | '30d' | '90d' | '180d' | '1y'` (the last two since
+1.1.1):
 
 ```typescript
 const summary = await tratto.analytics.getSummary('30d');
 console.log(summary.delivered);
 ```
 
-The API also accepts `180d` and `1y`; those two are not in the SDK type yet,
-so reach for [HTTP](/en/docs/sdk-http) if you need them.
+`180d` and `1y` read the long-term aggregate, which only holds live data: the
+API rejects them for a test-mode key.
 
 ## Error Handling
 
@@ -278,9 +280,9 @@ try {
 
 See [Error Codes](/en/docs/error-codes) for the full list.
 
-## What 1.1.0 does not cover yet
+## What the SDK does not cover yet
 
-These endpoints exist in the API and have **no SDK method** in 1.1.0. Call
+These endpoints exist in the API and have **no SDK method** in 1.1.1. Call
 them over [HTTP](/en/docs/sdk-http) until the SDK catches up:
 
 | Capability | HTTP |
@@ -297,11 +299,14 @@ them over [HTTP](/en/docs/sdk-http) until the SDK catches up:
 | API key management | `/v1/api-keys` |
 | Workspace brand logo | `PUT`, `DELETE /v1/workspace/brand/logo` |
 
-Some newer response fields are likewise absent from the 1.1.0 types:
+Some newer response fields are likewise absent from the 1.1.1 types:
 `Workspace` has no `limits` or `brand`, `Contact` has no `trackingOptOut`,
 `ListContactsParams` has no `q`, and `CampaignStats` has no `skipped`,
 `untracked` or `variants`. The API returns them; the types do not describe
 them yet.
+
+Checked against `@tratto/email` 1.1.1 on 2026-10-01. A row here is a promise
+that the gap is still real, so it is worth rereading at every SDK release.
 
 ---
 

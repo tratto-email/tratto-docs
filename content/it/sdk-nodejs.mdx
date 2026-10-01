@@ -1,13 +1,14 @@
 ---
 title: Node.js / TypeScript SDK
 description: SDK ufficiale Node.js per Tratto Email API
-updatedAt: 2026-09-10
+updatedAt: 2026-10-01
 ---
 
 SDK ufficiale per Node.js e TypeScript: **`@tratto/email`**
 
-Ogni esempio di questa pagina è scritto sulla release pubblicata **1.1.0** e
-compila contro di essa.
+Ogni esempio di questa pagina è scritto sulla **1.1.1**, la release corrente su
+npm, e compila contro di essa. Dove una funzionalità richiede una versione
+precisa, la pagina dichiara la minima.
 
 ## Installazione
 
@@ -113,7 +114,7 @@ const { id } = await tratto.emails.send({
 
 Annullare o riprogrammare un'email programmata si fa via
 [HTTP](/it/docs/sdk-http): non esiste ancora un metodo SDK — vedi
-[Cosa la 1.1.0 non copre](#cosa-la-110-non-copre-ancora).
+[Cosa l'SDK non copre](#cosa-lsdk-non-copre-ancora).
 
 ## Leggi lo Status di un'Email
 
@@ -244,15 +245,16 @@ console.log(webhook.secret); // whsec_xyz789...
 
 ## Analytics
 
-`AnalyticsPeriod` nella 1.1.0 è `'7d' | '30d' | '90d'`:
+`AnalyticsPeriod` è `'7d' | '30d' | '90d' | '180d' | '1y'` (gli ultimi due dalla
+1.1.1):
 
 ```typescript
 const summary = await tratto.analytics.getSummary('30d');
 console.log(summary.delivered);
 ```
 
-L'API accetta anche `180d` e `1y`, che però non sono ancora nel tipo dell'SDK:
-per quelli usa [HTTP](/it/docs/sdk-http).
+`180d` e `1y` leggono l'aggregato di lungo periodo, che contiene solo dati live:
+l'API li rifiuta per una chiave in modalità test.
 
 ## Gestione degli Errori
 
@@ -280,9 +282,9 @@ try {
 
 Vedi [Codici di Errore](/it/docs/error-codes) per l'elenco completo.
 
-## Cosa la 1.1.0 non copre ancora
+## Cosa l'SDK non copre ancora
 
-Questi endpoint esistono nell'API e **non hanno un metodo SDK** nella 1.1.0.
+Questi endpoint esistono nell'API e **non hanno un metodo SDK** nella 1.1.1.
 Chiamali via [HTTP](/it/docs/sdk-http) finché l'SDK non li recupera:
 
 | Funzionalità | HTTP |
@@ -299,11 +301,14 @@ Chiamali via [HTTP](/it/docs/sdk-http) finché l'SDK non li recupera:
 | Gestione delle chiavi API | `/v1/api-keys` |
 | Logo del marchio di workspace | `PUT`, `DELETE /v1/workspace/brand/logo` |
 
-Mancano dai tipi della 1.1.0 anche alcuni campi di risposta più recenti:
+Mancano dai tipi della 1.1.1 anche alcuni campi di risposta più recenti:
 `Workspace` non ha `limits` né `brand`, `Contact` non ha `trackingOptOut`,
 `ListContactsParams` non ha `q`, e `CampaignStats` non ha `skipped`,
 `untracked` né `variants`. L'API li restituisce; i tipi non li descrivono
 ancora.
+
+Verificato su `@tratto/email` 1.1.1 il 2026-10-01. Ogni riga di questa tabella
+è la promessa che la lacuna c'è ancora: va riletta a ogni rilascio dell'SDK.
 
 ---
 
