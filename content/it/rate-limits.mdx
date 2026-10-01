@@ -114,9 +114,9 @@ Ogni piano ha due tetti:
 
 | Piano | Email al mese | Domini |
 |---|---|---|
-| Free | 3.000 | 2 |
-| Starter | 75.000 | 5 |
-| Growth | 500.000 | illimitati |
+| Free | 3.000 | 3 |
+| Starter | 75.000 | 10 |
+| Growth | 500.000 | 100 |
 
 **Non esiste un tetto giornaliero** legato al piano. L'unico limite giornaliero
 del prodotto è quello del test mode — 100 invii di test al giorno, vedi
@@ -146,7 +146,7 @@ curl https://api.tratto.email/v1/workspace \
 {
   "data": {
     "plan": "free",
-    "limits": { "emailsPerMonth": 3000, "domains": 2 }
+    "limits": { "emailsPerMonth": 3000, "domains": 3 }
   }
 }
 ```

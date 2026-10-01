@@ -113,9 +113,9 @@ Each plan has two caps:
 
 | Plan | Emails per month | Domains |
 |---|---|---|
-| Free | 3,000 | 2 |
-| Starter | 75,000 | 5 |
-| Growth | 500,000 | unlimited |
+| Free | 3,000 | 3 |
+| Starter | 75,000 | 10 |
+| Growth | 500,000 | 100 |
 
 There is **no per-day cap** on a plan. The only daily limit in the product is
 the test-mode one — 100 test sends per day, see
@@ -144,7 +144,7 @@ curl https://api.tratto.email/v1/workspace \
 {
   "data": {
     "plan": "free",
-    "limits": { "emailsPerMonth": 3000, "domains": 2 }
+    "limits": { "emailsPerMonth": 3000, "domains": 3 }
   }
 }
 ```
