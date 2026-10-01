@@ -6,9 +6,9 @@ updatedAt: 2026-10-01
 
 The official SDK for Node.js and TypeScript: **`@tratto/email`**
 
-Every example on this page is written against **1.1.1**, the current release
-on npm, and typechecks against it. Where a feature needs a particular version,
-the page names the minimum one.
+Every example on this page typechecks against **1.2.0**. Where a feature needs
+a particular version, the page names the minimum one that has it; it never
+names the newest, because that goes stale on its own.
 
 ## Installation
 
@@ -172,7 +172,7 @@ const { id } = await tratto.contacts.create({
 
 ## Create Campaign
 
-`CreateCampaignParams` in 1.1.0 requires `templateId`, `audienceId`,
+`CreateCampaignParams` still requires `templateId`, `audienceId`,
 `fromName`, `fromEmail` and `subjectA`. `create` resolves to `{ id }`:
 
 ```typescript
@@ -191,7 +191,7 @@ console.log(campaign.status); // 'draft'
 ```
 
 <Callout type="info">
-The API itself is more permissive than the 1.1.0 types: it accepts inline
+The API itself is more permissive than the 1.2.0 types: it accepts inline
 `html` instead of a `templateId`, and treats an omitted `audienceId` as "every
 contact in the workspace". Neither is expressible through the SDK yet — use
 [HTTP](/en/docs/sdk-http) for those.
@@ -210,6 +210,34 @@ Schedule it instead by passing a date:
 await tratto.campaigns.send('camp_xyz789', {
   scheduledAt: new Date('2026-10-01T09:00:00Z'),
 });
+```
+
+## Stop a Campaign
+
+`pause` holds a campaign that is sending or waiting. `unschedule` cancels a
+scheduled send and puts the campaign back to `draft`; it needs **1.2.0 or
+newer**:
+
+```typescript
+await tratto.campaigns.pause('camp_xyz789');
+await tratto.campaigns.unschedule('camp_xyz789');
+```
+
+`unschedule` only applies while the status is `scheduled` and nothing has left.
+On a campaign that is sending, already paused, or waiting out its
+[probe wave](/en/docs/campaigns#probe-wave) it answers `409 CONFLICT`, because
+part of the list may already have the email. Pause it instead.
+
+`Campaign.pausedReason` says why a campaign stopped on its own, and also needs
+**1.2.0 or newer**. It reads `'quota_exceeded' | 'schedule_missed' |
+'bounce_rate' | null`, and `'bounce_rate'` is the
+[automatic bounce stop](/en/docs/campaigns#bounce-rate):
+
+```typescript
+const campaign = await tratto.campaigns.get('camp_xyz789');
+if (campaign.pausedReason === 'bounce_rate') {
+  // Clean the list before calling send again.
+}
 ```
 
 ## Get Campaign Stats
@@ -282,7 +310,7 @@ See [Error Codes](/en/docs/error-codes) for the full list.
 
 ## What the SDK does not cover yet
 
-These endpoints exist in the API and have **no SDK method** in 1.1.1. Call
+These endpoints exist in the API and have **no SDK method** in 1.2.0. Call
 them over [HTTP](/en/docs/sdk-http) until the SDK catches up:
 
 | Capability | HTTP |
@@ -291,7 +319,6 @@ them over [HTTP](/en/docs/sdk-http) until the SDK catches up:
 | Reschedule an email | `PATCH /v1/emails/{id}` |
 | Get one contact | `GET /v1/contacts/{id}` |
 | Update / delete a campaign | `PATCH`, `DELETE /v1/campaigns/{id}` |
-| Unschedule a campaign | `POST /v1/campaigns/{id}/unschedule` |
 | Campaign link clicks | `GET /v1/campaigns/{id}/links` |
 | Update / delete / refresh an audience | `PATCH`, `DELETE`, `POST …/refresh` on `/v1/audiences/{id}` |
 | List or remove audience contacts | `GET`, `DELETE` on `/v1/audiences/{id}/contacts` |
@@ -299,14 +326,17 @@ them over [HTTP](/en/docs/sdk-http) until the SDK catches up:
 | API key management | `/v1/api-keys` |
 | Workspace brand logo | `PUT`, `DELETE /v1/workspace/brand/logo` |
 
-Some newer response fields are likewise absent from the 1.1.1 types:
+Some newer response fields are likewise absent from the 1.2.0 types:
 `Workspace` has no `limits` or `brand`, `Contact` has no `trackingOptOut`,
 `ListContactsParams` has no `q`, and `CampaignStats` has no `skipped`,
 `untracked` or `variants`. The API returns them; the types do not describe
-them yet.
+them yet. `TrattoError` carries `docs` but not `suggestion`, which the Python
+SDK does expose.
 
-Checked against `@tratto/email` 1.1.1 on 2026-10-01. A row here is a promise
-that the gap is still real, so it is worth rereading at every SDK release.
+Checked against the published `@tratto/email` 1.2.0 on 2026-10-01: eleven rows
+were rechecked, and `campaigns.unschedule` is the one that is now covered
+(see [Stop a Campaign](#stop-a-campaign)). A row here is a promise that the gap
+is still real, so it is worth rereading at every SDK release.
 
 ---
 

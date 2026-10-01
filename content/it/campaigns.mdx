@@ -372,6 +372,12 @@ con un minimo di 3 rimbalzi, la campagna si mette in pausa da sola con
 (I due numeri sono la stessa decisione vista due volte: 3 è il 5% di 50, cioè
 dell'[ondata di prova](#ondata-di-prova) più piccola.)
 
+**Il 5% si misura su tutto quello che la campagna ha spedito**, contato dalla
+sua prima email e attraverso ogni ripresa, non sull'ondata o sul batch che è in
+volo. Quel numero è `stats.sent`: i rimbalzi che fermano la campagna sono il 5%
+di quello, mai meno di 3. Si muove mentre la campagna spedisce: più è avanti,
+più rimbalzi permanenti servono perché il freno scatti.
+
 Il 5% è la stessa linea su cui viene giudicato il pool di invio condiviso: per
 questo ci fermiamo lì e non più tardi.
 
@@ -382,10 +388,26 @@ cambi.
 
 Prima di riprendere, togli gli indirizzi che hanno rimbalzato (Tratto li
 sopprime per gli invii futuri, ma restano nella tua lista finché non li
-elimini) e controlla da dove arriva la lista. Una campagna fermata così, quando
-la riprendi, normalmente riparte con una nuova ondata di prova da 50
-destinatari e la stessa attesa di 15 minuti: una lista non pulita viene quindi
-ripresa dopo 50 email invece che dopo tutto il resto.
+elimini) e controlla da dove arriva la lista.
+
+**Quello che la ripresa ti dà è una misura nuova, non una garanzia da 50
+email.** Una campagna che riparte dopo uno stop per `bounce_rate` manda una
+nuova [ondata di prova](#ondata-di-prova) da 50 destinatari e aspetta gli
+stessi 15 minuti prima di far partire il resto. Se quei 50 bastino a prendere
+una lista che non hai pulito dipende dalla soglia su cui vengono misurati, e
+quella soglia è il 5% di tutto quello che la campagna ha già spedito:
+
+- Una campagna fermata presto ha spedito poco, quindi la sua soglia è ancora al
+  minimo di 3 o vicina. L'ondata la supera da sola, e non esce niente altro.
+- Una campagna già avanti nella lista ha alzato la propria soglia sopra
+  qualunque cifra 50 destinatari possano produrre. L'ondata passa il controllo,
+  il resto della lista comincia a uscire, e lo stop arriva da un batch
+  successivo.
+
+Anche nel secondo caso il freno scatta, solo più tardi e dopo che è uscita più
+posta. Per sapere dove sei, leggi `stats.sent` e prendine il 5%: sono i rimbalzi
+permanenti che oggi fermano questa campagna. Pulire la lista è l'unica cosa che
+le evita di fermarsi una seconda volta.
 
 ## Ottieni Statistiche Campagna
 

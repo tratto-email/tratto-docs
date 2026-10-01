@@ -171,7 +171,15 @@ if (error.status === 429) {
 
 ## Handling errors with the SDK
 
-`@tratto/email` throws `TrattoError`, which carries `code` and `statusCode`:
+Both SDKs raise a `TrattoError` carrying the `code` and the HTTP status, and
+each exposes part of the rest of the payload: the Node SDK adds `docs`, the
+Python SDK adds `suggestion` and `docs` from **1.2.0 or newer**. Branch on the
+code; read `suggestion` when one code covers more than one situation.
+
+### Node.js
+
+`@tratto/email` throws `TrattoError`, which carries `code`, `statusCode` and
+`docs`:
 
 ```javascript
 import { TrattoError } from '@tratto/email';
@@ -200,6 +208,28 @@ try {
   }
 }
 ```
+
+### Python
+
+`tratto-email` raises `TrattoError` with `code`, `status_code`, `suggestion` and
+`docs`. The last two need **1.2.0 or newer** and are `None` when the response
+omits them:
+
+```python
+from tratto import TrattoError
+
+try:
+    client.campaigns.unschedule('camp_xyz789')
+except TrattoError as e:
+    print(e.code)          # 'CONFLICT'
+    print(e.suggestion)    # what to do instead, in the API's own words
+    print(e.docs)          # link to this page
+```
+
+This is the case `suggestion` exists for: the 409 on `campaigns.send` and on
+`campaigns.unschedule` is one code covering several states, and only the text
+says which one you hit. See
+[Campaigns](/en/docs/campaigns#scheduled-reason).
 
 ---
 
