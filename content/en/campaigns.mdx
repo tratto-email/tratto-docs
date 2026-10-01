@@ -1,7 +1,7 @@
 ---
 title: "Campaigns: Draft, Schedule & Send"
 description: Create and send email campaigns to audiences
-updatedAt: 2026-09-30
+updatedAt: 2026-10-01
 ---
 
 A **campaign** is a one-time email broadcast to an audience. Create a campaign, optionally test it, then send it to hundreds or thousands of recipients.
@@ -150,7 +150,9 @@ The campaign status becomes `sending`, then `completed` when the send is done.
 
 Sending is refused with 409 unless the campaign is `draft` or `paused`, and it
 is checked against your remaining [monthly quota](/en/docs/rate-limits) before
-it starts.
+it starts (that one is a 429, not a 409). A `paused` campaign is refused with a
+409 too while its [probe wave](#probe-wave) is still being measured: see
+[Resuming during the probe wait](#probe-wait).
 
 **The send is progressive, not instantaneous.** Emails leave at a capped rate
 per second, so a campaign with many recipients stays `sending` for a while
@@ -193,7 +195,9 @@ curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/unschedule \
   already received the email, so there is nothing left to return to `draft`
 
 Either way, pause it instead: the recipients already reached cannot be
-un-sent.
+un-sent. Pausing a campaign waiting out its wave does not release you from the
+wait, though: resuming it is refused until the wait is over, which is
+[the next 409 to know about](#probe-wait).
 
 ## The Probe Wave [#probe-wave]
 
@@ -216,6 +220,12 @@ you sent it. It resumes on its own, and `stats.sent` already counts the wave.
 For the whole wait **`scheduledReason`** reads `"bounce_check"`, which is what
 tells this apart from a date you set: see
 [Which kind of `scheduled`](#scheduled-reason).
+
+**Pausing during the wait does not skip the wait.** The deadline is fixed when
+the wave goes out and it does not move, so pausing holds the campaign where it
+is instead of ending the check early. Until that deadline passes, sending the
+campaign again answers 409: see
+[Resuming during the probe wait](#probe-wait).
 
 **When there is no wave at all:**
 
@@ -278,9 +288,36 @@ curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/pause \
 
 **Resuming is a fresh `POST /:id/send`** on the paused campaign — there is no
 separate resume endpoint. It picks up only the recipients it never reached, so
-nobody is mailed twice.
+nobody is mailed twice. One case answers 409 instead of resuming, for up to
+fifteen minutes: see [Resuming during the probe wait](#probe-wait).
 
 A paused campaign can be resumed; only a `draft` one can be deleted.
+
+### Resuming during the probe wait [#probe-wait]
+
+Pause a campaign in the middle of its [probe wave](#probe-wave), then send it
+again, and you would be releasing the rest of the list before anyone has looked
+at how the wave bounced. Two clicks, and the check the wave exists for never
+happens. So that send is refused: while the 15-minute wait still has time to
+run, `POST /:id/send` on that campaign answers **409**, and the message names
+how many emails the wave already reached and roughly how many minutes are left.
+
+The scheduled form is refused the same way. `POST /:id/send` with a
+`scheduledAt` during the wait does not get around it, so a new date is not a
+way out either.
+
+**There are two things to do, and only two.** Send the campaign again once the
+wait is over, and the rest of the list goes out. Or leave it paused and stop
+there. **`unschedule` is not a third one**: on a paused campaign it answers 409
+as well, so it leads nowhere.
+
+Either way, the recipients the wave already reached keep the email. They cannot
+be recalled, and that is the part worth knowing before you decide to stop.
+
+The 409 costs the wait, not the campaign: it clears on its own once the deadline
+passes, and the send goes through. Note that it carries the same `CONFLICT` code
+as every other state conflict on these routes, so a client cannot tell it apart
+from "the campaign is already `sending`" without reading `message`.
 
 ### Why a campaign is paused [#paused-reason]
 
@@ -291,7 +328,7 @@ campaign, and it has three values plus `null`:
 
 | `pausedReason` | What happened | What to do |
 |---|---|---|
-| `null` | No reason was recorded. Normally it means you paused it yourself, with `POST /:id/pause` | Resume when you want |
+| `null` | No reason was recorded. Normally it means you paused it yourself, with `POST /:id/pause` | Resume when you want, unless the pause fell inside the [probe wait](#probe-wait) |
 | `"quota_exceeded"` | The send did not fit the remaining [monthly quota](/en/docs/rate-limits), either before it started or mid-flight | Wait for the reset or raise the plan, then resume. It reaches only the recipients it missed |
 | `"schedule_missed"` | A campaign **you** scheduled was picked up more than an hour after its `scheduledAt` and was not sent that late | Resume by hand if the send is still wanted, or reschedule it |
 | `"bounce_rate"` | Too many permanent bounces among the emails already sent | **Clean the list before resuming.** See below |
@@ -303,6 +340,15 @@ send nobody expects any more, it is the end of the one you asked for, so it
 goes out. Told apart by
 [`scheduledReason`](#scheduled-reason): `"bounce_check"` is never paused for a
 missed schedule, `null` can be.
+
+**`null` covers two pauses that behave differently.** One is the campaign you
+paused yourself and can resume whenever you like. The other is a campaign you
+paused while its [probe wave](#probe-wave) was being measured, which cannot be
+resumed until the wait is over. Nothing in the response singles that one out:
+`pause` does not write `pausedReason`, and `scheduledReason` only reads
+`"bounce_check"` while the status is `scheduled`, so on a paused campaign it is
+`null` as well. What tells you is the resume itself, which answers 409 with the
+minutes left. See [Resuming during the probe wait](#probe-wait).
 
 The next `POST /:id/send` clears `pausedReason`, so read it before resuming.
 

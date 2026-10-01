@@ -1,7 +1,7 @@
 ---
 title: "Campagne: Draft, Programma e Invia"
 description: Crea e invia campagne email alle audience
-updatedAt: 2026-09-30
+updatedAt: 2026-10-01
 ---
 
 Una **campagna** è una trasmissione email una tantum a un'audience. Crea una campagna, opzionalmente testala, poi inviala a centinaia o migliaia di destinatari.
@@ -151,7 +151,10 @@ Lo status della campagna diventa `sending`, poi `completed` a invio concluso.
 
 L'invio è rifiutato con 409 se la campagna non è `draft` o `paused`, e prima di
 partire viene confrontato con la
-[quota mensile](/it/docs/rate-limits) residua.
+[quota mensile](/it/docs/rate-limits) residua (quel rifiuto è un 429, non un
+409). Anche una campagna `paused` riceve un 409 finché la sua [ondata di
+prova](#ondata-di-prova) è ancora in misura: vedi
+[Riprendere durante l'attesa dell'ondata](#probe-wait).
 
 **L'invio è progressivo, non istantaneo.** Le email escono con un tetto al
 secondo, quindi una campagna con molti destinatari resta `sending` per un po'
@@ -195,7 +198,9 @@ curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/unschedule \
   `draft`
 
 In entrambi i casi metti in pausa: i destinatari già raggiunti non si possono
-disinviare.
+disinviare. Mettere in pausa una campagna che sta aspettando la sua ondata non
+ti libera però dall'attesa: riprenderla è rifiutato finché l'attesa non è
+finita, ed è [il 409 successivo da conoscere](#probe-wait).
 
 ## L'Ondata di Prova [#ondata-di-prova]
 
@@ -218,6 +223,12 @@ dopo che l'hai inviata. Riparte da sola, e `stats.sent` conta già l'ondata.
 Per tutta l'attesa **`scheduledReason`** vale `"bounce_check"`, ed è quello che
 distingue questo caso da una data impostata da te: vedi
 [Quale dei due `scheduled`](#scheduled-reason).
+
+**Mettere in pausa durante l'attesa non salta l'attesa.** La scadenza è fissata
+quando l'ondata esce e non si sposta, quindi la pausa tiene ferma la campagna
+dov'è invece di chiudere il controllo prima del tempo. Finché quella scadenza non
+passa, inviare di nuovo la campagna risponde 409: vedi
+[Riprendere durante l'attesa dell'ondata](#probe-wait).
 
 **Quando l'ondata non c'è:**
 
@@ -282,10 +293,40 @@ curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/pause \
 
 **La ripresa è una nuova `POST /:id/send`** sulla campagna in pausa: non
 esiste un endpoint di ripresa separato. Riparte dai soli destinatari mai
-raggiunti, quindi nessuno riceve l'email due volte.
+raggiunti, quindi nessuno riceve l'email due volte. Un caso risponde 409 invece
+di riprendere, per un quarto d'ora al massimo: vedi
+[Riprendere durante l'attesa dell'ondata](#probe-wait).
 
 Una campagna in pausa può essere ripresa; solo una in `draft` può essere
 eliminata.
+
+### Riprendere durante l'attesa dell'ondata [#probe-wait]
+
+Metti in pausa una campagna a metà della sua [ondata di
+prova](#ondata-di-prova), poi inviala di nuovo, e faresti partire il resto della
+lista prima che qualcuno abbia guardato come ha rimbalzato l'ondata. Due clic, e
+il controllo per cui l'ondata esiste non avviene mai. Per questo quell'invio è
+rifiutato: finché i 15 minuti di attesa hanno ancora tempo da scorrere, la
+`POST /:id/send` su quella campagna risponde **409**, e il messaggio dice quante
+email l'ondata ha già raggiunto e quanti minuti restano, più o meno.
+
+La forma programmata è rifiutata allo stesso modo. Una `POST /:id/send` con
+`scheduledAt` durante l'attesa non la aggira, quindi nemmeno una data nuova è
+una via d'uscita.
+
+**Le cose da fare sono due, e solo due.** Invia di nuovo la campagna quando
+l'attesa è finita, e il resto della lista parte. Oppure lasciala in pausa e fermati lì.
+**`unschedule` non è la terza**: su una campagna in pausa risponde a sua volta
+409, quindi non porta da nessuna parte.
+
+In entrambi i casi i destinatari che l'ondata ha già raggiunto si tengono
+l'email. Non si richiamano indietro, ed è la parte che conviene sapere prima di
+decidere di fermarsi.
+
+Il 409 costa l'attesa, non la campagna: si scioglie da solo quando la scadenza
+passa, e l'invio va a buon fine. Da notare che porta lo stesso codice `CONFLICT`
+di ogni altro conflitto di stato su queste rotte, quindi un client non lo
+distingue da «la campagna sta già spedendo» se non leggendo `message`.
 
 ### Perché una campagna è in pausa [#motivo-della-pausa]
 
@@ -296,7 +337,7 @@ tre valori più `null`:
 
 | `pausedReason` | Cosa è successo | Cosa fare |
 |---|---|---|
-| `null` | Nessun motivo registrato. Di norma significa che l'hai messa in pausa tu, con `POST /:id/pause` | Riprendila quando vuoi |
+| `null` | Nessun motivo registrato. Di norma significa che l'hai messa in pausa tu, con `POST /:id/pause` | Riprendila quando vuoi, a meno che la pausa sia caduta dentro l'[attesa dell'ondata](#probe-wait) |
 | `"quota_exceeded"` | L'invio non stava nella [quota mensile](/it/docs/rate-limits) residua, prima di partire o a metà strada | Aspetta l'azzeramento o passa a un piano superiore, poi riprendi. Raggiunge solo i destinatari mancati |
 | `"schedule_missed"` | Una campagna programmata **da te** è stata presa più di un'ora dopo il suo `scheduledAt` e non è stata inviata così in ritardo | Riprendila a mano se l'invio serve ancora, oppure riprogrammala |
 | `"bounce_rate"` | Troppi rimbalzi permanenti fra le email già inviate | **Pulisci la lista prima di riprendere.** Vedi qui sotto |
@@ -308,6 +349,16 @@ il resto della lista non è un invio che nessuno si aspetta più, è la fine di
 quello che hai chiesto, quindi parte. Li distingue
 [`scheduledReason`](#scheduled-reason): `"bounce_check"` non viene mai messa in
 pausa per un orario mancato, `null` sì.
+
+**`null` copre due pause che si comportano in modo diverso.** Una è la campagna
+che hai messo in pausa tu e che riprendi quando vuoi. L'altra è una campagna
+messa in pausa mentre la sua [ondata di prova](#ondata-di-prova) era in misura,
+e quella non si riprende finché l'attesa non è finita. Niente nella risposta la
+distingue: `pause` non scrive `pausedReason`, e `scheduledReason` vale
+`"bounce_check"` solo mentre lo status è `scheduled`, quindi su una campagna in
+pausa è `null` anche lui. Te lo dice la ripresa, che risponde 409 con i minuti
+che restano. Vedi [Riprendere durante l'attesa
+dell'ondata](#probe-wait).
 
 La `POST /:id/send` successiva azzera `pausedReason`: leggilo prima di
 riprendere.
