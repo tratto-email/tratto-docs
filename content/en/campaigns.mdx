@@ -360,6 +360,13 @@ bounces, the campaign pauses itself with `pausedReason: "bounce_rate"` and an
 email goes to the workspace owner. (The two numbers are one decision seen
 twice: 3 is 5% of 50, the smallest [probe wave](#probe-wave).)
 
+**The 5% is measured against everything the campaign has sent**, counted from
+its first email and across every resume, not against the wave or the batch in
+flight. That number is `stats.sent`, so the bounce count that stops the
+campaign is 5% of it, never fewer than 3. It moves as the campaign sends: the
+further along a campaign is, the more permanent bounces it takes to trip the
+brake.
+
 5% is the same line the shared sending pool is judged on, which is why we stop
 there rather than later.
 
@@ -370,10 +377,26 @@ list.
 
 Before resuming, remove the addresses that bounced (Tratto suppresses them for
 future sends, but they stay on your list until you delete them) and check where
-the list came from. Resuming a campaign stopped this way normally starts with a
-fresh probe wave of 50 recipients and the same 15-minute wait, so a list that
-was not cleaned is caught again after 50 emails instead of after the rest of
-it.
+the list came from.
+
+**What a resume gives you is a fresh measurement, not a 50-email guarantee.** A
+campaign restarted after a `bounce_rate` stop sends a new [probe
+wave](#probe-wave) of 50 recipients and waits the same 15 minutes before
+releasing the rest. Whether those 50 are enough to catch a list you did not
+clean depends on the threshold they are measured against, and that threshold is
+5% of everything the campaign has already sent:
+
+- A campaign stopped early has sent little, so its threshold is still at the
+  floor of 3 or close to it. The wave trips it on its own, and nothing further
+  goes out.
+- A campaign already well into its list has raised its own threshold above
+  anything 50 recipients can produce. The wave passes the check, the rest of the
+  list starts going out, and the stop comes from a later batch instead.
+
+The brake engages in the second case too, just later and after more email has
+left. To see where you stand, read `stats.sent` and take 5% of it: that is how
+many permanent bounces it now takes to stop this campaign. Cleaning the list is
+the only thing that keeps it from stopping a second time.
 
 ## Get Campaign Stats
 

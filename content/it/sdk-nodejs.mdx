@@ -6,9 +6,9 @@ updatedAt: 2026-10-01
 
 SDK ufficiale per Node.js e TypeScript: **`@tratto/email`**
 
-Ogni esempio di questa pagina è scritto sulla **1.1.1**, la release corrente su
-npm, e compila contro di essa. Dove una funzionalità richiede una versione
-precisa, la pagina dichiara la minima.
+Ogni esempio di questa pagina compila contro la **1.2.0**. Dove una
+funzionalità richiede una versione precisa, la pagina dichiara la minima che ce
+l'ha, mai la più recente: quella invecchia da sola.
 
 ## Installazione
 
@@ -174,7 +174,7 @@ const { id } = await tratto.contacts.create({
 
 ## Crea una Campagna
 
-`CreateCampaignParams` nella 1.1.0 richiede `templateId`, `audienceId`,
+`CreateCampaignParams` richiede ancora `templateId`, `audienceId`,
 `fromName`, `fromEmail` e `subjectA`. `create` risolve a `{ id }`:
 
 ```typescript
@@ -193,7 +193,7 @@ console.log(campaign.status); // 'draft'
 ```
 
 <Callout type="info">
-L'API è più permissiva dei tipi della 1.1.0: accetta `html` inline al posto di
+L'API è più permissiva dei tipi della 1.2.0: accetta `html` inline al posto di
 un `templateId`, e interpreta un `audienceId` omesso come «tutti i contatti del
 workspace». Nessuna delle due cose è esprimibile con l'SDK: per quelle usa
 [HTTP](/it/docs/sdk-http).
@@ -212,6 +212,34 @@ Per programmarla, passa una data:
 await tratto.campaigns.send('camp_xyz789', {
   scheduledAt: new Date('2026-10-01T09:00:00Z'),
 });
+```
+
+## Ferma una Campagna
+
+`pause` trattiene una campagna che sta spedendo o che è in attesa.
+`unschedule` annulla un invio programmato e riporta la campagna a `draft`, e
+richiede la **1.2.0 o successiva**:
+
+```typescript
+await tratto.campaigns.pause('camp_xyz789');
+await tratto.campaigns.unschedule('camp_xyz789');
+```
+
+`unschedule` vale solo mentre lo status è `scheduled` e non è uscito niente. Su
+una campagna che sta spedendo, già in pausa, o che aspetta la sua
+[ondata di prova](/it/docs/campaigns#ondata-di-prova) risponde `409 CONFLICT`,
+perché una parte della lista può già avere l'email. Mettila in pausa invece.
+
+`Campaign.pausedReason` dice perché una campagna si è fermata da sola, e
+richiede a sua volta la **1.2.0 o successiva**. Vale `'quota_exceeded' |
+'schedule_missed' | 'bounce_rate' | null`, e `'bounce_rate'` è lo
+[stop automatico sui rimbalzi](/it/docs/campaigns#tasso-di-rimbalzi):
+
+```typescript
+const campaign = await tratto.campaigns.get('camp_xyz789');
+if (campaign.pausedReason === 'bounce_rate') {
+  // Pulisci la lista prima di richiamare send.
+}
 ```
 
 ## Statistiche di una Campagna
@@ -284,7 +312,7 @@ Vedi [Codici di Errore](/it/docs/error-codes) per l'elenco completo.
 
 ## Cosa l'SDK non copre ancora
 
-Questi endpoint esistono nell'API e **non hanno un metodo SDK** nella 1.1.1.
+Questi endpoint esistono nell'API e **non hanno un metodo SDK** nella 1.2.0.
 Chiamali via [HTTP](/it/docs/sdk-http) finché l'SDK non li recupera:
 
 | Funzionalità | HTTP |
@@ -293,7 +321,6 @@ Chiamali via [HTTP](/it/docs/sdk-http) finché l'SDK non li recupera:
 | Riprogrammare un'email | `PATCH /v1/emails/{id}` |
 | Leggere un singolo contatto | `GET /v1/contacts/{id}` |
 | Modificare / eliminare una campagna | `PATCH`, `DELETE /v1/campaigns/{id}` |
-| Togliere la programmazione a una campagna | `POST /v1/campaigns/{id}/unschedule` |
 | Click sui link di una campagna | `GET /v1/campaigns/{id}/links` |
 | Modificare / eliminare / ricalcolare un'audience | `PATCH`, `DELETE`, `POST …/refresh` su `/v1/audiences/{id}` |
 | Elencare o rimuovere i contatti di un'audience | `GET`, `DELETE` su `/v1/audiences/{id}/contacts` |
@@ -301,14 +328,17 @@ Chiamali via [HTTP](/it/docs/sdk-http) finché l'SDK non li recupera:
 | Gestione delle chiavi API | `/v1/api-keys` |
 | Logo del marchio di workspace | `PUT`, `DELETE /v1/workspace/brand/logo` |
 
-Mancano dai tipi della 1.1.1 anche alcuni campi di risposta più recenti:
+Mancano dai tipi della 1.2.0 anche alcuni campi di risposta più recenti:
 `Workspace` non ha `limits` né `brand`, `Contact` non ha `trackingOptOut`,
 `ListContactsParams` non ha `q`, e `CampaignStats` non ha `skipped`,
 `untracked` né `variants`. L'API li restituisce; i tipi non li descrivono
-ancora.
+ancora. `TrattoError` espone `docs` ma non `suggestion`, che invece l'SDK
+Python ha.
 
-Verificato su `@tratto/email` 1.1.1 il 2026-10-01. Ogni riga di questa tabella
-è la promessa che la lacuna c'è ancora: va riletta a ogni rilascio dell'SDK.
+Verificato sulla `@tratto/email` 1.2.0 pubblicata, il 2026-10-01: undici righe
+ricontrollate, e `campaigns.unschedule` è quella che ora è coperta (vedi
+[Ferma una Campagna](#ferma-una-campagna)). Ogni riga di questa tabella è la
+promessa che la lacuna c'è ancora: va riletta a ogni rilascio dell'SDK.
 
 ---
 

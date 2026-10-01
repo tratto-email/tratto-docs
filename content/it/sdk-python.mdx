@@ -54,8 +54,9 @@ result = client.emails.send(SendEmailOptions(
 ## Invia con Markdown
 
 <Callout type="info">
-Il campo `markdown` richiede la **1.1.0 o successiva**. `pip install tratto-email`
-installa la 1.1.1, quindi un'installazione nuova ce l'ha; un pin più vecchio no.
+Il campo `markdown` richiede la **1.1.0 o successiva**. Un
+`pip install tratto-email` senza vincoli prende l'ultima release, quindi
+un'installazione nuova ce l'ha; un pin sotto la 1.1.0 no.
 </Callout>
 
 Invia [Markdown](/it/docs/emailmd-templates) e lascia che il server
@@ -156,6 +157,19 @@ sent = client.campaigns.send('camp_xyz789')
 print(sent['data']['status'])  # 'sending'
 ```
 
+## Ferma una Campagna
+
+```python
+client.campaigns.pause('camp_xyz789')
+client.campaigns.unschedule('camp_xyz789')
+```
+
+`unschedule` richiede la **1.2.0 o successiva**. Vale solo mentre la campagna è
+`scheduled` e non è uscito niente: su una campagna che sta spedendo, già in
+pausa, o che aspetta la sua [ondata di prova](/it/docs/campaigns#ondata-di-prova)
+solleva `TrattoError` con code `CONFLICT`, perché una parte della lista può già
+avere l'email. Mettila in pausa invece.
+
 ## Statistiche Campagna
 
 ```python
@@ -194,6 +208,23 @@ except TrattoError as e:
         # Il messaggio indica quale dominio non è verificato.
         print(e)
 ```
+
+Oltre a `code` e `status_code`, `TrattoError` porta due campi che arrivano dalla
+risposta dell'API, entrambi dalla **1.2.0 o successiva**: `suggestion`, cioè
+cosa fare dell'errore nelle parole dell'API, e `docs`, il link alla pagina che
+spiega il codice. Valgono `None` quando la risposta non li contiene.
+
+```python
+except TrattoError as e:
+    print(e.code, e.status_code)
+    if e.suggestion:
+        print(e.suggestion)
+```
+
+`suggestion` è il campo da leggere dove un solo codice copre più situazioni e a
+distinguerle c'è solo il testo. Il caso da tenere a mente è il `CONFLICT` di
+`campaigns.send` e `campaigns.unschedule`: vedi
+[Codici di Errore](/it/docs/error-codes).
 
 ---
 
