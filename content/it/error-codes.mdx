@@ -31,6 +31,7 @@ Gli errori di validazione aggiungono un array `details`: vedi sotto.
 |---|---|---|---|
 | `UNAUTHORIZED` | 401 | Chiave API mancante o non valida | Controlla l'header `Authorization: Bearer` |
 | `FORBIDDEN` | 403 | La richiesta non è consentita: alla chiave manca un permesso, il dominio mittente non è verificato, o l'azione è bloccata per questa risorsa | Leggi `message` e `suggestion`; se manca un permesso, usa una chiave che lo abbia |
+| `NO_WORKSPACE` | 403 | L'account ha effettuato l'accesso ma non ha un workspace | Accedi con l'account che appartiene al tuo workspace; vedi sotto |
 | `NOT_FOUND` | 404 | La risorsa non esiste | Verifica l'ID: potrebbe appartenere a un altro workspace |
 | `CONFLICT` | 409 | La risorsa esiste già, oppure il suo stato attuale non consente l'azione (ad esempio modificare una campagna che non è più in bozza) | Recupera la risorsa e verificane lo stato prima di riprovare |
 | `VALIDATION_ERROR` | 422 | Il corpo è stato letto ma non rispetta lo schema | Leggi `details` per i campi errati |
@@ -139,6 +140,30 @@ Un `templateId` inesistente è invece un `NOT_FOUND` (404). Il test-send del
 template è esente, e `POST /v1/emails` non viene rifiutata affatto: accetta la
 richiesta e l'email fallisce in consegna. Vedi
 [Template](/it/docs/templates#pubblica-prima-di-inviare).
+
+## `NO_WORKSPACE` (403)
+
+Una sessione della dashboard (un account che ha effettuato l'accesso, non una
+chiave API) il cui account non ha un workspace riceve questo codice su ogni
+rotta autenticata, tranne le due che accettano un invito. Prima viene il
+controllo dell'accesso alla beta: un account senza accesso alla beta riceve
+quell'errore.
+
+```json
+{
+  "error": {
+    "code": "NO_WORKSPACE",
+    "message": "This account has no workspace.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes"
+  }
+}
+```
+
+Non c'è `suggestion`. Il workspace nasce quando si accetta l'invito alla beta,
+non chiamando l'API: `GET /v1/workspace` non lo crea. Nella dashboard questo
+codice apre una pagina da cui accedere con un altro account o riprovare.
+
+Le chiavi API non sono coinvolte: una chiave appartiene sempre a un workspace.
 
 ## Due codici condividono il 429
 
