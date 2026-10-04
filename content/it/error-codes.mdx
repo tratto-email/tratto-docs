@@ -39,9 +39,9 @@ Gli errori di validazione aggiungono un array `details`: vedi sotto.
 | `BAD_REQUEST` | 400 | La richiesta non è arrivata a un handler: il corpo non è interpretabile (JSON malformato) | Correggi la sintassi del corpo: il payload non è mai arrivato allo schema |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | Il `Content-Type` non è fra quelli che l'endpoint sa leggere | Usa il tipo atteso (`application/json` nella maggior parte dei casi, `text/csv` per l'import contatti, `image/png` o `image/jpeg` per il logo del marchio) |
 | `INVALID_TOKEN` | 400 | Un link firmato (disiscrizione, pagina preferenze) non è valido | Non c'è nulla da riprovare: serve un link nuovo |
-| `RATE_LIMITED` | 429 | Troppe richieste: 100 al secondo per chiave API, o 500 al minuto per IP client | Applica un backoff esponenziale e riprova |
+| `RATE_LIMITED` | 429 | Troppe richieste: 100 al secondo per chiave API, 500 al minuto per IP client, o troppe richieste simultanee sullo stesso account | Attendi e riprova, rispettando `Retry-After` se la risposta lo imposta |
 | `PAYLOAD_TOO_LARGE` | 413 | Il corpo della richiesta supera la dimensione massima | Spezza il payload (per l'import contatti, carica meno righe per richiesta) |
-| `QUOTA_EXCEEDED` | 429 | Raggiunto un limite d'uso: la quota mensile di email (su `POST /v1/emails`, o inviando subito una campagna a più destinatari di quanti ne restano nella quota), il limite di domini (quando aggiungi un dominio), o il tetto giornaliero del test mode | Non riprovare: `message` indica il limite. La quota email si azzera all'inizio del mese UTC successivo, il tetto del test mode a mezzanotte UTC. Per il limite di domini elimina un dominio o passa a un piano superiore; per la quota email passa a un piano superiore |
+| `QUOTA_EXCEEDED` | 429 | Raggiunto un limite d'uso: la quota mensile di email (su `POST /v1/emails`, o inviando subito una campagna a più destinatari di quanti ne restano nella quota), il limite di domini (quando aggiungi un dominio), le generazioni AI mensili nella dashboard, o il tetto giornaliero del test mode. Tutti tranne il tetto del test mode appartengono all'account e sono condivisi dai suoi workspace | Non riprovare: `message` indica il limite. La quota email si azzera all'inizio del mese UTC successivo, il tetto del test mode a mezzanotte UTC. Per il limite di domini elimina un dominio o passa a un piano superiore; per la quota email passa a un piano superiore |
 | `TEST_MODE_NOT_SUPPORTED` | 403 | L'endpoint raggiunge destinatari reali e rifiuta le chiavi di test | Usa una chiave live (`tratto_live_...`) — vedi [Test mode](/it/docs/test-mode) |
 | `IDEMPOTENCY_CONFLICT` | 409 | La stessa `Idempotency-Key` è stata riusata con un payload diverso | Usa una chiave nuova per una richiesta diversa |
 | `IDEMPOTENCY_IN_PROGRESS` | 409 | Una richiesta con questa `Idempotency-Key` è ancora in elaborazione | Attendi che la prima finisca, poi riprova |
@@ -186,10 +186,16 @@ reazioni opposte:
   email. Riprovare non serve finché il limite non si azzera, non elimini un
   dominio o non passi a un piano superiore.
 
+La quota email, il limite di domini e le generazioni AI appartengono
+all'**account** proprietario del workspace, e tutti i workspace di
+quell'account vi attingono. Un `QUOTA_EXCEEDED` può arrivare da un altro
+workspace dello stesso account o da un altro membro, e il suo `message` dice
+che il limite è condiviso dall'account. Vedi [Rate Limit](/it/docs/rate-limits#i-tetti-sono-dellaccount-non-del-workspace).
+
 Il lavoro in background non risponde mai con questo codice. Una campagna che il
 dispatcher non riesce a far stare nella quota rimasta, prima di partire o a
 metà invio, viene messa in pausa con `pausedReason: "quota_exceeded"` (uno dei
-tre valori elencati in
+quattro valori elencati in
 [Campagne](/it/docs/campaigns#motivo-della-pausa)); riprenderla più tardi
 raggiunge solo i destinatari mancati. Un flusso il cui step di invio trova la quota esaurita
 salta quell'email e prosegue: l'email non viene inviata in seguito.

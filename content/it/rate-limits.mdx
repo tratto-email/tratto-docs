@@ -6,7 +6,9 @@ description: Comprendi i rate limit dell'API e pianifica la tua integrazione
 ## Due Rate Limit
 
 Ogni richiesta viene contata due volte, su due limiti indipendenti. Entrambi
-restituiscono `429 RATE_LIMITED`.
+restituiscono `429 RATE_LIMITED`. Un terzo caso usa lo stesso codice: troppe
+richieste sullo stesso account nello stesso momento, vedi
+[Richieste simultanee sullo stesso account](#richieste-simultanee-sullo-stesso-account).
 
 | Limite | Conteggiato per | Si applica a |
 |---|---|---|
@@ -114,9 +116,23 @@ Ogni piano ha due tetti:
 
 | Piano | Email al mese | Domini |
 |---|---|---|
-| Free | 3.000 | 2 |
-| Starter | 75.000 | 5 |
-| Growth | 500.000 | illimitati |
+| Free | 3.000 | 3 |
+| Starter | 75.000 | 10 |
+| Growth | 500.000 | 100 |
+
+La generazione di template con l'AI nella dashboard ha una dotazione a sé,
+**50 generazioni al mese** su ogni piano, azzerata alle 00:00 UTC del primo
+giorno del mese.
+
+### I tetti sono dell'account, non del workspace
+
+Il piano appartiene all'**account**, la persona proprietaria del workspace, e
+i suoi tetti sono condivisi da tutti i workspace di quell'account, attivi o
+sospesi. Conta tutto, chiunque lo faccia: un invio, una generazione AI o un
+dominio nuovo in uno qualsiasi dei workspace del proprietario, fatti dal
+proprietario o da un membro, consumano la stessa dotazione. Un
+`QUOTA_EXCEEDED` può quindi arrivare da un consumo che non hai fatto tu, in un
+altro workspace dello stesso account o da un altro membro.
 
 **Non esiste un tetto giornaliero** legato al piano. L'unico limite giornaliero
 del prodotto è quello del test mode — 100 invii di test al giorno, vedi
@@ -126,16 +142,31 @@ Se superi la quota mensile le richieste falliscono con `QUOTA_EXCEEDED`,
 anch'esso 429. A differenza di `RATE_LIMITED` non si risolve riprovando: vedi
 [Codici di Errore](/it/docs/error-codes).
 
-Il limite di domini conta tutti i domini del workspace, qualunque sia il loro
-stato di verifica, e viene controllato solo quando ne aggiungi uno
+Il limite di domini conta tutti i domini di tutti i workspace dell'account,
+qualunque sia il loro stato: `pending` (in verifica), `verified` e `failed`
+occupano tutti un posto. Viene controllato solo quando ne aggiungi uno
 (`POST /v1/domains`). Eliminare un dominio (`DELETE /v1/domains/{id}`) libera il
-suo posto.
+suo posto, quindi un dominio con verifica fallita che non serve più è il primo
+da eliminare. Oltre il tetto l'API risponde `429 QUOTA_EXCEEDED`:
+
+```json
+{
+  "error": {
+    "code": "QUOTA_EXCEEDED",
+    "message": "Domain limit reached for the free plan: 3 domains across all the workspaces of this account, counting those still being verified and those that failed.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
+    "suggestion": "Delete a domain that failed or is no longer used, or ask the account owner to upgrade the plan at https://app.tratto.email/settings/billing."
+  }
+}
+```
 
 ### Leggi i tuoi limiti dall'API
 
 Non scrivere a mano i numeri qui sopra. `GET /v1/workspace` restituisce i
-limiti realmente applicati al tuo workspace, dove `null` significa nessun
-limite:
+limiti realmente applicati, dove `null` significa nessun limite.
+`limits.emailsPerMonth` e `limits.domains` sono i tetti dell'**account**
+proprietario del workspace, condivisi con i suoi altri workspace, non una
+dotazione di questo solo workspace:
 
 ```bash
 curl https://api.tratto.email/v1/workspace \
@@ -146,7 +177,7 @@ curl https://api.tratto.email/v1/workspace \
 {
   "data": {
     "plan": "free",
-    "limits": { "emailsPerMonth": 3000, "domains": 2 }
+    "limits": { "emailsPerMonth": 3000, "domains": 3 }
   }
 }
 ```
@@ -158,7 +189,7 @@ che ti è davvero permesso inviare.
 
 La quota **non** è una finestra mobile di 30 giorni. Il contatore è indicizzato
 sul mese di calendario UTC (`2026-09`) e rotola al **primo invio del mese
-nuovo**: non c'è nessun job schedulato di reset. Un workspace che a ottobre non
+nuovo**: non c'è nessun job schedulato di reset. Un account che a ottobre non
 invia nulla riparte comunque da zero a novembre, al primo invio di novembre.
 
 <Callout type="warn">
@@ -166,6 +197,48 @@ invia nulla riparte comunque da zero a novembre, al primo invio di novembre.
 piani sono quelli della tabella qui sopra, e `GET /v1/workspace` riporta sempre
 uno di questi.
 </Callout>
+
+## Richieste simultanee sullo stesso account
+
+Poiché i tetti si contano per account, le richieste che arrivano sullo stesso
+account nello stesso momento vengono contate una dopo l'altra. Quando ne
+arrivano troppe insieme, da uno qualsiasi dei workspace o delle chiavi
+dell'account, l'API risponde `429 RATE_LIMITED` con l'header `Retry-After: 1`:
+
+```json
+{
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "Too many concurrent requests on this account. Retry after 1 second.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes"
+  }
+}
+```
+
+Attendi i secondi di `Retry-After` e rimanda la stessa richiesta. La [funzione di retry qui sopra](#strategia-di-retry) lo fa
+già. Distribuire le richieste nel tempo, invece di lanciarle in parallelo,
+rende questo 429 più raro.
+
+L'SDK Node `@tratto/email` non ritenta da solo un 429, e il suo `TrattoError`
+non riporta gli header della risposta, quindi attendi un secondo prima di
+riprovare:
+
+```javascript
+import { TrattoError } from '@tratto/email';
+
+async function sendWithRetry(tratto, email, maxRetries = 3) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await tratto.emails.send(email);
+    } catch (error) {
+      const retryable = error instanceof TrattoError
+        && error.code === 'RATE_LIMITED' && attempt < maxRetries;
+      if (!retryable) throw error; // compreso QUOTA_EXCEEDED
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+}
+```
 
 ## Comportamento nei Picchi
 

@@ -6,7 +6,9 @@ description: Understand API rate limits and plan your integration
 ## Two Rate Limits
 
 Requests are counted twice, against two independent limits. Both return
-`429 RATE_LIMITED`.
+`429 RATE_LIMITED`. A third case shares the same code: too many requests on
+the same account at once, see
+[Concurrent requests on one account](#concurrent-requests-on-one-account).
 
 | Limit | Counted per | Applies to |
 |---|---|---|
@@ -113,9 +115,21 @@ Each plan has two caps:
 
 | Plan | Emails per month | Domains |
 |---|---|---|
-| Free | 3,000 | 2 |
-| Starter | 75,000 | 5 |
-| Growth | 500,000 | unlimited |
+| Free | 3,000 | 3 |
+| Starter | 75,000 | 10 |
+| Growth | 500,000 | 100 |
+
+AI template generation in the dashboard has an allowance of its own, **50
+generations per month** on every plan, reset at 00:00 UTC on the 1st.
+
+### The caps belong to the account, not the workspace
+
+The plan belongs to the **account**, the person who owns the workspace, and
+its caps are shared by every workspace that account owns, active or suspended.
+Everything counts, whoever does it: a send, an AI generation or a new domain
+in any of the owner's workspaces, by the owner or by any member, uses the same
+allowance. A `QUOTA_EXCEEDED` can therefore come from usage you did not make
+yourself, in another workspace of the same account or by another member.
 
 There is **no per-day cap** on a plan. The only daily limit in the product is
 the test-mode one — 100 test sends per day, see
@@ -125,15 +139,30 @@ Exceed the monthly quota and requests fail with `QUOTA_EXCEEDED`, which also
 returns 429. Unlike `RATE_LIMITED` it will not clear by retrying: see
 [Error Codes](/en/docs/error-codes).
 
-The domain limit counts every domain in the workspace, whatever its
-verification status, and it is checked only when you add one
-(`POST /v1/domains`). Deleting a domain (`DELETE /v1/domains/{id}`) frees its
-place.
+The domain limit counts every domain in every workspace of the account,
+whatever its status: `pending` (still being verified), `verified` and `failed`
+all take a place. It is checked only when you add one (`POST /v1/domains`).
+Deleting a domain (`DELETE /v1/domains/{id}`) frees its place, so a domain that
+failed verification and is no longer needed is the first one to delete. Over
+the cap the API answers `429 QUOTA_EXCEEDED`:
+
+```json
+{
+  "error": {
+    "code": "QUOTA_EXCEEDED",
+    "message": "Domain limit reached for the free plan: 3 domains across all the workspaces of this account, counting those still being verified and those that failed.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
+    "suggestion": "Delete a domain that failed or is no longer used, or ask the account owner to upgrade the plan at https://app.tratto.email/settings/billing."
+  }
+}
+```
 
 ### Read your own limits from the API
 
 Do not hard-code the numbers above. `GET /v1/workspace` returns the limits
-that are actually enforced on your workspace, and `null` means no limit:
+that are actually enforced, and `null` means no limit. `limits.emailsPerMonth`
+and `limits.domains` are the caps of the **account** that owns the workspace,
+shared with its other workspaces, not an allowance of this workspace alone:
 
 ```bash
 curl https://api.tratto.email/v1/workspace \
@@ -144,7 +173,7 @@ curl https://api.tratto.email/v1/workspace \
 {
   "data": {
     "plan": "free",
-    "limits": { "emailsPerMonth": 3000, "domains": 2 }
+    "limits": { "emailsPerMonth": 3000, "domains": 3 }
   }
 }
 ```
@@ -155,8 +184,8 @@ you are actually allowed to send.
 ### The month is a UTC calendar month
 
 The quota is **not** a rolling 30-day window. The counter is keyed on the UTC
-calendar month (`2026-09`), and it rolls over on your **first send of the new
-month** — there is no scheduled reset job. A workspace that sends nothing in
+calendar month (`2026-09`), and it rolls over on the **first send of the new
+month**. There is no scheduled reset job: an account that sends nothing in
 October still starts November at zero, on its first November send.
 
 <Callout type="warn">
@@ -164,6 +193,47 @@ October still starts November at zero, on its first November send.
 are the ones in the table above, and `GET /v1/workspace` always reports one of
 them.
 </Callout>
+
+## Concurrent requests on one account
+
+Because the caps are counted per account, requests that land on the same
+account at the same moment are counted one after the other. When too many
+arrive together, from any of the account's workspaces or keys, the API answers
+`429 RATE_LIMITED` with a `Retry-After: 1` header:
+
+```json
+{
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "Too many concurrent requests on this account. Retry after 1 second.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes"
+  }
+}
+```
+
+Wait the `Retry-After` seconds and send the same request again. The [retry function above](#retry-strategy) already does this. Spreading
+requests out, rather than firing them in parallel, makes this 429 rarer.
+
+The Node SDK `@tratto/email` does not retry a 429 on its own, and its
+`TrattoError` does not carry the response headers, so wait one second before
+trying again:
+
+```javascript
+import { TrattoError } from '@tratto/email';
+
+async function sendWithRetry(tratto, email, maxRetries = 3) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await tratto.emails.send(email);
+    } catch (error) {
+      const retryable = error instanceof TrattoError
+        && error.code === 'RATE_LIMITED' && attempt < maxRetries;
+      if (!retryable) throw error; // QUOTA_EXCEEDED included
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+}
+```
 
 ## Burst Behavior
 

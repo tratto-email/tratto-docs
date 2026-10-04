@@ -13,7 +13,10 @@ Un **dominio** è la tua identità di invio verificata. Prima di inviare email r
 
 ## Aggiungi un Dominio
 
-Registra il tuo dominio con Tratto.
+Registra il tuo dominio con Tratto. Il numero di domini ha un tetto per piano
+ed è contato su tutti i workspace dell'account, compresi i domini ancora
+`pending` e quelli `failed`: oltre il tetto la richiesta fallisce con
+`429 QUOTA_EXCEEDED`. Vedi [Limiti di Piano](/it/docs/rate-limits#limiti-di-piano).
 
 **cURL**
 ```bash

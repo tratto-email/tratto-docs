@@ -13,7 +13,10 @@ A **domain** is your verified sending identity. Before you send live emails, you
 
 ## Add a Domain
 
-Register your domain with Tratto.
+Register your domain with Tratto. The number of domains is capped per plan and
+counted across all the workspaces of the account, including domains still
+`pending` and those that `failed`: past the cap the request fails with
+`429 QUOTA_EXCEEDED`. See [Plan Limits](/en/docs/rate-limits#plan-limits).
 
 **cURL**
 ```bash
