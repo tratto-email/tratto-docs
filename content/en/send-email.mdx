@@ -198,7 +198,7 @@ curl -X POST https://api.tratto.email/v1/emails \
     "to": "user@example.com",
     "subject": "Reminder!",
     "text": "See you tomorrow.",
-    "scheduledAt": "2025-07-01T09:00:00Z"
+    "scheduledAt": "2026-12-01T09:00:00Z"
   }'
 ```
 
@@ -217,6 +217,7 @@ names the month:
   "error": {
     "code": "QUOTA_EXCEEDED",
     "message": "Monthly quota of 3000 emails for 2026-11 reached for the free plan. A scheduled email counts against the UTC month of its scheduledAt. The quota is shared by every workspace of the account that owns this one.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
     "suggestion": "Cancel or reschedule other emails for 2026-11, or have the workspace owner upgrade the plan at https://app.tratto.email/settings/billing."
   }
 }
