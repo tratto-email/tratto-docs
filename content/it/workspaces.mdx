@@ -1,6 +1,6 @@
 ---
 title: Workspace
-description: Eliminare un workspace, rimuovere un membro, e il limite ai workspace che possiedi.
+description: Eliminare un workspace, rimuovere un membro, e perché un account ha un solo workspace attivo alla volta.
 ---
 
 Un workspace contiene i tuoi domini, template, contatti, campagne e chiavi API.
@@ -85,11 +85,15 @@ Quando un membro viene rimosso da un workspace:
 - riceve un'email che lo avvisa che è stato rimosso dal workspace;
 - il suo account Tratto resta attivo.
 
-## Quanti workspace puoi possedere
+## Un solo workspace attivo per account
 
-Un account può possedere fino a **10 workspace**, e i workspace in eliminazione
-contano nel limite. Crearne un altro (`POST /v1/workspaces`) risponde
-`409 CONFLICT`.
+Un account possiede un solo workspace attivo alla volta. Se lo elimini, puoi
+crearne un altro.
+
+I workspace eliminati continuano a contare: quando l'account ne possiede
+**10** in tutto, quello attivo più quelli eliminati, la creazione di un
+workspace (`POST /v1/workspaces`) risponde `409 CONFLICT`. A quel punto scrivi
+a **support@tratto.email**.
 
 ---
 

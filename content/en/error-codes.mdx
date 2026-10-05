@@ -170,7 +170,7 @@ It returns `201` with the same object as `GET /v1/workspace`, and `409 CONFLICT`
 if the account already owns an active or suspended workspace, already belongs
 to a workspace as an active member, or already owns 10 workspaces counting
 those being deleted (see
-[Workspaces](/en/docs/workspaces#how-many-workspaces-you-can-own)). The `name`
+[Workspaces](/en/docs/workspaces#one-active-workspace-per-account)). The `name`
 field is optional (1 to 100 characters, default `My Workspace`): an invalid name
 gets `422`. Workspaces created this way have ids starting with `ws_`; existing
 workspaces keep their id.

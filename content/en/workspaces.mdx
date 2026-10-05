@@ -1,6 +1,6 @@
 ---
 title: Workspaces
-description: Delete a workspace, remove a member, and the limit on the workspaces you own.
+description: Delete a workspace, remove a member, and why an account has one active workspace at a time.
 ---
 
 A workspace holds your domains, templates, contacts, campaigns and API keys.
@@ -85,11 +85,15 @@ When a member is removed from a workspace:
 - they receive an email telling them they have been removed from the workspace;
 - their Tratto account stays active.
 
-## How many workspaces you can own
+## One active workspace per account
 
-An account can own up to **10 workspaces**, and workspaces being deleted count
-toward the limit. Creating one more (`POST /v1/workspaces`) returns
-`409 CONFLICT`.
+An account owns one active workspace at a time. If you delete it, you can
+create another one.
+
+Deleted workspaces keep counting: when the account owns **10 workspaces** in
+total, the active one plus the deleted ones, creating a workspace
+(`POST /v1/workspaces`) returns `409 CONFLICT`. At that point, write to
+**support@tratto.email**.
 
 ---
 

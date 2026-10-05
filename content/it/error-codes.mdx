@@ -173,7 +173,7 @@ dashboard. Risponde `201` con lo stesso oggetto di `GET /v1/workspace`, e
 `409 CONFLICT` se l'account possiede già un workspace attivo o sospeso,
 appartiene già a un workspace come membro attivo, o possiede già 10 workspace
 contando quelli in eliminazione (vedi
-[Workspace](/it/docs/workspaces#quanti-workspace-puoi-possedere)). Il
+[Workspace](/it/docs/workspaces#un-solo-workspace-attivo-per-account)). Il
 campo `name` è facoltativo (da 1 a 100 caratteri, predefinito `My Workspace`):
 un nome non valido riceve `422`. Gli id dei workspace creati così iniziano con
 `ws_`; i workspace esistenti tengono il loro id.
