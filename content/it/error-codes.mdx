@@ -170,8 +170,10 @@ e ti porta dentro. Da lì puoi anche accedere con un altro account o riprovare.
 
 Il bottone chiama `POST /v1/workspaces`, che accetta solo una sessione della
 dashboard. Risponde `201` con lo stesso oggetto di `GET /v1/workspace`, e
-`409 CONFLICT` se l'account possiede già 10 workspace, contando quelli in
-eliminazione (vedi [Workspace](/it/docs/workspaces#quanti-workspace-puoi-possedere)). Il
+`409 CONFLICT` se l'account possiede già un workspace attivo o sospeso,
+appartiene già a un workspace come membro attivo, o possiede già 10 workspace
+contando quelli in eliminazione (vedi
+[Workspace](/it/docs/workspaces#quanti-workspace-puoi-possedere)). Il
 campo `name` è facoltativo (da 1 a 100 caratteri, predefinito `My Workspace`):
 un nome non valido riceve `422`. Gli id dei workspace creati così iniziano con
 `ws_`; i workspace esistenti tengono il loro id.
