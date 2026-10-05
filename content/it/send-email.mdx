@@ -400,6 +400,18 @@ dominio indicato in `message`.
 
 **Fix:** Implementa backoff esponenziale e riprova più tardi. Vedi [Rate Limits](/it/docs/rate-limits).
 
+### SERVICE_UNAVAILABLE
+
+**Causa:** Tratto non è riuscito a mettere l'email nella coda di consegna (la
+coda ha dato errore o non ha risposto entro 10 secondi). L'API restituisce 503
+con l'header `Retry-After` e il messaggio `Nothing was sent and nothing was charged. Retry the request; the same Idempotency-Key can be reused.`
+
+Nessuna email è stata creata e nessuna quota è stata consumata: riprovare non
+può causare un doppio invio.
+
+**Fix:** Riprova dopo i secondi indicati da `Retry-After`. Se hai inviato una
+`Idempotency-Key`, riusa la stessa chiave. Vedi [Idempotenza](/it/docs/idempotency).
+
 ### VALIDATION_ERROR
 
 **Causa:** Richiesta non valida (campo mancante, JSON malformato, ecc.).

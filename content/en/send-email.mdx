@@ -398,6 +398,17 @@ the domain named in `message`.
 
 **Fix:** Implement exponential backoff and retry later. See [Rate Limits](/en/docs/rate-limits).
 
+### SERVICE_UNAVAILABLE
+
+**Cause:** Tratto could not put the email in its delivery queue (the queue failed
+or did not answer within 10 seconds). The API returns 503 with a `Retry-After`
+header and the message `Nothing was sent and nothing was charged. Retry the request; the same Idempotency-Key can be reused.`
+
+No email was created and no quota was used, so retrying cannot send twice.
+
+**Fix:** Retry after `Retry-After` seconds. If you sent an `Idempotency-Key`,
+reuse the same key. See [Idempotency](/en/docs/idempotency).
+
 ### VALIDATION_ERROR
 
 **Cause:** Invalid request (missing required field, malformed JSON, etc.).

@@ -127,6 +127,10 @@ curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/test-send \
 
 A test email is sent to your address immediately.
 
+If Tratto cannot queue the test email, the API returns `503 SERVICE_UNAVAILABLE`
+with a `Retry-After` header: nothing was sent and no email was created, so you
+can retry. See [Error Codes](/en/docs/error-codes).
+
 ## Send Immediately
 
 Send the campaign to all contacts in the audience right now.

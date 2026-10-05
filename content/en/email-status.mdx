@@ -7,7 +7,7 @@ Every email in Tratto has a **status** (the state of the email) and **events** (
 
 ## Status vs Events
 
-- **Status**: The current state of the email (`queued`, `scheduled`, `sent`, `delivered`, `failed`)
+- **Status**: The current state of the email (`scheduled`, `queued`, `sending`, `sent`, `delivered`, `bounced`, `complained`, `failed`, `skipped`, `canceled`)
 - **Events**: Discrete tracking records (opened, clicked, bounced, complained)
 
 **Example:** An email can have status `delivered` and also have events `opened`, `clicked`, and `clicked` again.
@@ -17,40 +17,67 @@ Every email in Tratto has a **status** (the state of the email) and **events** (
 An email progresses through these statuses:
 
 ```
-                      ┌─ delivered ─┐
-                      │             │
-                      ▼             ▼
-  queued ──→ scheduled ──→ sent ────┤
-                                     │
-                                     └─ opened (tracking)
-                                     └─ clicked (tracking)
-                                     └─ bounced
-                                     └─ complained
-                                     └─ unsubscribed
-                                     
-                      ▼
-                    failed
+(only with scheduledAt)
+  scheduled ──→ queued ──→ sending ──→ sent ──→ delivered
+      │           │           │          │          │
+      ▼           ▼           ▼          └────┬─────┘
+  canceled     skipped      failed            ▼
+  skipped      failed                bounced, complained
 ```
+
+An email sent without `scheduledAt` starts at `queued`. Opens, clicks and
+unsubscribes are [events](#email-events), not statuses: they never change the
+status.
 
 ### Status Definitions
 
 | Status | Description |
 |--------|-------------|
+| `scheduled` | Email is scheduled for future delivery (you set `scheduledAt`). It moves to `queued` when its time comes |
 | `queued` | Email is in the queue, will be sent shortly (minutes) |
-| `scheduled` | Email is scheduled for future delivery (you set `scheduledAt`) |
-| `sent` | Email was delivered to the mail server, but not yet confirmed by recipient's server |
-| `delivered` | Mail server confirmed receipt and delivery (bounce-free) |
+| `sending` | Tratto has picked the email up and is handing it to the mail provider. It lasts seconds |
+| `sent` | Email was handed to the mail server, but not yet confirmed by the recipient's server |
+| `delivered` | The recipient's mail server confirmed receipt |
+| `bounced` | The recipient's mail server rejected the email |
+| `complained` | The recipient marked the email as spam |
 | `failed` | Email delivery failed (invalid domain, mailbox full, an unpublished template, etc.). The reason is recorded on the email document, but nothing exposes it today: `GET /v1/emails/:id` returns the status and not the reason, and the dashboard reads that same endpoint |
+| `skipped` | Tratto did not send the email because the recipient unsubscribed or is on the suppression list. Nothing was sent |
+| `canceled` | You canceled a `scheduled` email with `DELETE /v1/emails/:id` before it was sent |
+
+`GET /v1/emails?status=` filters by any of these values, `sending` included; several can be combined with commas (`?status=queued,sending`).
+
+`failed`, `bounced` and `complained` are final: nothing that arrives later
+changes them, with the one exception below.
+
+### When delivery is interrupted
+
+If the delivery is interrupted while Tratto is handing the email to the mail
+provider (for example the worker that was sending it stops), Tratto cannot
+know whether the provider accepted it. In that case the email becomes `failed`
+and is **not retried**: Tratto prefers not sending an email to sending it
+twice. The email may still have reached the recipient. If the provider later
+reports a delivery, a bounce or a complaint for it, the status moves to
+`delivered`, `bounced` or `complained`.
+
+An email that stays in `sending` for more than a few minutes is in this
+situation and will be closed as `failed` when Tratto picks it up again.
 
 ### State Transitions
 
 ```
+scheduled (only if scheduledAt was set)
+  ├─→ canceled (DELETE /v1/emails/:id)
+  ├─→ skipped (the recipient unsubscribed)
+  └─→ queued (the scheduled time has come)
 queued
-  └─→ scheduled (only if scheduledAt was set)
-      └─→ sent (email sent to mail server)
-          ├─→ delivered (mail server confirms delivery)
-          │   └─→ opened, clicked, bounced, complained (events)
-          └─→ failed (delivery failed)
+  ├─→ skipped (unsubscribed or suppressed recipient)
+  ├─→ failed (the email cannot be built or sent)
+  └─→ sending (Tratto hands the email to the mail provider)
+      ├─→ failed (rejected by the provider, or delivery interrupted)
+      └─→ sent (the mail server accepted the email)
+          ├─→ delivered (the recipient's server confirms delivery)
+          │   └─→ bounced, complained
+          └─→ bounced, complained
 ```
 
 ## Get Email Status

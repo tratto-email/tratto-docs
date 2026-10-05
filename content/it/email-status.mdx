@@ -7,7 +7,7 @@ Ogni email in Tratto ha uno **status** (lo stato dell'email) e **eventi** (cosa 
 
 ## Status vs Eventi
 
-- **Status**: Lo stato attuale dell'email (`queued`, `scheduled`, `sent`, `delivered`, `failed`)
+- **Status**: Lo stato attuale dell'email (`scheduled`, `queued`, `sending`, `sent`, `delivered`, `bounced`, `complained`, `failed`, `skipped`, `canceled`)
 - **Eventi**: Record discreti di tracciamento (opened, clicked, bounced, complained)
 
 **Esempio:** Un'email può avere status `delivered` e anche avere eventi `opened`, `clicked`, e `clicked` di nuovo.
@@ -17,40 +17,67 @@ Ogni email in Tratto ha uno **status** (lo stato dell'email) e **eventi** (cosa 
 Un'email progredisce attraverso questi status:
 
 ```
-                      ┌─ delivered ─┐
-                      │             │
-                      ▼             ▼
-  queued ──→ scheduled ──→ sent ────┤
-                                     │
-                                     └─ opened (tracking)
-                                     └─ clicked (tracking)
-                                     └─ bounced
-                                     └─ complained
-                                     └─ unsubscribed
-                                     
-                      ▼
-                    failed
+(solo con scheduledAt)
+  scheduled ──→ queued ──→ sending ──→ sent ──→ delivered
+      │           │           │          │          │
+      ▼           ▼           ▼          └────┬─────┘
+  canceled     skipped      failed            ▼
+  skipped      failed                bounced, complained
 ```
+
+Un'email inviata senza `scheduledAt` parte da `queued`. Aperture, clic e
+disiscrizioni sono [eventi](#eventi-email), non status: non cambiano mai lo
+status.
 
 ### Definizioni dello Status
 
 | Status | Descrizione |
 |--------|-------------|
-| `queued` | Email è in coda, verrà inviata a breve (minuti) |
-| `scheduled` | Email è programmata per consegna futura (hai impostato `scheduledAt`) |
-| `sent` | Email è stata consegnata al server di posta, ma non ancora confermata dal server del destinatario |
-| `delivered` | Server di posta ha confermato ricezione e consegna (senza rimbalzi) |
+| `scheduled` | L'email è programmata per una consegna futura (hai impostato `scheduledAt`). Passa a `queued` quando arriva l'ora |
+| `queued` | L'email è in coda, verrà inviata a breve (minuti) |
+| `sending` | Tratto ha preso in carico l'email e la sta consegnando al provider di posta. Dura pochi secondi |
+| `sent` | L'email è stata consegnata al server di posta, ma non ancora confermata dal server del destinatario |
+| `delivered` | Il server di posta del destinatario ha confermato la ricezione |
+| `bounced` | Il server di posta del destinatario ha rifiutato l'email |
+| `complained` | Il destinatario ha segnalato l'email come spam |
 | `failed` | Consegna email non riuscita (dominio non valido, mailbox piena, un template non pubblicato, ecc.). Il motivo viene registrato sul documento dell'email, ma oggi nessuno lo espone: `GET /v1/emails/:id` restituisce lo status e non il motivo, e la dashboard legge quello stesso endpoint |
+| `skipped` | Tratto non ha inviato l'email perché il destinatario si è disiscritto o è nella lista di soppressione. Non è partito niente |
+| `canceled` | Hai annullato un'email `scheduled` con `DELETE /v1/emails/:id` prima dell'invio |
+
+`GET /v1/emails?status=` filtra per uno qualsiasi di questi valori, `sending` compreso; se ne possono combinare più separati da virgole (`?status=queued,sending`).
+
+`failed`, `bounced` e `complained` sono definitivi: niente di quello che arriva
+dopo li cambia, con l'unica eccezione qui sotto.
+
+### Quando la consegna viene interrotta
+
+Se la consegna si interrompe mentre Tratto sta passando l'email al provider di
+posta (per esempio si ferma il worker che la stava inviando), Tratto non può
+sapere se il provider l'ha accettata. In quel caso l'email diventa `failed` e
+**non viene ritentata**: Tratto preferisce non inviare un'email piuttosto che
+inviarla due volte. L'email potrebbe comunque essere arrivata al destinatario.
+Se in seguito il provider segnala una consegna, un rimbalzo o un reclamo, lo
+status passa a `delivered`, `bounced` o `complained`.
+
+Un'email che resta in `sending` per più di qualche minuto è in questa
+situazione e verrà chiusa come `failed` quando Tratto la riprende in mano.
 
 ### Transizioni di Stato
 
 ```
+scheduled (solo se scheduledAt è stato impostato)
+  ├─→ canceled (DELETE /v1/emails/:id)
+  ├─→ skipped (il destinatario si è disiscritto)
+  └─→ queued (è arrivata l'ora programmata)
 queued
-  └─→ scheduled (solo se scheduledAt è stato impostato)
-      └─→ sent (email inviata al server di posta)
-          ├─→ delivered (server di posta conferma consegna)
-          │   └─→ opened, clicked, bounced, complained (eventi)
-          └─→ failed (consegna non riuscita)
+  ├─→ skipped (destinatario disiscritto o soppresso)
+  ├─→ failed (l'email non può essere costruita o inviata)
+  └─→ sending (Tratto passa l'email al provider di posta)
+      ├─→ failed (rifiutata dal provider, o consegna interrotta)
+      └─→ sent (il server di posta ha accettato l'email)
+          ├─→ delivered (il server del destinatario conferma la consegna)
+          │   └─→ bounced, complained
+          └─→ bounced, complained
 ```
 
 ## Ottieni lo Status dell'Email

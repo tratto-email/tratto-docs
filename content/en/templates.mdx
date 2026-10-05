@@ -295,6 +295,10 @@ curl -X POST https://api.tratto.email/v1/templates/tmpl_abc123/test-send \
 
 A test email is sent immediately to your address so you can review it in your inbox.
 
+If Tratto cannot queue the test email, the API returns `503 SERVICE_UNAVAILABLE`
+with a `Retry-After` header: nothing was sent and no email was created, so you
+can retry. See [Error Codes](/en/docs/error-codes).
+
 Its subject is `[Test]` followed by the template name. A test send has no
 contact, so the recipient variables you don't pass get preview values: `email`
 is the test address, `firstName` is `Preview`, `lastName` is `Recipient`, and

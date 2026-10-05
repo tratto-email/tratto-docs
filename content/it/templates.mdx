@@ -299,6 +299,11 @@ curl -X POST https://api.tratto.email/v1/templates/tmpl_abc123/test-send \
 
 Un'email di test viene inviata immediatamente al tuo indirizzo in modo che tu possa esaminarla nella tua inbox.
 
+Se Tratto non riesce a mettere in coda l'email di test, l'API restituisce
+`503 SERVICE_UNAVAILABLE` con l'header `Retry-After`: non è partito niente e non
+è stata creata alcuna email, quindi puoi riprovare. Vedi
+[Codici di Errore](/it/docs/error-codes).
+
 Il suo oggetto è `[Test]` seguito dal nome del template. Un invio di test non
 ha un contatto, quindi le variabili del destinatario che non passi prendono
 valori di anteprima: `email` è l'indirizzo di test, `firstName` è `Preview`,
