@@ -46,7 +46,7 @@ errors add a `details` array: see below.
 | `IDEMPOTENCY_CONFLICT` | 409 | The `Idempotency-Key` was reused with a different payload | Use a fresh key for a different request |
 | `IDEMPOTENCY_IN_PROGRESS` | 409 | A request with this `Idempotency-Key` is still being processed | Wait for the original request to finish, then retry |
 | `INTERNAL_ERROR` | 500 | Something failed on our side | Retry with backoff; contact support if it persists |
-| `SERVICE_UNAVAILABLE` | 503 | A service this endpoint depends on is switched off, saturated or not responding | Retry later, honouring `Retry-After` when the response sets it; `suggestion` says whether waiting helps |
+| `SERVICE_UNAVAILABLE` | 503 | A service this endpoint depends on is switched off, saturated or not responding | Retry later, honouring `Retry-After` when the response sets it; `suggestion` says whether waiting helps. On `POST /v1/emails` and the campaign and template test-sends, a 503 means the email could not be queued: nothing was created, sent or charged, so the retry is safe (reuse the same `Idempotency-Key` if you sent one) |
 
 <Callout type="warn">
 A missing resource has no code of its own. A missing template, a missing

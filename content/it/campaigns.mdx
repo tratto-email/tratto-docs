@@ -128,6 +128,11 @@ curl -X POST https://api.tratto.email/v1/campaigns/camp_xyz789/test-send \
 
 Un'email di test viene inviata al tuo indirizzo immediatamente.
 
+Se Tratto non riesce a mettere in coda l'email di test, l'API restituisce
+`503 SERVICE_UNAVAILABLE` con l'header `Retry-After`: non è partito niente e non
+è stata creata alcuna email, quindi puoi riprovare. Vedi
+[Codici di Errore](/it/docs/error-codes).
+
 ## Invia Immediatamente
 
 Invia la campagna a tutti i contatti nell'audience proprio adesso.

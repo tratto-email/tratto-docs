@@ -102,6 +102,7 @@ a test-mode replay can never return a live response, and vice versa.
 | Same key, **different payload** | `409 IDEMPOTENCY_CONFLICT` — a key identifies one request, not a slot |
 | Same key, while the first request is still running | `409 IDEMPOTENCY_IN_PROGRESS` — retry after it completes |
 | The first request failed | The key is released immediately — retry right away with the same key |
+| The first request got `503 SERVICE_UNAVAILABLE` | Nothing was created or sent and the key was released: retry after `Retry-After` with the same key |
 
 ## Cache Duration and Guarantees
 

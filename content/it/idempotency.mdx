@@ -82,6 +82,10 @@ Due endpoint rispettano `Idempotency-Key`:
 
 Inviare l'header ad altri endpoint è innocuo ma non ha alcun effetto.
 
+Se `POST /v1/emails` risponde `503 SERVICE_UNAVAILABLE`, non è stata creata né
+inviata alcuna email e la chiave è già stata rilasciata: riprova dopo i secondi
+indicati da `Retry-After` con la stessa chiave.
+
 ## Formato della Chiave
 
 Usa un **UUID v4** (RFC 4122):

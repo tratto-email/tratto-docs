@@ -46,7 +46,7 @@ Gli errori di validazione aggiungono un array `details`: vedi sotto.
 | `IDEMPOTENCY_CONFLICT` | 409 | La stessa `Idempotency-Key` è stata riusata con un payload diverso | Usa una chiave nuova per una richiesta diversa |
 | `IDEMPOTENCY_IN_PROGRESS` | 409 | Una richiesta con questa `Idempotency-Key` è ancora in elaborazione | Attendi che la prima finisca, poi riprova |
 | `INTERNAL_ERROR` | 500 | Errore dalla nostra parte | Riprova con backoff; contatta il supporto se persiste |
-| `SERVICE_UNAVAILABLE` | 503 | Un servizio da cui dipende l'endpoint è disattivato, saturo o non risponde | Riprova più tardi, rispettando `Retry-After` se la risposta lo imposta; `suggestion` indica se attendere serve |
+| `SERVICE_UNAVAILABLE` | 503 | Un servizio da cui dipende l'endpoint è disattivato, saturo o non risponde | Riprova più tardi, rispettando `Retry-After` se la risposta lo imposta; `suggestion` indica se attendere serve. Su `POST /v1/emails` e sui test-send di campagne e template, un 503 significa che l'email non è stata messa in coda: non è stato creato, inviato o addebitato niente, quindi riprovare è sicuro (riusa la stessa `Idempotency-Key` se l'hai inviata) |
 
 <Callout type="warn">
 Una risorsa inesistente non ha un codice tutto suo. Un template inesistente, un
