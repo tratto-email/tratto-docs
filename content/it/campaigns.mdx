@@ -333,12 +333,13 @@ distingue da «la campagna sta già spedendo» se non leggendo `message`.
 Una campagna può anche essere messa in pausa *per te*, e `paused` da solo non
 dice da chi. **`pausedReason` è il campo che distingue i casi** (l'equivalente
 di [`scheduledReason`](#scheduled-reason) per una campagna `scheduled`), e ha
-tre valori più `null`:
+quattro valori più `null`:
 
 | `pausedReason` | Cosa è successo | Cosa fare |
 |---|---|---|
 | `null` | Nessun motivo registrato. Di norma significa che l'hai messa in pausa tu, con `POST /:id/pause` | Riprendila quando vuoi, a meno che la pausa sia caduta dentro l'[attesa dell'ondata](#probe-wait) |
-| `"quota_exceeded"` | L'invio non stava nella [quota mensile](/it/docs/rate-limits) residua, prima di partire o a metà strada | Aspetta l'azzeramento o passa a un piano superiore, poi riprendi. Raggiunge solo i destinatari mancati |
+| `"quota_exceeded"` | L'invio non stava nella [quota mensile](/it/docs/rate-limits) residua dell'account, prima di partire o a metà strada | Aspetta l'azzeramento o passa a un piano superiore, poi riprendi. Raggiunge solo i destinatari mancati |
+| `"quota_unavailable"` | Non è stato possibile contare la quota per un errore nostro. La quota non è esaurita | Riprendila |
 | `"schedule_missed"` | Una campagna programmata **da te** è stata presa più di un'ora dopo il suo `scheduledAt` e non è stata inviata così in ritardo | Riprendila a mano se l'invio serve ancora, oppure riprogrammala |
 | `"bounce_rate"` | Troppi rimbalzi permanenti fra le email già inviate | **Pulisci la lista prima di riprendere.** Vedi qui sotto |
 

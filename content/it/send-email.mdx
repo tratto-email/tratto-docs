@@ -207,6 +207,8 @@ curl -X POST https://api.tratto.email/v1/emails \
 
 L'email verrà messa in coda e inviata all'orario specificato (deve essere nel futuro).
 
+Un'email live programmata consuma la [quota mensile](/it/docs/rate-limits#limiti-di-piano) quando l'API la accetta, nel mese della richiesta e non in quello dell'invio. Annullarla non restituisce la quota.
+
 ## Aggiungi Allegati
 
 Includi file come allegati codificati in base64:
