@@ -204,6 +204,8 @@ curl -X POST https://api.tratto.email/v1/emails \
 
 The email will be queued and sent at the specified time (must be in the future).
 
+A live scheduled email counts against your [monthly quota](/en/docs/rate-limits#plan-limits) when the API accepts it, in the month of the request rather than the month of delivery. Canceling it does not give the quota back.
+
 ## Add Attachments
 
 Include files as base64-encoded attachments:
