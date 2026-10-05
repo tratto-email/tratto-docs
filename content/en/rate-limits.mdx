@@ -139,6 +139,14 @@ Exceed the monthly quota and requests fail with `QUOTA_EXCEEDED`, which also
 returns 429. Unlike `RATE_LIMITED` it will not clear by retrying: see
 [Error Codes](/en/docs/error-codes).
 
+A scheduled email counts in the UTC month it is scheduled for, not the month
+you created it. A month's counter, the one compared with the limit and shown
+in the dashboard as **Emails used this month**, includes the live emails
+scheduled for that month, whether they have already gone out or are still
+waiting. Canceling a scheduled email gives its unit back, and rescheduling it
+into another month moves the unit: see
+[Quota of scheduled emails](/en/docs/send-email#quota-of-scheduled-emails).
+
 The domain limit counts every domain in every workspace of the account,
 whatever its status: `pending` (still being verified), `verified` and `failed`
 all take a place. It is checked only when you add one (`POST /v1/domains`).

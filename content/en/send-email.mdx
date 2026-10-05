@@ -198,13 +198,75 @@ curl -X POST https://api.tratto.email/v1/emails \
     "to": "user@example.com",
     "subject": "Reminder!",
     "text": "See you tomorrow.",
-    "scheduledAt": "2025-07-01T09:00:00Z"
+    "scheduledAt": "2026-12-01T09:00:00Z"
   }'
 ```
 
 The email will be queued and sent at the specified time (must be in the future).
 
-A live scheduled email counts against your [monthly quota](/en/docs/rate-limits#plan-limits) when the API accepts it, in the month of the request rather than the month of delivery. Canceling it does not give the quota back.
+### Quota of scheduled emails
+
+A live scheduled email counts against the [monthly quota](/en/docs/rate-limits#plan-limits)
+of the **UTC month of its `scheduledAt`**, not the month in which you make the
+request. The unit is booked when the API accepts the `POST`. If that month is
+already full, the request fails with `429 QUOTA_EXCEEDED` and the message
+names the month:
+
+```json
+{
+  "error": {
+    "code": "QUOTA_EXCEEDED",
+    "message": "Monthly quota of 3000 emails for 2026-11 reached for the free plan. A scheduled email counts against the UTC month of its scheduledAt. The quota is shared by every workspace of the account that owns this one.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
+    "suggestion": "Cancel or reschedule other emails for 2026-11, or have the workspace owner upgrade the plan at https://app.tratto.email/settings/billing."
+  }
+}
+```
+
+A full current month does not stop you from scheduling into a later month
+that still has room. Test-mode emails do not touch the monthly quota. There is
+no maximum scheduling horizon.
+
+The check happens only when the email is accepted, so emails already
+scheduled stay valid after a plan downgrade.
+
+### Cancel a scheduled email
+
+`DELETE /v1/emails/{id}` cancels an email that is still `scheduled` and gives
+its unit back to the month it was booked on. It answers `204` with no body.
+An email that is already `queued` or `sent` cannot be canceled: the API
+answers `409 CONFLICT`.
+
+```bash
+curl -X DELETE https://api.tratto.email/v1/emails/email_abc123xyz \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+### Reschedule a scheduled email
+
+`PATCH /v1/emails/{id}` with a new `scheduledAt`, which must be in the future,
+moves an email that is still `scheduled`. Within the same UTC month nothing
+changes on the quota. Into another month the unit moves with the email: if
+the destination month is full, the API answers `429 QUOTA_EXCEEDED` and the
+email stays as it was.
+
+```bash
+curl -X PATCH https://api.tratto.email/v1/emails/email_abc123xyz \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"scheduledAt": "2026-12-01T09:00:00Z"}'
+```
+
+```json
+{ "data": { "id": "email_abc123xyz", "scheduledAt": "2026-12-01T09:00:00.000Z" } }
+```
+
+`DELETE` and `PATCH` can also answer `429 RATE_LIMITED` with a `Retry-After`
+header, when other requests are updating the account's counter at the same
+moment. Repeating the request after that delay is safe.
+
+The SDKs have no method to cancel or reschedule an email: call the API over
+HTTP as shown above.
 
 ## Add Attachments
 

@@ -142,6 +142,14 @@ Se superi la quota mensile le richieste falliscono con `QUOTA_EXCEEDED`,
 anch'esso 429. A differenza di `RATE_LIMITED` non si risolve riprovando: vedi
 [Codici di Errore](/it/docs/error-codes).
 
+Un'email programmata conta nel mese UTC per cui è programmata, non in quello
+in cui l'hai creata. Il contatore di un mese, quello che viene confrontato col
+limite e che la dashboard mostra come **Email usate questo mese**, include le
+email live programmate per quel mese, già partite o ancora in attesa.
+Annullare un'email programmata restituisce la sua unità, e riprogrammarla in
+un altro mese sposta l'unità: vedi
+[Quota delle email programmate](/it/docs/send-email#quota-delle-email-programmate).
+
 Il limite di domini conta tutti i domini di tutti i workspace dell'account,
 qualunque sia il loro stato: `pending` (in verifica), `verified` e `failed`
 occupano tutti un posto. Viene controllato solo quando ne aggiungi uno

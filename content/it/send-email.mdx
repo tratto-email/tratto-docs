@@ -201,13 +201,74 @@ curl -X POST https://api.tratto.email/v1/emails \
     "to": "user@example.com",
     "subject": "Promemoria!",
     "text": "Ci vediamo domani.",
-    "scheduledAt": "2025-07-01T09:00:00Z"
+    "scheduledAt": "2026-12-01T09:00:00Z"
   }'
 ```
 
 L'email verrà messa in coda e inviata all'orario specificato (deve essere nel futuro).
 
-Un'email live programmata consuma la [quota mensile](/it/docs/rate-limits#limiti-di-piano) quando l'API la accetta, nel mese della richiesta e non in quello dell'invio. Annullarla non restituisce la quota.
+### Quota delle email programmate
+
+Un'email live programmata consuma la [quota mensile](/it/docs/rate-limits#limiti-di-piano)
+del **mese UTC del suo `scheduledAt`**, non del mese in cui fai la richiesta.
+L'unità viene prenotata quando l'API accetta il `POST`. Se quel mese è già
+pieno, la richiesta fallisce con `429 QUOTA_EXCEEDED` e il messaggio nomina il
+mese:
+
+```json
+{
+  "error": {
+    "code": "QUOTA_EXCEEDED",
+    "message": "Monthly quota of 3000 emails for 2026-11 reached for the free plan. A scheduled email counts against the UTC month of its scheduledAt. The quota is shared by every workspace of the account that owns this one.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
+    "suggestion": "Cancel or reschedule other emails for 2026-11, or have the workspace owner upgrade the plan at https://app.tratto.email/settings/billing."
+  }
+}
+```
+
+Un mese corrente pieno non ti impedisce di programmare in un mese successivo
+che ha ancora spazio. Le email in test mode non toccano la quota mensile. Non
+esiste un orizzonte massimo di programmazione.
+
+Il controllo avviene solo quando l'email viene accettata, quindi le email già
+programmate restano valide dopo un downgrade di piano.
+
+### Annullare un'email programmata
+
+`DELETE /v1/emails/{id}` annulla un'email ancora `scheduled` e restituisce la
+sua unità al mese su cui era prenotata. Risponde `204` senza corpo. Un'email
+già `queued` o `sent` non si può annullare: l'API risponde `409 CONFLICT`.
+
+```bash
+curl -X DELETE https://api.tratto.email/v1/emails/email_abc123xyz \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+### Riprogrammare un'email programmata
+
+`PATCH /v1/emails/{id}` con un nuovo `scheduledAt`, che deve essere nel
+futuro, sposta un'email ancora `scheduled`. Nello stesso mese UTC la quota non
+cambia. In un altro mese l'unità si sposta con l'email: se il mese di
+destinazione è pieno, l'API risponde `429 QUOTA_EXCEEDED` e l'email resta
+com'era.
+
+```bash
+curl -X PATCH https://api.tratto.email/v1/emails/email_abc123xyz \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"scheduledAt": "2026-12-01T09:00:00Z"}'
+```
+
+```json
+{ "data": { "id": "email_abc123xyz", "scheduledAt": "2026-12-01T09:00:00.000Z" } }
+```
+
+`DELETE` e `PATCH` possono anche rispondere `429 RATE_LIMITED` con un header
+`Retry-After`, quando altre richieste stanno aggiornando nello stesso momento
+il contatore dell'account. Ripetere la richiesta dopo quell'attesa è sicuro.
+
+Gli SDK non hanno metodi per annullare o riprogrammare un'email: chiama l'API
+via HTTP come negli esempi qui sopra.
 
 ## Aggiungi Allegati
 
