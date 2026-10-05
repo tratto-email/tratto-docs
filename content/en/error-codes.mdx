@@ -32,6 +32,9 @@ errors add a `details` array: see below.
 | `UNAUTHORIZED` | 401 | Missing or invalid API key | Check the `Authorization: Bearer` header |
 | `FORBIDDEN` | 403 | The request is not allowed: the key lacks a permission, the sending domain is not verified, or the action is blocked for this resource | Read `message` and `suggestion`; for a missing permission, use a key that has it |
 | `NO_WORKSPACE` | 403 | The account is signed in but has no workspace | Create the workspace from the dashboard, or sign in with the account that belongs to your workspace; see below |
+| `TENANT_CLOSED` | 403 | The workspace has been deleted: its API keys are refused | Nothing to retry. See [Workspaces](/en/docs/workspaces#delete-a-workspace) |
+| `REAUTH_REQUIRED` | 401 | The action needs a sign-in from the last 5 minutes (workspace deletion) | Sign in again in the dashboard, then repeat the action |
+| `EMAIL_NOT_VERIFIED` | 403 | The action needs a verified email address on the account (workspace deletion) | Verify the address: the dashboard offers to send the verification email |
 | `NOT_FOUND` | 404 | The resource does not exist | Check the ID; it may belong to another workspace |
 | `CONFLICT` | 409 | The resource already exists, or its current state does not allow the action (for example, editing a campaign that is no longer a draft) | Fetch the resource and check its state before retrying |
 | `VALIDATION_ERROR` | 422 | The request body parsed but failed schema validation | Read `details` for the offending fields |
@@ -164,7 +167,8 @@ another account or try again.
 
 The button calls `POST /v1/workspaces`, which accepts a dashboard session only.
 It returns `201` with the same object as `GET /v1/workspace`, and `409 CONFLICT`
-if the account already owns a workspace or already belongs to one. The `name`
+if the account already owns 10 workspaces, counting those being deleted (see
+[Workspaces](/en/docs/workspaces#how-many-workspaces-you-can-own)). The `name`
 field is optional (1 to 100 characters, default `My Workspace`): an invalid name
 gets `422`. Workspaces created this way have ids starting with `ws_`; existing
 workspaces keep their id.

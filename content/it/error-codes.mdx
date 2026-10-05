@@ -32,6 +32,9 @@ Gli errori di validazione aggiungono un array `details`: vedi sotto.
 | `UNAUTHORIZED` | 401 | Chiave API mancante o non valida | Controlla l'header `Authorization: Bearer` |
 | `FORBIDDEN` | 403 | La richiesta non è consentita: alla chiave manca un permesso, il dominio mittente non è verificato, o l'azione è bloccata per questa risorsa | Leggi `message` e `suggestion`; se manca un permesso, usa una chiave che lo abbia |
 | `NO_WORKSPACE` | 403 | L'account ha effettuato l'accesso ma non ha un workspace | Crea il workspace dalla dashboard, oppure accedi con l'account che appartiene al tuo workspace; vedi sotto |
+| `TENANT_CLOSED` | 403 | Il workspace è stato eliminato: le sue chiavi API vengono rifiutate | Non c'è nulla da riprovare. Vedi [Workspace](/it/docs/workspaces#eliminare-un-workspace) |
+| `REAUTH_REQUIRED` | 401 | L'azione richiede un accesso degli ultimi 5 minuti (eliminazione del workspace) | Accedi di nuovo dalla dashboard, poi ripeti l'azione |
+| `EMAIL_NOT_VERIFIED` | 403 | L'azione richiede un indirizzo email verificato sull'account (eliminazione del workspace) | Verifica l'indirizzo: la dashboard offre l'invio dell'email di verifica |
 | `NOT_FOUND` | 404 | La risorsa non esiste | Verifica l'ID: potrebbe appartenere a un altro workspace |
 | `CONFLICT` | 409 | La risorsa esiste già, oppure il suo stato attuale non consente l'azione (ad esempio modificare una campagna che non è più in bozza) | Recupera la risorsa e verificane lo stato prima di riprovare |
 | `VALIDATION_ERROR` | 422 | Il corpo è stato letto ma non rispetta lo schema | Leggi `details` per i campi errati |
@@ -167,7 +170,8 @@ e ti porta dentro. Da lì puoi anche accedere con un altro account o riprovare.
 
 Il bottone chiama `POST /v1/workspaces`, che accetta solo una sessione della
 dashboard. Risponde `201` con lo stesso oggetto di `GET /v1/workspace`, e
-`409 CONFLICT` se l'account possiede già un workspace o appartiene già a uno. Il
+`409 CONFLICT` se l'account possiede già 10 workspace, contando quelli in
+eliminazione (vedi [Workspace](/it/docs/workspaces#quanti-workspace-puoi-possedere)). Il
 campo `name` è facoltativo (da 1 a 100 caratteri, predefinito `My Workspace`):
 un nome non valido riceve `422`. Gli id dei workspace creati così iniziano con
 `ws_`; i workspace esistenti tengono il loro id.
