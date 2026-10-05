@@ -219,6 +219,11 @@ Attendi i secondi di `Retry-After` e rimanda la stessa richiesta. La [funzione d
 già. Distribuire le richieste nel tempo, invece di lanciarle in parallelo,
 rende questo 429 più raro.
 
+Un account regge circa cinque richieste al secondo che consumano la sua quota
+mensile (invii, lotti di campagna, passi delle automazioni, generazioni AI),
+sommando tutti i suoi workspace e tutte le sue chiavi. Oltre questo ritmo le
+risposte prima rallentano, poi questo 429 diventa frequente.
+
 L'SDK Node `@tratto/email` non ritenta da solo un 429, e il suo `TrattoError`
 non riporta gli header della risposta, quindi attendi un secondo prima di
 riprovare:

@@ -214,6 +214,11 @@ arrive together, from any of the account's workspaces or keys, the API answers
 Wait the `Retry-After` seconds and send the same request again. The [retry function above](#retry-strategy) already does this. Spreading
 requests out, rather than firing them in parallel, makes this 429 rarer.
 
+One account sustains about five requests per second that consume its monthly
+quota (sends, campaign batches, automation steps, AI generations), across all
+its workspaces and keys. Above that rate the responses slow down first, then
+this 429 becomes frequent.
+
 The Node SDK `@tratto/email` does not retry a 429 on its own, and its
 `TrattoError` does not carry the response headers, so wait one second before
 trying again:
