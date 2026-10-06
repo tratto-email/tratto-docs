@@ -1,0 +1,187 @@
+---
+title: Team
+description: Roles in a workspace, how the owner invites people, and how many people each plan allows.
+---
+
+A workspace can be shared with other people. This page covers who can do what,
+how invites work, how many people each plan allows, and how access ends.
+
+## Roles
+
+A workspace has two roles:
+
+| Role | Who | What changes |
+|---|---|---|
+| `owner` | The person who created the workspace | Only the owner invites people, revokes invites, removes members and deletes the workspace |
+| `member` | Anyone who joined through an invite | Works in the workspace from the dashboard |
+
+Accepting an invite always makes you a `member`. There is no other role, and a
+role cannot be changed.
+
+The plan and its quotas belong to the owner's account: what a member sends
+counts against the owner's monthly email quota. See
+[Rate Limits](/en/docs/rate-limits#the-caps-belong-to-the-account-not-the-workspace).
+
+## Invite someone
+
+Only the workspace owner can invite people, and only from the dashboard, in
+**Settings → Team**. API keys cannot invite anyone, whatever their permissions.
+
+Enter the email address of the person you want to invite. They receive an email
+with a link to accept the invite.
+
+<Callout type="info">
+Inviting members is being opened gradually. If your workspace gets the error
+`MEMBER_INVITES_RESTRICTED`, write to **support@tratto.email**.
+</Callout>
+
+### The invite link
+
+- **It is personal.** Accepting it also confirms the email address it was sent
+  to: the account counts as verified without a separate verification email. Do
+  not forward it.
+- **It expires after 7 days.** After that, the owner sends a new invite.
+- **It works once.** A link that has already been used is refused.
+- **It stops working when the invite is revoked.**
+
+### What happens to the person who accepts
+
+- They join the workspace as a `member`.
+- They can open the dashboard even without beta access of their own.
+- An account belongs to one workspace at a time: if theirs already belongs to
+  another workspace, the invite is refused.
+
+## How many people each plan allows
+
+The plan of the workspace owner sets how many people the workspace can have.
+The count includes the owner and **pending invites**:
+
+| Plan | People per workspace |
+|---|---|
+| Free | 1 (the owner only: the Free plan cannot invite) |
+| Starter | 2 |
+| Growth | 10 |
+
+Unlike the email quota, this limit applies to each workspace. It is checked
+when the owner sends an invite and again when the invite is accepted: if the
+place was taken in the meantime, the invited person cannot join until the
+owner frees one.
+
+To free a place, revoke a pending invite or remove a member. To raise the
+limit, upgrade the plan in **Settings → Billing**.
+
+`GET /v1/workspace` returns the limit as `limits.membersPerWorkspace`, next to
+`emailsPerMonth` and `domains`.
+
+## Pending invites
+
+**Settings → Team** lists the members of the workspace and the invites still
+pending. The owner can revoke a pending invite from there: the link stops
+working, and the invited person receives no email.
+
+## Remove a member
+
+The owner removes members from the dashboard. The removed member loses
+access immediately and receives an email; their Tratto account stays active.
+The owner cannot be removed. See
+[Workspaces](/en/docs/workspaces#remove-a-member).
+
+## Signing in again
+
+After the sessions of an account are revoked (a password change, or signing out
+of all devices), sessions started before the revocation no longer open the
+workspace: the dashboard asks you to sign in again.
+
+## From the API
+
+The dashboard uses these routes:
+
+| Route | What it does |
+|---|---|
+| `POST /v1/workspace/members/invite` | Sends an invite |
+| `GET /v1/workspace/invites` | Lists pending invites |
+| `DELETE /v1/workspace/invites/:id` | Revokes an invite |
+| `DELETE /v1/workspace/members/:userId` | Removes a member |
+| `POST /v1/workspace-invites/lookup` | Reads an invite from its link |
+| `POST /v1/workspace-invites/accept` | Accepts an invite |
+
+The first four accept the **owner's dashboard session only**. An API key always
+gets `403 FORBIDDEN` with the message `Only the workspace owner can do this.`,
+whatever its permissions. For this reason `inviteMember` and `removeMember` in
+the Node.js SDK, and `invite_member` and `remove_member` in the Python SDK,
+cannot succeed: use the dashboard.
+
+No route lists the members of a workspace: the list is in the dashboard, in
+**Settings → Team**.
+
+### Send an invite
+
+```json
+{ "email": "ada@example.com", "role": "member" }
+```
+
+A successful request returns **`201 Created`**:
+
+```json
+{
+  "data": {
+    "id": "3f9c0a7e5b2d4c1f8e6a9b0d7c5e3f1a2b4c6d8e0f1a3b5c7d9e1f2a4b6c8d0e",
+    "email": "ada@example.com",
+    "invitedAt": "2026-10-06T09:30:00.000Z",
+    "expiresAt": "2026-10-13T09:30:00.000Z"
+  }
+}
+```
+
+The `id` is 64 hexadecimal characters. The response does not contain the
+invite token: the token travels only in the email to the invited person, in
+the fragment of the link (`https://app.tratto.email/invite?tenant=…#token=…`),
+so it does not end up in server logs.
+
+`GET /v1/workspace/invites` returns `200` with the same objects in `data`:
+pending, unexpired invites only, ordered by `invitedAt`.
+`DELETE /v1/workspace/invites/:id` returns `204`.
+
+### Accept an invite
+
+The invite page calls `lookup` and `accept` with no API key. Both take the
+workspace id and the token from the link in the request **body**:
+
+```json
+{ "tenantId": "ws_abc123", "token": "…" }
+```
+
+### Errors
+
+| Status | Code | When |
+|---|---|---|
+| 401 | `UNAUTHORIZED` | The session was started before a revocation of the account's sessions (`Sign in again.`) |
+| 401 | `REAUTH_REQUIRED` | Accepting with a session older than a revocation of the account's sessions (`Sign in again to accept this invite.`) |
+| 403 | `FORBIDDEN` | Inviting, listing, revoking or removing without being the owner, or with an API key |
+| 403 | `MEMBER_INVITES_RESTRICTED` | Invites are not available for this workspace yet: write to **support@tratto.email** |
+| 404 | `NOT_FOUND` | Revoking an invite that does not exist, or opening a link whose invite does not exist (`Invite not found.`) |
+| 409 | `CONFLICT` | Inviting: `That address is already a member of this workspace.` or `That address already has a pending invite.` |
+| 409 | `CONFLICT` | Accepting: `This invite has already been used.`, `This invite has expired.`, `You are already a member of this workspace.` or `You already belong to another workspace.` |
+| 409 | `CONFLICT` | Removing the owner: `The workspace owner cannot be removed.` |
+| 422 | `VALIDATION_ERROR` | Revoking with an id that is not 64 hexadecimal characters |
+| 429 | `QUOTA_EXCEEDED` | The workspace has reached its limit of people, counting pending invites, when inviting or accepting |
+| 429 | `RATE_LIMITED` | More than 20 invites in an hour by the same owner |
+
+The `QUOTA_EXCEEDED` body names the plan and the limit:
+
+```json
+{
+  "error": {
+    "code": "QUOTA_EXCEEDED",
+    "message": "Member limit reached for the starter plan: 2 people in this workspace, counting pending invites.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
+    "suggestion": "Revoke a pending invite or remove a member, or upgrade the plan at https://app.tratto.email/settings/billing."
+  }
+}
+```
+
+See [Error Codes](/en/docs/error-codes) for the format of the error body.
+
+---
+
+Next: [Workspaces](/en/docs/workspaces) · [Error Codes](/en/docs/error-codes)

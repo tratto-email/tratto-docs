@@ -170,7 +170,9 @@ the cap the API answers `429 QUOTA_EXCEEDED`:
 Do not hard-code the numbers above. `GET /v1/workspace` returns the limits
 that are actually enforced, and `null` means no limit. `limits.emailsPerMonth`
 and `limits.domains` are the caps of the **account** that owns the workspace,
-shared with its other workspaces, not an allowance of this workspace alone:
+shared with its other workspaces, not an allowance of this workspace alone.
+`limits.membersPerWorkspace` is the number of people each workspace can have,
+counting pending invites (see [Team](/en/docs/team#how-many-people-each-plan-allows)):
 
 ```bash
 curl https://api.tratto.email/v1/workspace \
@@ -181,7 +183,7 @@ curl https://api.tratto.email/v1/workspace \
 {
   "data": {
     "plan": "free",
-    "limits": { "emailsPerMonth": 3000, "domains": 3 }
+    "limits": { "emailsPerMonth": 3000, "domains": 3, "membersPerWorkspace": 1 }
   }
 }
 ```

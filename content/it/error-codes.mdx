@@ -29,14 +29,15 @@ Gli errori di validazione aggiungono un array `details`: vedi sotto.
 
 | Codice | HTTP | Significato | Cosa fare |
 |---|---|---|---|
-| `UNAUTHORIZED` | 401 | Chiave API mancante o non valida | Controlla l'header `Authorization: Bearer` |
+| `UNAUTHORIZED` | 401 | Chiave API mancante o non valida, oppure una sessione della dashboard iniziata prima di una revoca delle sessioni dell'account (`Sign in again.`) | Controlla l'header `Authorization: Bearer`; nella dashboard, accedi di nuovo |
 | `FORBIDDEN` | 403 | La richiesta non è consentita: alla chiave manca un permesso, il dominio mittente non è verificato, o l'azione è bloccata per questa risorsa | Leggi `message` e `suggestion`; se manca un permesso, usa una chiave che lo abbia |
 | `NO_WORKSPACE` | 403 | L'account ha effettuato l'accesso ma non ha un workspace | Crea il workspace dalla dashboard, oppure accedi con l'account che appartiene al tuo workspace; vedi sotto |
 | `TENANT_CLOSED` | 403 | Il workspace è stato eliminato: le sue chiavi API vengono rifiutate | Non c'è nulla da riprovare. Vedi [Workspace](/it/docs/workspaces#eliminare-un-workspace) |
-| `REAUTH_REQUIRED` | 401 | L'azione richiede un accesso degli ultimi 5 minuti (eliminazione del workspace) | Accedi di nuovo dalla dashboard, poi ripeti l'azione |
+| `REAUTH_REQUIRED` | 401 | L'azione richiede un accesso più recente: degli ultimi 5 minuti per eliminare il workspace, o successivo all'ultima revoca delle sessioni dell'account per accettare un invito | Accedi di nuovo dalla dashboard, poi ripeti l'azione |
+| `MEMBER_INVITES_RESTRICTED` | 403 | Gli inviti ai membri non sono disponibili per questo workspace: vengono aperti gradualmente | Scrivi a **support@tratto.email**. Vedi [Team](/it/docs/team#invitare-qualcuno) |
 | `EMAIL_NOT_VERIFIED` | 403 | L'azione richiede un indirizzo email verificato sull'account (eliminazione del workspace) | Verifica l'indirizzo: la dashboard offre l'invio dell'email di verifica |
 | `NOT_FOUND` | 404 | La risorsa non esiste | Verifica l'ID: potrebbe appartenere a un altro workspace |
-| `CONFLICT` | 409 | La risorsa esiste già, oppure il suo stato attuale non consente l'azione (ad esempio modificare una campagna che non è più in bozza) | Recupera la risorsa e verificane lo stato prima di riprovare |
+| `CONFLICT` | 409 | La risorsa esiste già, oppure il suo stato attuale non consente l'azione (ad esempio modificare una campagna che non è più in bozza, o accettare un invito scaduto; i casi degli inviti sono elencati in [Team](/it/docs/team#errori)) | Recupera la risorsa e verificane lo stato prima di riprovare |
 | `VALIDATION_ERROR` | 422 | Il corpo è stato letto ma non rispetta lo schema | Leggi `details` per i campi errati |
 | `TEMPLATE_NOT_PUBLISHED` | 422 | Il template indicato nella richiesta è ancora in bozza e non può essere usato per inviare | Pubblicalo (`PATCH /v1/templates/:id` con `status: "published"`), poi ripeti la richiesta |
 | `BAD_REQUEST` | 400 | La richiesta non è arrivata a un handler: il corpo non è interpretabile (JSON malformato) | Correggi la sintassi del corpo: il payload non è mai arrivato allo schema |
@@ -44,7 +45,7 @@ Gli errori di validazione aggiungono un array `details`: vedi sotto.
 | `INVALID_TOKEN` | 400 | Un link firmato (disiscrizione, pagina preferenze) non è valido | Non c'è nulla da riprovare: serve un link nuovo |
 | `RATE_LIMITED` | 429 | Troppe richieste: 100 al secondo per chiave API, 500 al minuto per IP client, o troppe richieste simultanee sullo stesso account | Attendi e riprova, rispettando `Retry-After` se la risposta lo imposta |
 | `PAYLOAD_TOO_LARGE` | 413 | Il corpo della richiesta supera la dimensione massima | Spezza il payload (per l'import contatti, carica meno righe per richiesta) |
-| `QUOTA_EXCEEDED` | 429 | Raggiunto un limite d'uso: la quota mensile di email (su `POST /v1/emails`, o inviando subito una campagna a più destinatari di quanti ne restano nella quota), il limite di domini (quando aggiungi un dominio), le generazioni AI mensili nella dashboard, o il tetto giornaliero del test mode. Tutti tranne il tetto del test mode appartengono all'account e sono condivisi dai suoi workspace | Non riprovare: `message` indica il limite. La quota email si azzera all'inizio del mese UTC successivo, il tetto del test mode a mezzanotte UTC. Per il limite di domini elimina un dominio o passa a un piano superiore; per la quota email passa a un piano superiore |
+| `QUOTA_EXCEEDED` | 429 | Raggiunto un limite d'uso: la quota mensile di email (su `POST /v1/emails`, o inviando subito una campagna a più destinatari di quanti ne restano nella quota), il limite di domini (quando aggiungi un dominio), le generazioni AI mensili nella dashboard, il tetto giornaliero del test mode, o il limite di persone di un workspace (all'invito o all'accettazione di un invito, inviti in attesa compresi). La quota email, il limite di domini e le generazioni AI appartengono all'account e sono condivisi dai suoi workspace; il limite di persone vale per ogni workspace | Non riprovare: `message` indica il limite. La quota email si azzera all'inizio del mese UTC successivo, il tetto del test mode a mezzanotte UTC. Per il limite di domini elimina un dominio o passa a un piano superiore; per la quota email passa a un piano superiore; per il limite di persone revoca un invito in attesa, rimuovi un membro o passa a un piano superiore (vedi [Team](/it/docs/team#quante-persone-ammette-ogni-piano)) |
 | `TEST_MODE_NOT_SUPPORTED` | 403 | L'endpoint raggiunge destinatari reali e rifiuta le chiavi di test | Usa una chiave live (`tratto_live_...`) — vedi [Test mode](/it/docs/test-mode) |
 | `IDEMPOTENCY_CONFLICT` | 409 | La stessa `Idempotency-Key` è stata riusata con un payload diverso | Usa una chiave nuova per una richiesta diversa |
 | `IDEMPOTENCY_IN_PROGRESS` | 409 | Una richiesta con questa `Idempotency-Key` è ancora in elaborazione | Attendi che la prima finisca, poi riprova |
@@ -190,7 +191,7 @@ reazioni opposte:
   richiesta andrà a buon fine a breve. Vedi [Rate Limit](/it/docs/rate-limits).
 - **`QUOTA_EXCEEDED`**: hai raggiunto un limite d'uso, come la quota mensile di
   email. Riprovare non serve finché il limite non si azzera, non elimini un
-  dominio o non passi a un piano superiore.
+  dominio, non liberi un posto nel workspace o non passi a un piano superiore.
 
 La quota email, il limite di domini e le generazioni AI appartengono
 all'**account** proprietario del workspace, e tutti i workspace di

@@ -49,7 +49,7 @@ Ogni chiave porta con sé un insieme di permessi, applicati ad ogni richiesta: u
 | `api-keys:read` / `api-keys:write` | Leggere / creare, modificare, revocare API key |
 | `billing:read` / `billing:write` | Leggere piano e consumi / avviare checkout e portale fatturazione |
 | `workspace:write` | Modificare le impostazioni del workspace, mittente predefinito incluso |
-| `members:write` | Invitare, rimuovere e cambiare ruolo ai membri del workspace |
+| `members:write` | Non consente nulla sui membri: invitare e rimuovere membri si fa solo dalla dashboard, e ogni chiave API riceve `403` (vedi [Team](/it/docs/team#dallapi)) |
 | `*` | Accesso completo — tutti i permessi sopra, inclusi quelli futuri |
 
 Concedi l'insieme più ristretto che basta allo scopo. Una chiave che invia solo email transazionali ha bisogno di `emails:send` e nient'altro; se rispecchia anche le iscrizioni nella tua lista contatti serve pure `contacts:write`.
