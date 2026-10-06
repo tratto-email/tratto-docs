@@ -48,7 +48,9 @@ un workspace nuovo, non puoi aggiungervi da solo lo stesso dominio: scrivi a
 La dashboard chiama `DELETE /v1/workspace`. La rotta accetta solo una sessione
 della dashboard: una **chiave API riceve sempre `403`**, qualunque permesso
 abbia. Per questo `workspace.delete()` negli SDK Node.js e Python non può
-eliminare un workspace: usa la dashboard.
+eliminare un workspace: usa la dashboard. Dalla versione 1.3.0 di entrambi gli
+SDK il metodo è segnato come deprecato (`@tratto/email` 1.3.0 o successiva,
+`tratto-email` 1.3.0 o successiva) e sparirà nella prossima versione maggiore.
 
 Il corpo della richiesta porta la conferma:
 

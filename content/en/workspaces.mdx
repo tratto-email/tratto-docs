@@ -48,7 +48,9 @@ create a new workspace, you cannot add the same domain to it yourself: write to
 The dashboard calls `DELETE /v1/workspace`. The route accepts a dashboard
 session only: an **API key always gets `403`**, whatever its permissions. For
 this reason `workspace.delete()` in the Node.js and Python SDKs cannot delete a
-workspace: use the dashboard.
+workspace: use the dashboard. From version 1.3.0 of either SDK the method is
+marked deprecated (`@tratto/email` 1.3.0 or later, `tratto-email` 1.3.0 or
+later) and will be removed in the next major version.
 
 The request body carries the confirmation:
 
