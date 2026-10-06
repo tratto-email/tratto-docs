@@ -8,6 +8,7 @@
     "quickstart",
     "test-mode",
     "authentication",
+    "workspaces",
     "---Sending Email---",
     "send-email",
     "templates",

@@ -1,0 +1,102 @@
+---
+title: Workspace
+description: Eliminare un workspace, rimuovere un membro, e la regola di un solo workspace attivo per account.
+---
+
+Un workspace contiene i tuoi domini, template, contatti, campagne e chiavi API.
+Questa pagina descrive cosa chiude un workspace o l'accesso di qualcuno a esso.
+
+## Eliminare un workspace
+
+Solo il proprietario può eliminare un workspace, e solo dalla dashboard. Prima
+di procedere la dashboard chiede tre cose:
+
+- il **nome esatto** del workspace, digitato come conferma;
+- un **accesso recente**, negli ultimi 5 minuti: se il tuo è più vecchio, la
+  dashboard ti chiede di accedere di nuovo;
+- un **indirizzo email verificato** sull'account del proprietario: se non è
+  verificato, la dashboard offre l'invio dell'email di verifica.
+
+### Cosa succede
+
+L'effetto è immediato e non si annulla:
+
+- il workspace smette di inviare email;
+- ogni chiave API del workspace viene rifiutata con `403 TENANT_CLOSED`;
+- nessuno può più aprire il workspace, membri compresi.
+
+Il proprietario riceve un'email di conferma dell'eliminazione, e ogni membro
+riceve un'email che lo avvisa che il workspace è stato eliminato.
+
+Il tuo account Tratto non viene eliminato: lo tieni, e puoi creare un workspace
+nuovo.
+
+### I tuoi dati
+
+Eliminare il workspace chiude l'accesso, non cancella i dati: contatti, email e
+il resto del contenuto restano memorizzati. La cancellazione definitiva dei dati
+non è ancora automatica: per richiederla scrivi a **support@tratto.email**.
+
+### I tuoi domini
+
+I domini di un workspace eliminato restano riservati a quel workspace. Se crei
+un workspace nuovo, non puoi aggiungervi da solo lo stesso dominio: scrivi a
+**support@tratto.email**.
+
+### La chiamata API
+
+La dashboard chiama `DELETE /v1/workspace`. La rotta accetta solo una sessione
+della dashboard: una **chiave API riceve sempre `403`**, qualunque permesso
+abbia. Per questo `workspace.delete()` negli SDK Node.js e Python non può
+eliminare un workspace: usa la dashboard. Dalla versione 1.3.0 di entrambi gli
+SDK il metodo è segnato come deprecato (`@tratto/email` 1.3.0 o successiva,
+`tratto-email` 1.3.0 o successiva) e sparirà nella prossima versione maggiore.
+
+Il corpo della richiesta porta la conferma:
+
+```json
+{ "confirmName": "Acme Production" }
+```
+
+Una richiesta riuscita risponde **`202 Accepted`**:
+
+```json
+{
+  "data": {
+    "id": "ws_abc123",
+    "status": "pending_deletion",
+    "deletedAt": "2026-10-05T09:30:00.000Z"
+  }
+}
+```
+
+| Stato | Codice | Quando |
+|---|---|---|
+| 401 | `REAUTH_REQUIRED` | L'ultimo accesso risale a più di 5 minuti fa |
+| 403 | `EMAIL_NOT_VERIFIED` | L'indirizzo email del proprietario non è verificato |
+| 409 | `CONFLICT` | L'indirizzo email del proprietario è nella lista di soppressione: scrivi a **support@tratto.email** |
+| 422 | `VALIDATION_ERROR` | `confirmName` manca o non corrisponde al nome del workspace |
+
+Vedi [Codici di Errore](/it/docs/error-codes) per il formato del corpo d'errore.
+
+## Rimuovere un membro
+
+Quando un membro viene rimosso da un workspace:
+
+- perde subito l'accesso;
+- riceve un'email che lo avvisa che è stato rimosso dal workspace;
+- il suo account Tratto resta attivo.
+
+## Un solo workspace attivo per account
+
+Un account possiede un solo workspace attivo alla volta. Se lo elimini, puoi
+crearne un altro.
+
+I workspace eliminati continuano a contare: quando l'account ne possiede
+**10** in tutto, quello attivo più quelli eliminati, la creazione di un
+workspace (`POST /v1/workspaces`) risponde `409 CONFLICT`. A quel punto scrivi
+a **support@tratto.email**.
+
+---
+
+Prossimo: [Autenticazione](/it/docs/authentication) · [Codici di Errore](/it/docs/error-codes)
