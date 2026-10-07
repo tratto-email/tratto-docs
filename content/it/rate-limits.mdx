@@ -174,7 +174,9 @@ Non scrivere a mano i numeri qui sopra. `GET /v1/workspace` restituisce i
 limiti realmente applicati, dove `null` significa nessun limite.
 `limits.emailsPerMonth` e `limits.domains` sono i tetti dell'**account**
 proprietario del workspace, condivisi con i suoi altri workspace, non una
-dotazione di questo solo workspace:
+dotazione di questo solo workspace. `limits.membersPerWorkspace` è il numero di
+persone che ogni workspace può avere, inviti in attesa compresi (vedi
+[Team](/it/docs/team#quante-persone-ammette-ogni-piano)):
 
 ```bash
 curl https://api.tratto.email/v1/workspace \
@@ -185,7 +187,7 @@ curl https://api.tratto.email/v1/workspace \
 {
   "data": {
     "plan": "free",
-    "limits": { "emailsPerMonth": 3000, "domains": 3 }
+    "limits": { "emailsPerMonth": 3000, "domains": 3, "membersPerWorkspace": 1 }
   }
 }
 ```

@@ -1,0 +1,189 @@
+---
+title: Team
+description: I ruoli in un workspace, come il proprietario invita le persone e quante persone ammette ogni piano.
+---
+
+Un workspace si può condividere con altre persone. Questa pagina descrive chi
+può fare cosa, come funzionano gli inviti, quante persone ammette ogni piano e
+come finisce l'accesso.
+
+## Ruoli
+
+Un workspace ha due ruoli:
+
+| Ruolo | Chi | Cosa cambia |
+|---|---|---|
+| `owner` | La persona che ha creato il workspace | Solo il proprietario invita persone, revoca inviti, rimuove membri ed elimina il workspace |
+| `member` | Chi è entrato con un invito | Lavora nel workspace dalla dashboard |
+
+Chi accetta un invito diventa sempre `member`. La dashboard non ha altri ruoli
+e non cambia i ruoli.
+
+Il piano e le sue quote appartengono all'account del proprietario: ciò che
+invia un membro consuma la quota email mensile del proprietario. Vedi
+[Rate Limit](/it/docs/rate-limits#i-tetti-sono-dellaccount-non-del-workspace).
+
+## Invitare qualcuno
+
+Solo il proprietario del workspace può invitare persone, e solo dalla
+dashboard, in **Impostazioni → Team**. Le chiavi API non possono invitare
+nessuno, qualunque permesso abbiano.
+
+Inserisci l'indirizzo email della persona da invitare. Riceverà un'email con un
+link per accettare l'invito.
+
+<Callout type="info">
+Gli inviti ai membri vengono aperti gradualmente. Se il tuo workspace riceve
+l'errore `MEMBER_INVITES_RESTRICTED`, scrivi a **support@tratto.email**.
+</Callout>
+
+### Il link dell'invito
+
+- **È personale.** Accettarlo conferma anche l'indirizzo email a cui è stato
+  inviato: l'account risulta verificato senza un'email di verifica a parte.
+  Non inoltrarlo.
+- **Scade dopo 7 giorni.** Dopo, il proprietario invia un invito nuovo.
+- **Vale una volta.** Un link già usato viene rifiutato.
+- **Smette di funzionare quando l'invito viene revocato.**
+
+### Cosa succede a chi accetta
+
+- Entra nel workspace come `member`.
+- Può aprire la dashboard anche senza un proprio accesso alla beta.
+- Un account appartiene a un workspace alla volta: se il suo appartiene già a
+  un altro workspace, l'invito viene rifiutato.
+
+## Quante persone ammette ogni piano
+
+Il piano del proprietario del workspace stabilisce quante persone può avere il
+workspace. Il conteggio include il proprietario e gli **inviti in attesa**:
+
+| Piano | Persone per workspace |
+|---|---|
+| Free | 1 (solo il proprietario: il piano Free non può invitare) |
+| Starter | 2 |
+| Growth | 10 |
+
+A differenza della quota email, questo limite vale per ogni workspace. Viene
+controllato quando il proprietario invia un invito e di nuovo quando l'invito
+viene accettato: se nel frattempo il posto è stato preso, la persona invitata
+non può entrare finché il proprietario non ne libera uno.
+
+Per liberare un posto, revoca un invito in attesa o rimuovi un membro. Per
+alzare il limite, passa a un piano superiore da **Impostazioni → Fatturazione**.
+
+`GET /v1/workspace` restituisce il limite come `limits.membersPerWorkspace`,
+accanto a `emailsPerMonth` e `domains`.
+
+## Inviti in attesa
+
+**Impostazioni → Team** elenca i membri del workspace e gli inviti ancora in
+attesa. Da lì il proprietario può revocare un invito in attesa: il link smette
+di funzionare, e la persona invitata non riceve alcuna email.
+
+## Rimuovere un membro
+
+Il proprietario rimuove i membri dalla dashboard. Il membro rimosso perde
+subito l'accesso e riceve un'email; il suo account Tratto resta attivo. Il
+proprietario non può essere rimosso. Vedi
+[Workspace](/it/docs/workspaces#rimuovere-un-membro).
+
+## Accedere di nuovo
+
+Dopo una revoca delle sessioni di un account (un cambio password, o l'uscita
+da tutti i dispositivi), le sessioni iniziate prima della revoca non aprono più
+il workspace: la dashboard chiede di accedere di nuovo.
+
+## Dall'API
+
+La dashboard usa queste rotte:
+
+| Rotta | Cosa fa |
+|---|---|
+| `POST /v1/workspace/members/invite` | Invia un invito |
+| `GET /v1/workspace/invites` | Elenca gli inviti in attesa |
+| `DELETE /v1/workspace/invites/:id` | Revoca un invito |
+| `DELETE /v1/workspace/members/:userId` | Rimuove un membro |
+| `POST /v1/workspace-invites/lookup` | Legge un invito dal suo link |
+| `POST /v1/workspace-invites/accept` | Accetta un invito |
+
+Le prime quattro accettano **solo la sessione della dashboard del
+proprietario**. Una chiave API riceve sempre `403 FORBIDDEN` con il messaggio
+`Only the workspace owner can do this.`, qualunque permesso abbia. Per questo
+`inviteMember` e `removeMember` nell'SDK Node.js, e `invite_member` e
+`remove_member` nell'SDK Python, non possono riuscire: usa la dashboard.
+
+Nessuna rotta elenca i membri di un workspace: l'elenco è nella dashboard, in
+**Impostazioni → Team**.
+
+### Inviare un invito
+
+```json
+{ "email": "ada@example.com", "role": "member" }
+```
+
+Una richiesta riuscita risponde **`201 Created`**:
+
+```json
+{
+  "data": {
+    "id": "3f9c0a7e5b2d4c1f8e6a9b0d7c5e3f1a2b4c6d8e0f1a3b5c7d9e1f2a4b6c8d0e",
+    "email": "ada@example.com",
+    "invitedAt": "2026-10-06T09:30:00.000Z",
+    "expiresAt": "2026-10-13T09:30:00.000Z"
+  }
+}
+```
+
+L'`id` è di 64 caratteri esadecimali. La risposta non contiene il token
+dell'invito: il token viaggia solo nell'email alla persona invitata, nel
+frammento del link (`https://app.tratto.email/invite?tenant=…#token=…`), così
+non finisce nei log dei server.
+
+`GET /v1/workspace/invites` risponde `200` con gli stessi oggetti in `data`:
+solo inviti in attesa e non scaduti, ordinati per `invitedAt`.
+`DELETE /v1/workspace/invites/:id` risponde `204`.
+
+### Accettare un invito
+
+La pagina dell'invito chiama `lookup` e `accept` senza chiave API. Entrambe
+prendono l'id del workspace e il token del link nel **corpo** della richiesta:
+
+```json
+{ "tenantId": "ws_abc123", "token": "…" }
+```
+
+### Errori
+
+| Stato | Codice | Quando |
+|---|---|---|
+| 401 | `UNAUTHORIZED` | La sessione è iniziata prima di una revoca delle sessioni dell'account (`Sign in again.`) |
+| 401 | `REAUTH_REQUIRED` | Si accetta con una sessione più vecchia di una revoca delle sessioni dell'account (`Sign in again to accept this invite.`) |
+| 403 | `FORBIDDEN` | Si invita, si elencano o revocano inviti, o si rimuove un membro senza essere il proprietario, oppure con una chiave API |
+| 403 | `MEMBER_INVITES_RESTRICTED` | Gli inviti non sono ancora disponibili per questo workspace: scrivi a **support@tratto.email** |
+| 404 | `NOT_FOUND` | Si revoca un invito che non esiste, o si apre un link il cui invito non esiste (`Invite not found.`) |
+| 409 | `CONFLICT` | Invito: `That address is already a member of this workspace.` oppure `That address already has a pending invite.` |
+| 409 | `CONFLICT` | Accettazione: `This invite has already been used.`, `This invite has expired.`, `You are already a member of this workspace.` oppure `You already belong to another workspace.` |
+| 409 | `CONFLICT` | Rimozione del proprietario: `The workspace owner cannot be removed.` |
+| 422 | `VALIDATION_ERROR` | Si revoca con un id che non è di 64 caratteri esadecimali |
+| 429 | `QUOTA_EXCEEDED` | Il workspace ha raggiunto il limite di persone, inviti in attesa compresi, all'invito o all'accettazione |
+| 429 | `RATE_LIMITED` | Più di 20 inviti in un'ora dallo stesso proprietario |
+
+Il corpo di `QUOTA_EXCEEDED` indica il piano e il limite:
+
+```json
+{
+  "error": {
+    "code": "QUOTA_EXCEEDED",
+    "message": "Member limit reached for the starter plan: 2 people in this workspace, counting pending invites.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
+    "suggestion": "Revoke a pending invite or remove a member, or upgrade the plan at https://app.tratto.email/settings/billing."
+  }
+}
+```
+
+Vedi [Codici di Errore](/it/docs/error-codes) per il formato del corpo d'errore.
+
+---
+
+Prossimo: [Workspace](/it/docs/workspaces) · [Codici di Errore](/it/docs/error-codes)

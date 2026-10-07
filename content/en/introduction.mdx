@@ -9,7 +9,7 @@ Tratto is an accessible, developer-friendly email API for transactional, marketi
 
 Before you start, understand these key ideas:
 
-- **Tenant**: Your workspace. Isolated, multi-member, and the billing unit. API keys are tenant-scoped.
+- **Tenant**: Your workspace, the unit you work in. Isolated, with one owner and optional members; the plan and its quotas belong to the owner's account. API keys are tenant-scoped.
 - **API Key**: Bearer token prefixed `tratto_live_` that grants full workspace access. Treat it like a password.
 - **Domain**: A verified sending domain. You control the DNS records (SPF, DKIM, DMARC) that prove sender authenticity.
 - **Email**: An immutable send record with a status lifecycle (`queued → sent → delivered`) and tracking events.

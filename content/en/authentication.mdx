@@ -55,7 +55,7 @@ Every key carries a set of permissions, and they are enforced on each request: a
 | `api-keys:read` / `api-keys:write` | Read / create, update, revoke API keys |
 | `billing:read` / `billing:write` | Read plan and usage / start checkout, open the billing portal |
 | `workspace:write` | Change workspace settings, including the default sender |
-| `members:write` | Invite, remove, and change the role of workspace members |
+| `members:write` | Change a member's role with `PATCH /v1/workspace/members/:userId` (legacy, the dashboard has no roles to change). Inviting and removing members is dashboard-only: every API key gets `403` (see [Team](/en/docs/team#from-the-api)) |
 | `*` | Full access — every permission above, including future ones |
 
 Grant the narrowest set that does the job. A key that only sends transactional email needs `emails:send` and nothing else; one that also mirrors signups into your contact list needs `contacts:write` too.

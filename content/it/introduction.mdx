@@ -9,7 +9,7 @@ Tratto è un'API email developer-friendly e accessibile per email transazionali,
 
 Prima di iniziare, comprendi questi concetti chiave:
 
-- **Tenant**: Il tuo workspace. Isolato, multi-utente e unità di fatturazione. Le API key sono scoped al tenant.
+- **Tenant**: Il tuo workspace, l'unità in cui lavori. Isolato, con un proprietario ed eventuali membri; il piano e le sue quote appartengono all'account del proprietario. Le API key sono scoped al tenant.
 - **API Key**: Token Bearer con prefisso `tratto_live_` che concede accesso completo al workspace. Trattala come una password.
 - **Domain**: Un dominio di invio verificato. Tu controlli i record DNS (SPF, DKIM, DMARC) che provano l'autenticità del mittente.
 - **Email**: Un record di invio immutabile con ciclo di vita dello stato (`queued → sent → delivered`) e tracking degli eventi.

@@ -9,6 +9,7 @@
     "test-mode",
     "authentication",
     "workspaces",
+    "team",
     "---Sending Email---",
     "send-email",
     "templates",

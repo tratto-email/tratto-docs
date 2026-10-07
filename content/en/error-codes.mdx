@@ -29,14 +29,15 @@ errors add a `details` array: see below.
 
 | Code | HTTP | Meaning | What to do |
 |---|---|---|---|
-| `UNAUTHORIZED` | 401 | Missing or invalid API key | Check the `Authorization: Bearer` header |
+| `UNAUTHORIZED` | 401 | Missing or invalid API key, or a dashboard session started before the account's sessions were revoked (`Sign in again.`) | Check the `Authorization: Bearer` header; in the dashboard, sign in again |
 | `FORBIDDEN` | 403 | The request is not allowed: the key lacks a permission, the sending domain is not verified, or the action is blocked for this resource | Read `message` and `suggestion`; for a missing permission, use a key that has it |
 | `NO_WORKSPACE` | 403 | The account is signed in but has no workspace | Create the workspace from the dashboard, or sign in with the account that belongs to your workspace; see below |
 | `TENANT_CLOSED` | 403 | The workspace has been deleted: its API keys are refused | Nothing to retry. See [Workspaces](/en/docs/workspaces#delete-a-workspace) |
-| `REAUTH_REQUIRED` | 401 | The action needs a sign-in from the last 5 minutes (workspace deletion) | Sign in again in the dashboard, then repeat the action |
+| `REAUTH_REQUIRED` | 401 | The action needs a more recent sign-in: within the last 5 minutes for workspace deletion, or after the last revocation of the account's sessions to accept an invite | Sign in again in the dashboard, then repeat the action |
+| `MEMBER_INVITES_RESTRICTED` | 403 | Inviting members is not available for this workspace: invites are being opened gradually | Write to **support@tratto.email**. See [Team](/en/docs/team#invite-someone) |
 | `EMAIL_NOT_VERIFIED` | 403 | The action needs a verified email address on the account (workspace deletion) | Verify the address: the dashboard offers to send the verification email |
 | `NOT_FOUND` | 404 | The resource does not exist | Check the ID; it may belong to another workspace |
-| `CONFLICT` | 409 | The resource already exists, or its current state does not allow the action (for example, editing a campaign that is no longer a draft) | Fetch the resource and check its state before retrying |
+| `CONFLICT` | 409 | The resource already exists, or its current state does not allow the action (for example, editing a campaign that is no longer a draft, or accepting an invite that has expired; the invite cases are listed in [Team](/en/docs/team#errors)) | Fetch the resource and check its state before retrying |
 | `VALIDATION_ERROR` | 422 | The request body parsed but failed schema validation | Read `details` for the offending fields |
 | `TEMPLATE_NOT_PUBLISHED` | 422 | The template named in the request is still a draft and cannot be used to send | Publish it (`PATCH /v1/templates/:id` with `status: "published"`), then retry the request |
 | `BAD_REQUEST` | 400 | The request never reached a handler — the body could not be parsed (malformed JSON) | Fix the body syntax; the payload never got as far as the schema |
@@ -44,7 +45,7 @@ errors add a `details` array: see below.
 | `INVALID_TOKEN` | 400 | A signed link (unsubscribe, preference page) is not valid | Nothing to retry — request a fresh link |
 | `RATE_LIMITED` | 429 | Too many requests: 100/second per API key, 500/minute per client IP, or too many concurrent requests on the same account | Back off and retry, honouring `Retry-After` when the response sets it |
 | `PAYLOAD_TOO_LARGE` | 413 | The request body exceeds the maximum allowed size | Split the payload (for contact import, upload fewer rows per request) |
-| `QUOTA_EXCEEDED` | 429 | A usage limit was reached: the monthly email quota (on `POST /v1/emails`, or when sending a campaign now to more recipients than the quota has left), the domain limit (when adding a domain), the monthly AI generations in the dashboard, or the daily test-mode cap. All but the test-mode cap belong to the account and are shared by all its workspaces | Do not retry: `message` names the limit. The email quota resets at the start of the next UTC month, the test-mode cap at midnight UTC. For the domain limit, delete a domain or upgrade the plan; for the email quota, upgrade the plan |
+| `QUOTA_EXCEEDED` | 429 | A usage limit was reached: the monthly email quota (on `POST /v1/emails`, or when sending a campaign now to more recipients than the quota has left), the domain limit (when adding a domain), the monthly AI generations in the dashboard, the daily test-mode cap, or the limit of people in a workspace (when inviting or accepting an invite, counting pending invites). The email quota, the domain limit and the AI generations belong to the account and are shared by all its workspaces; the limit of people applies to each workspace | Do not retry: `message` names the limit. The email quota resets at the start of the next UTC month, the test-mode cap at midnight UTC. For the domain limit, delete a domain or upgrade the plan; for the email quota, upgrade the plan; for the limit of people, revoke a pending invite, remove a member or upgrade the plan (see [Team](/en/docs/team#how-many-people-each-plan-allows)) |
 | `TEST_MODE_NOT_SUPPORTED` | 403 | The endpoint reaches real recipients and rejects test keys | Use a live key (`tratto_live_...`) — see [Test mode](/en/docs/test-mode) |
 | `IDEMPOTENCY_CONFLICT` | 409 | The `Idempotency-Key` was reused with a different payload | Use a fresh key for a different request |
 | `IDEMPOTENCY_IN_PROGRESS` | 409 | A request with this `Idempotency-Key` is still being processed | Wait for the original request to finish, then retry |
@@ -186,8 +187,8 @@ responses:
 - **`RATE_LIMITED`**: you are sending too fast. Back off and retry; the request
   will succeed shortly. See [Rate Limits](/en/docs/rate-limits).
 - **`QUOTA_EXCEEDED`**: you have hit a usage limit, such as the monthly email
-  quota. Retrying will not help until the limit resets, a domain is deleted, or
-  the plan is upgraded.
+  quota. Retrying will not help until the limit resets, a domain is deleted, a
+  place in the workspace is freed, or the plan is upgraded.
 
 The email quota, the domain limit and the AI generations belong to the
 **account** that owns the workspace, and every workspace of that account draws
