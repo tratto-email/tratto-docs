@@ -375,6 +375,30 @@ La risposta nomina il permesso mancante, così sai quale aggiungere:
 
 Si risolve concedendo quel permesso alla chiave — vedi [Modifica i permessi di una chiave](#modifica-i-permessi-di-una-chiave) — oppure usando una chiave che lo ha già. Controlla i permessi correnti con `GET /v1/api-keys`.
 
+## Header del Workspace
+
+Una richiesta autenticata con una **sessione della dashboard** (un ID token Firebase, come fa la dashboard quando chiama l'API) può aggiungere l'header facoltativo `Tratto-Workspace` per scegliere su quale workspace operare, fra quelli a cui l'account ha accesso: quelli di cui è proprietario e quelli in cui è membro attivo.
+
+```http
+Tratto-Workspace: ws_xxxxxxxxxxxx
+```
+
+**Esempio:**
+```bash
+curl https://api.tratto.email/v1/workspace \
+  -H "Authorization: Bearer $FIREBASE_ID_TOKEN" \
+  -H "Tratto-Workspace: ws_..."
+```
+
+- Senza l'header, la richiesta opera sul workspace predefinito dell'account.
+- Con una chiave API l'header è ignorato: una chiave appartiene a un solo workspace e opera sempre su quello.
+- Non c'è ripiego. Un header che indica un workspace a cui l'account non ha accesso viene rifiutato, non reindirizzato su un altro workspace: `403 NOT_A_MEMBER` se l'account non ne è proprietario né membro attivo, `403 TENANT_CLOSED` se il workspace è stato eliminato. Un valore che non è un id di workspace riceve `422 VALIDATION_ERROR`. Vedi [Codici di errore](/it/docs/error-codes).
+- Un id di workspace è lungo da 1 a 128 caratteri fra `A-Z`, `a-z`, `0-9`, `_` e `-`, e non inizia mai con `__`.
+
+<Callout type="info">
+Le chiavi API restano il modo consigliato per integrare da un server. L'header serve agli strumenti che usano una sessione della dashboard, come la dashboard stessa e gli strumenti interni. Gli SDK non lo impostano.
+</Callout>
+
 ## Header di Idempotenza
 
 L'header `Idempotency-Key` previene richieste duplicate su determinati endpoint (operazioni POST che modificano lo stato).

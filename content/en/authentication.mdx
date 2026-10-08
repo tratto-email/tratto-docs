@@ -385,6 +385,30 @@ The response names the permission that was missing, so you can tell which one to
 
 Fix it by granting that permission to the key — see [Update Key Permissions](#update-key-permissions) — or by using a key that already has it. Check the key's current set with `GET /v1/api-keys`.
 
+## Workspace Header
+
+A request authenticated with a **dashboard session** (a Firebase ID token, the way the dashboard calls the API) can add the optional `Tratto-Workspace` header to choose which workspace it acts on, among those the account can access: the ones it owns and the ones where it is an active member.
+
+```http
+Tratto-Workspace: ws_xxxxxxxxxxxx
+```
+
+**Example:**
+```bash
+curl https://api.tratto.email/v1/workspace \
+  -H "Authorization: Bearer $FIREBASE_ID_TOKEN" \
+  -H "Tratto-Workspace: ws_..."
+```
+
+- Without the header, the request acts on the account's default workspace.
+- With an API key the header is ignored: a key belongs to one workspace and always acts on that one.
+- There is no fallback. A header naming a workspace the account cannot access is rejected, not redirected to another workspace: `403 NOT_A_MEMBER` if the account neither owns it nor is an active member, `403 TENANT_CLOSED` if the workspace has been deleted. A value that is not a workspace id gets `422 VALIDATION_ERROR`. See [Error Codes](/en/docs/error-codes).
+- A workspace id is 1 to 128 characters among `A-Z`, `a-z`, `0-9`, `_` and `-`, and never starts with `__`.
+
+<Callout type="info">
+API keys remain the recommended way to integrate from a server. The header is for tools that use a dashboard session, such as the dashboard itself and internal tools. The SDKs do not set it.
+</Callout>
+
 ## Idempotency Header
 
 The `Idempotency-Key` header prevents duplicate requests on certain endpoints (POST operations that modify state).
