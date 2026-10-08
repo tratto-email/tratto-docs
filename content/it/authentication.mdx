@@ -3,7 +3,16 @@ title: Autenticazione e API Key
 description: Gestire le API key e autenticare le richieste
 ---
 
-Tutte le richieste API di Tratto richiedono autenticazione tramite bearer token (API key).
+Ogni richiesta all'API di Tratto si autentica con un bearer token nell'header
+`Authorization`. Ce ne sono di due tipi:
+
+- una **chiave API**, per le tue integrazioni: server, script e SDK. Quasi tutta
+  questa pagina parla delle chiavi;
+- una **sessione della dashboard**, il token di una persona che ha effettuato
+  l'accesso, che la dashboard invia per te. Alcune rotte appartengono alla
+  persona e non a un workspace (elencare, creare ed eliminare workspace,
+  invitare e rimuovere membri) e accettano solo una sessione: con una chiave API
+  rispondono `403`. Vedi [Header del Workspace](#header-del-workspace).
 
 ## Formato della API Key
 
@@ -11,11 +20,17 @@ Le API key di Tratto seguono questo formato:
 
 ```
 tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+tratto_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-- Prefisso: `tratto_live_`
+- Prefisso: `tratto_live_` (consegna reale) o `tratto_test_` (simulata, vedi
+  [Test mode](/it/docs/test-mode))
 - Seguito da 32 caratteri casuali
 - Usato come bearer token nell'header `Authorization`
+
+L'ambiente è scritto nella chiave: una chiave di test esegue l'intera pipeline
+senza inviare email reali, vede solo i dati di test, e viene rifiutata dagli
+endpoint che raggiungono destinatari reali.
 
 ## Header di Autenticazione
 
@@ -108,8 +123,11 @@ print(f"Nuova API Key: {api_key}")
     "name": "production",
     "key": "tratto_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     "prefix": "tratto_live_xxxx...xxxx",
+    "env": "live",
+    "permissions": ["emails:send"],
     "createdAt": "2025-06-30T12:00:00Z",
-    "lastUsedAt": null
+    "lastUsedAt": null,
+    "revokedAt": null
   }
 }
 ```
@@ -330,7 +348,7 @@ Controlla `lastUsedAt` nelle risposte di elenco per identificare chiavi non util
 
 ### 401 Unauthorized
 
-**Causa:** Mancante o invalida API key.
+**Causa:** Credenziali mancanti o non valide: una chiave API errata o revocata, oppure una sessione della dashboard scaduta.
 
 ```json
 {
@@ -346,6 +364,7 @@ Controlla `lastUsedAt` nelle risposte di elenco per identificare chiavi non util
 - Assicurati che l'header `Authorization: Bearer tratto_live_...` sia presente
 - Controlla per errori di digitazione nella API key
 - Verifica che la chiave non sia stata revocata
+- Nella dashboard, accedi di nuovo
 
 ### 403 Forbidden
 

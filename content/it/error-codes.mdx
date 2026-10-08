@@ -29,24 +29,25 @@ Gli errori di validazione aggiungono un array `details`: vedi sotto.
 
 | Codice | HTTP | Significato | Cosa fare |
 |---|---|---|---|
-| `UNAUTHORIZED` | 401 | Chiave API mancante o non valida, oppure una sessione della dashboard iniziata prima di una revoca delle sessioni dell'account (`Sign in again.`) | Controlla l'header `Authorization: Bearer`; nella dashboard, accedi di nuovo |
+| `UNAUTHORIZED` | 401 | Credenziali mancanti o non valide (una chiave API, o il token della sessione della dashboard), oppure una sessione della dashboard iniziata prima di una revoca delle sessioni dell'account (`Sign in again.`) | Controlla l'header `Authorization: Bearer`; nella dashboard, accedi di nuovo |
 | `FORBIDDEN` | 403 | La richiesta non è consentita: alla chiave manca un permesso, il dominio mittente non è verificato, o l'azione è bloccata per questa risorsa | Leggi `message` e `suggestion`; se manca un permesso, usa una chiave che lo abbia |
 | `NO_WORKSPACE` | 403 | L'account ha effettuato l'accesso ma non ha un workspace | Crea il workspace dalla dashboard, oppure accedi con l'account che appartiene al tuo workspace; vedi sotto |
+| `TENANT_SUSPENDED` | 403 | Il workspace è sospeso: è in sola lettura, quindi non può inviare né modificare nulla. Arriva anche alla creazione di un workspace (`POST /v1/workspaces`) quando uno dei workspace posseduti dall'account è sospeso (`Your account has a suspended workspace: a new one cannot be created.`) | Rispondi all'avviso di sospensione inviato al proprietario del workspace, oppure scrivi a **support@tratto.email** |
 | `TENANT_CLOSED` | 403 | Il workspace è stato eliminato: le sue chiavi API vengono rifiutate, così come una sessione della dashboard il cui header `Tratto-Workspace` lo indica | Non c'è nulla da riprovare. Vedi [Workspace](/it/docs/workspaces#eliminare-un-workspace) |
 | `NOT_A_MEMBER` | 403 | Una sessione della dashboard opera su un workspace a cui l'account non ha accesso: l'account ne è stato rimosso, oppure l'header `Tratto-Workspace` indica un workspace di cui l'account non è proprietario né membro attivo | Accedi di nuovo per tornare al tuo workspace. Con l'header, invia l'id di un workspace a cui l'account ha accesso, oppure omettilo per usare quello predefinito. Vedi [Autenticazione](/it/docs/authentication#header-del-workspace) |
 | `REAUTH_REQUIRED` | 401 | L'azione richiede un accesso più recente: degli ultimi 5 minuti per eliminare il workspace, o successivo all'ultima revoca delle sessioni dell'account per accettare un invito | Accedi di nuovo dalla dashboard, poi ripeti l'azione |
 | `MEMBER_INVITES_RESTRICTED` | 403 | Gli inviti ai membri non sono disponibili per questo workspace: vengono aperti gradualmente | Scrivi a **support@tratto.email**. Vedi [Team](/it/docs/team#invitare-qualcuno) |
 | `EMAIL_NOT_VERIFIED` | 403 | L'azione richiede un indirizzo email verificato sull'account (eliminazione del workspace) | Verifica l'indirizzo: la dashboard offre l'invio dell'email di verifica |
 | `NOT_FOUND` | 404 | La risorsa non esiste | Verifica l'ID: potrebbe appartenere a un altro workspace |
-| `CONFLICT` | 409 | La risorsa esiste già, oppure il suo stato attuale non consente l'azione (ad esempio modificare una campagna che non è più in bozza, o accettare un invito scaduto; i casi degli inviti sono elencati in [Team](/it/docs/team#errori)) | Recupera la risorsa e verificane lo stato prima di riprovare |
-| `VALIDATION_ERROR` | 422 | Il corpo è stato letto ma non rispetta lo schema, oppure l'header `Tratto-Workspace` non è un id di workspace valido | Leggi `details` per i campi errati; per l'header, vedi [Autenticazione](/it/docs/authentication#header-del-workspace) |
+| `CONFLICT` | 409 | La risorsa esiste già, oppure il suo stato attuale non consente l'azione (ad esempio modificare una campagna che non è più in bozza, o accettare un invito scaduto; i casi degli inviti sono elencati in [Team](/it/docs/team#errori)). Su `POST /v1/workspaces`: un workspace oltre il primo su un account non ancora spostato sul piano per account, oppure un account che possiede già 10 workspace contando quelli in eliminazione (vedi [Workspace](/it/docs/workspaces#creare-un-workspace)) | Recupera la risorsa e verificane lo stato prima di riprovare. Per la creazione di un workspace, scrivi a **support@tratto.email** |
+| `VALIDATION_ERROR` | 422 | Il corpo è stato letto ma non rispetta lo schema, oppure l'header `Tratto-Workspace` non è un id di workspace valido | Per il corpo, leggi `details` per i campi errati. Per l'header non c'è `details`: `message` è `The Tratto-Workspace header is not a workspace id.`; invia l'id di un workspace a cui l'account ha accesso, oppure ometti l'header. Vedi [Autenticazione](/it/docs/authentication#header-del-workspace) |
 | `TEMPLATE_NOT_PUBLISHED` | 422 | Il template indicato nella richiesta è ancora in bozza e non può essere usato per inviare | Pubblicalo (`PATCH /v1/templates/:id` con `status: "published"`), poi ripeti la richiesta |
 | `BAD_REQUEST` | 400 | La richiesta non è arrivata a un handler: il corpo non è interpretabile (JSON malformato) | Correggi la sintassi del corpo: il payload non è mai arrivato allo schema |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | Il `Content-Type` non è fra quelli che l'endpoint sa leggere | Usa il tipo atteso (`application/json` nella maggior parte dei casi, `text/csv` per l'import contatti, `image/png` o `image/jpeg` per il logo del marchio) |
 | `INVALID_TOKEN` | 400 | Un link firmato (disiscrizione, pagina preferenze) non è valido | Non c'è nulla da riprovare: serve un link nuovo |
 | `RATE_LIMITED` | 429 | Troppe richieste: 100 al secondo per chiave API, 500 al minuto per IP client, o troppe richieste simultanee sullo stesso account | Attendi e riprova, rispettando `Retry-After` se la risposta lo imposta |
 | `PAYLOAD_TOO_LARGE` | 413 | Il corpo della richiesta supera la dimensione massima | Spezza il payload (per l'import contatti, carica meno righe per richiesta) |
-| `QUOTA_EXCEEDED` | 429 | Raggiunto un limite d'uso: la quota mensile di email (su `POST /v1/emails`, o inviando subito una campagna a più destinatari di quanti ne restano nella quota), il limite di domini (quando aggiungi un dominio), le generazioni AI mensili nella dashboard, il tetto giornaliero del test mode, o il limite di persone di un workspace (all'invito o all'accettazione di un invito, inviti in attesa compresi). La quota email, il limite di domini e le generazioni AI appartengono all'account e sono condivisi dai suoi workspace; il limite di persone vale per ogni workspace | Non riprovare: `message` indica il limite. La quota email si azzera all'inizio del mese UTC successivo, il tetto del test mode a mezzanotte UTC. Per il limite di domini elimina un dominio o passa a un piano superiore; per la quota email passa a un piano superiore; per il limite di persone revoca un invito in attesa, rimuovi un membro o passa a un piano superiore (vedi [Team](/it/docs/team#quante-persone-ammette-ogni-piano)) |
+| `QUOTA_EXCEEDED` | 429 | Raggiunto un limite d'uso: la quota mensile di email (su `POST /v1/emails`, o inviando subito una campagna a più destinatari di quanti ne restano nella quota), il limite di domini (quando aggiungi un dominio), le generazioni AI mensili nella dashboard, il tetto giornaliero del test mode, il limite di persone di un workspace (all'invito o all'accettazione di un invito, inviti in attesa compresi), o il numero di workspace che l'account può possedere (alla creazione di un workspace). La quota email, il limite di domini, le generazioni AI e il limite di workspace appartengono all'account e sono condivisi dai suoi workspace; il limite di persone vale per ogni workspace | Non riprovare: `message` indica il limite. La quota email si azzera all'inizio del mese UTC successivo, il tetto del test mode a mezzanotte UTC. Per il limite di domini elimina un dominio o passa a un piano superiore; per la quota email passa a un piano superiore; per il limite di persone revoca un invito in attesa, rimuovi un membro o passa a un piano superiore (vedi [Team](/it/docs/team#quante-persone-ammette-ogni-piano)); per il limite di workspace elimina un workspace o passa a un piano superiore (vedi [Workspace](/it/docs/workspaces#workspace-posseduti-e-condivisi)) |
 | `TEST_MODE_NOT_SUPPORTED` | 403 | L'endpoint raggiunge destinatari reali e rifiuta le chiavi di test | Usa una chiave live (`tratto_live_...`) — vedi [Test mode](/it/docs/test-mode) |
 | `IDEMPOTENCY_CONFLICT` | 409 | La stessa `Idempotency-Key` è stata riusata con un payload diverso | Usa una chiave nuova per una richiesta diversa |
 | `IDEMPOTENCY_IN_PROGRESS` | 409 | Una richiesta con questa `Idempotency-Key` è ancora in elaborazione | Attendi che la prima finisca, poi riprova |
@@ -171,13 +172,11 @@ nemmeno `GET /v1/workspace`. Nella dashboard questo codice apre la pagina
 e ti porta dentro. Da lì puoi anche accedere con un altro account o riprovare.
 
 Il bottone chiama `POST /v1/workspaces`, che accetta solo una sessione della
-dashboard. Risponde `201` con lo stesso oggetto di `GET /v1/workspace`, e
-`409 CONFLICT` se l'account possiede già un workspace attivo o sospeso,
-appartiene già a un workspace come membro attivo, o possiede già 10 workspace
-contando quelli in eliminazione (vedi
-[Workspace](/it/docs/workspaces#un-solo-workspace-attivo-per-account)). Il
-campo `name` è facoltativo (da 1 a 100 caratteri, predefinito `My Workspace`):
-un nome non valido riceve `422`. Gli id dei workspace creati così iniziano con
+dashboard. Risponde `201` con lo stesso oggetto di `GET /v1/workspace`. Il campo
+`name` è facoltativo (da 1 a 100 caratteri, predefinito `My Workspace`): un nome
+non valido riceve `422`. La stessa rotta crea i workspace oltre il primo, entro
+il limite del piano; i rifiuti sono elencati in
+[Workspace](/it/docs/workspaces#creare-un-workspace). Gli id dei workspace creati così iniziano con
 `ws_`; i workspace esistenti tengono il loro id.
 
 Le chiavi API non sono coinvolte: una chiave appartiene sempre a un workspace,
@@ -192,7 +191,8 @@ reazioni opposte:
   richiesta andrà a buon fine a breve. Vedi [Rate Limit](/it/docs/rate-limits).
 - **`QUOTA_EXCEEDED`**: hai raggiunto un limite d'uso, come la quota mensile di
   email. Riprovare non serve finché il limite non si azzera, non elimini un
-  dominio, non liberi un posto nel workspace o non passi a un piano superiore.
+  dominio o un workspace, non liberi un posto nel workspace o non passi a un
+  piano superiore.
 
 La quota email, il limite di domini e le generazioni AI appartengono
 all'**account** proprietario del workspace, e tutti i workspace di

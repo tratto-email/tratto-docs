@@ -29,24 +29,25 @@ errors add a `details` array: see below.
 
 | Code | HTTP | Meaning | What to do |
 |---|---|---|---|
-| `UNAUTHORIZED` | 401 | Missing or invalid API key, or a dashboard session started before the account's sessions were revoked (`Sign in again.`) | Check the `Authorization: Bearer` header; in the dashboard, sign in again |
+| `UNAUTHORIZED` | 401 | Missing or invalid credentials (an API key, or the dashboard session token), or a dashboard session started before the account's sessions were revoked (`Sign in again.`) | Check the `Authorization: Bearer` header; in the dashboard, sign in again |
 | `FORBIDDEN` | 403 | The request is not allowed: the key lacks a permission, the sending domain is not verified, or the action is blocked for this resource | Read `message` and `suggestion`; for a missing permission, use a key that has it |
 | `NO_WORKSPACE` | 403 | The account is signed in but has no workspace | Create the workspace from the dashboard, or sign in with the account that belongs to your workspace; see below |
+| `TENANT_SUSPENDED` | 403 | The workspace is suspended: it is read-only, so it cannot send or change anything. Also returned when creating a workspace (`POST /v1/workspaces`) while one of the workspaces the account owns is suspended (`Your account has a suspended workspace: a new one cannot be created.`) | Reply to the suspension notice sent to the workspace owner, or write to **support@tratto.email** |
 | `TENANT_CLOSED` | 403 | The workspace has been deleted: its API keys are refused, and so is a dashboard session whose `Tratto-Workspace` header names it | Nothing to retry. See [Workspaces](/en/docs/workspaces#delete-a-workspace) |
 | `NOT_A_MEMBER` | 403 | A dashboard session acts on a workspace the account cannot access: the account was removed from it, or the `Tratto-Workspace` header names a workspace the account neither owns nor is an active member of | Sign in again to return to your own workspace. With the header, send the id of a workspace the account can access, or leave it out to use the default one. See [Authentication](/en/docs/authentication#workspace-header) |
 | `REAUTH_REQUIRED` | 401 | The action needs a more recent sign-in: within the last 5 minutes for workspace deletion, or after the last revocation of the account's sessions to accept an invite | Sign in again in the dashboard, then repeat the action |
 | `MEMBER_INVITES_RESTRICTED` | 403 | Inviting members is not available for this workspace: invites are being opened gradually | Write to **support@tratto.email**. See [Team](/en/docs/team#invite-someone) |
 | `EMAIL_NOT_VERIFIED` | 403 | The action needs a verified email address on the account (workspace deletion) | Verify the address: the dashboard offers to send the verification email |
 | `NOT_FOUND` | 404 | The resource does not exist | Check the ID; it may belong to another workspace |
-| `CONFLICT` | 409 | The resource already exists, or its current state does not allow the action (for example, editing a campaign that is no longer a draft, or accepting an invite that has expired; the invite cases are listed in [Team](/en/docs/team#errors)) | Fetch the resource and check its state before retrying |
-| `VALIDATION_ERROR` | 422 | The request body parsed but failed schema validation, or the `Tratto-Workspace` header is not a valid workspace id | Read `details` for the offending fields; for the header, see [Authentication](/en/docs/authentication#workspace-header) |
+| `CONFLICT` | 409 | The resource already exists, or its current state does not allow the action (for example, editing a campaign that is no longer a draft, or accepting an invite that has expired; the invite cases are listed in [Team](/en/docs/team#errors)). On `POST /v1/workspaces`: a workspace beyond the first on an account not yet moved to the per-account plan, or an account that already owns 10 workspaces counting those being deleted (see [Workspaces](/en/docs/workspaces#create-a-workspace)) | Fetch the resource and check its state before retrying. For a workspace creation, write to **support@tratto.email** |
+| `VALIDATION_ERROR` | 422 | The request body parsed but failed schema validation, or the `Tratto-Workspace` header is not a valid workspace id | For the body, read `details` for the offending fields. For the header there is no `details`: `message` is `The Tratto-Workspace header is not a workspace id.`; send the id of a workspace the account can access, or leave the header out. See [Authentication](/en/docs/authentication#workspace-header) |
 | `TEMPLATE_NOT_PUBLISHED` | 422 | The template named in the request is still a draft and cannot be used to send | Publish it (`PATCH /v1/templates/:id` with `status: "published"`), then retry the request |
 | `BAD_REQUEST` | 400 | The request never reached a handler — the body could not be parsed (malformed JSON) | Fix the body syntax; the payload never got as far as the schema |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | The `Content-Type` is not one this endpoint parses | Send the type the endpoint expects (`application/json` for most, `text/csv` for contact import, `image/png` or `image/jpeg` for the brand logo) |
 | `INVALID_TOKEN` | 400 | A signed link (unsubscribe, preference page) is not valid | Nothing to retry — request a fresh link |
 | `RATE_LIMITED` | 429 | Too many requests: 100/second per API key, 500/minute per client IP, or too many concurrent requests on the same account | Back off and retry, honouring `Retry-After` when the response sets it |
 | `PAYLOAD_TOO_LARGE` | 413 | The request body exceeds the maximum allowed size | Split the payload (for contact import, upload fewer rows per request) |
-| `QUOTA_EXCEEDED` | 429 | A usage limit was reached: the monthly email quota (on `POST /v1/emails`, or when sending a campaign now to more recipients than the quota has left), the domain limit (when adding a domain), the monthly AI generations in the dashboard, the daily test-mode cap, or the limit of people in a workspace (when inviting or accepting an invite, counting pending invites). The email quota, the domain limit and the AI generations belong to the account and are shared by all its workspaces; the limit of people applies to each workspace | Do not retry: `message` names the limit. The email quota resets at the start of the next UTC month, the test-mode cap at midnight UTC. For the domain limit, delete a domain or upgrade the plan; for the email quota, upgrade the plan; for the limit of people, revoke a pending invite, remove a member or upgrade the plan (see [Team](/en/docs/team#how-many-people-each-plan-allows)) |
+| `QUOTA_EXCEEDED` | 429 | A usage limit was reached: the monthly email quota (on `POST /v1/emails`, or when sending a campaign now to more recipients than the quota has left), the domain limit (when adding a domain), the monthly AI generations in the dashboard, the daily test-mode cap, the limit of people in a workspace (when inviting or accepting an invite, counting pending invites), or the number of workspaces the account can own (when creating a workspace). The email quota, the domain limit, the AI generations and the workspace limit belong to the account and are shared by all its workspaces; the limit of people applies to each workspace | Do not retry: `message` names the limit. The email quota resets at the start of the next UTC month, the test-mode cap at midnight UTC. For the domain limit, delete a domain or upgrade the plan; for the email quota, upgrade the plan; for the limit of people, revoke a pending invite, remove a member or upgrade the plan (see [Team](/en/docs/team#how-many-people-each-plan-allows)); for the workspace limit, delete a workspace or upgrade the plan (see [Workspaces](/en/docs/workspaces#owned-and-joined-workspaces)) |
 | `TEST_MODE_NOT_SUPPORTED` | 403 | The endpoint reaches real recipients and rejects test keys | Use a live key (`tratto_live_...`) — see [Test mode](/en/docs/test-mode) |
 | `IDEMPOTENCY_CONFLICT` | 409 | The `Idempotency-Key` was reused with a different payload | Use a fresh key for a different request |
 | `IDEMPOTENCY_IN_PROGRESS` | 409 | A request with this `Idempotency-Key` is still being processed | Wait for the original request to finish, then retry |
@@ -168,13 +169,11 @@ button creates one and takes you into it. From there you can also sign in with
 another account or try again.
 
 The button calls `POST /v1/workspaces`, which accepts a dashboard session only.
-It returns `201` with the same object as `GET /v1/workspace`, and `409 CONFLICT`
-if the account already owns an active or suspended workspace, already belongs
-to a workspace as an active member, or already owns 10 workspaces counting
-those being deleted (see
-[Workspaces](/en/docs/workspaces#one-active-workspace-per-account)). The `name`
-field is optional (1 to 100 characters, default `My Workspace`): an invalid name
-gets `422`. Workspaces created this way have ids starting with `ws_`; existing
+It returns `201` with the same object as `GET /v1/workspace`. The `name` field is
+optional (1 to 100 characters, default `My Workspace`): an invalid name gets
+`422`. The same route creates the workspaces beyond the first, within the limit
+of the plan; the refusals are listed in
+[Workspaces](/en/docs/workspaces#create-a-workspace). Workspaces created this way have ids starting with `ws_`; existing
 workspaces keep their id.
 
 API keys are not affected: a key always belongs to a workspace, and a key cannot
@@ -188,8 +187,8 @@ responses:
 - **`RATE_LIMITED`**: you are sending too fast. Back off and retry; the request
   will succeed shortly. See [Rate Limits](/en/docs/rate-limits).
 - **`QUOTA_EXCEEDED`**: you have hit a usage limit, such as the monthly email
-  quota. Retrying will not help until the limit resets, a domain is deleted, a
-  place in the workspace is freed, or the plan is upgraded.
+  quota. Retrying will not help until the limit resets, a domain or a workspace is
+  deleted, a place in the workspace is freed, or the plan is upgraded.
 
 The email quota, the domain limit and the AI generations belong to the
 **account** that owns the workspace, and every workspace of that account draws

@@ -1,10 +1,103 @@
 ---
 title: Workspace
-description: Eliminare un workspace, rimuovere un membro, e la regola di un solo workspace attivo per account.
+description: Possedere più workspace, passare dall'uno all'altro, creare ed eliminare un workspace, rimuovere un membro.
 ---
 
 Un workspace contiene i tuoi domini, template, contatti, campagne e chiavi API.
-Questa pagina descrive cosa chiude un workspace o l'accesso di qualcuno a esso.
+Questa pagina descrive quanti workspace può avere un account, come passare
+dall'uno all'altro, e cosa chiude un workspace o l'accesso di qualcuno a esso.
+
+## Workspace posseduti e condivisi
+
+Un account può **possedere** più workspace e **appartenere** ad altri come
+membro, quando i loro proprietari lo invitano (vedi [Team](/it/docs/team)).
+
+Il piano è della persona, non del workspace: il piano del tuo account decide
+quanti workspace puoi possedere. Il limite conta i workspace **attivi** che
+possiedi, sospesi compresi; quelli in eliminazione non contano.
+
+| Piano | Workspace che puoi possedere |
+|---|---|
+| Free | 1 |
+| Starter | 3 |
+| Growth | 5 |
+
+`GET /v1/workspace` restituisce il limite come `limits.workspaces`, accanto a
+`domains`, `emailsPerMonth` e `membersPerWorkspace`. I workspace in cui sei
+membro non contano.
+
+I workspace eliminati restano finché restano i loro dati (vedi
+[Eliminare un workspace](#eliminare-un-workspace)): un account può possedere al
+massimo **10 workspace** in tutto, contando quelli in eliminazione. Oltre quella
+soglia la creazione di un workspace risponde `409 CONFLICT`: scrivi a
+**support@tratto.email**.
+
+## Cambiare workspace nella dashboard
+
+La dashboard ha un selettore che elenca i workspace che possiedi e quelli a cui
+appartieni. La scelta vale per la **scheda del browser**: due schede possono
+lavorare su due workspace diversi nello stesso momento.
+
+Le chiavi API non risentono del selettore. Una chiave appartiene al workspace in
+cui è stata creata e opera sempre su quello: cambiare workspace nella dashboard
+non cambia nulla per le tue integrazioni. La dashboard dice all'API su quale
+workspace sta lavorando con l'header `Tratto-Workspace` (vedi
+[Autenticazione](/it/docs/authentication#header-del-workspace)).
+
+Accettare un invito mentre possiedi già un workspace, o appartieni a uno, non è
+un errore: diventi membro del nuovo workspace e ci passi dal selettore.
+
+<Callout type="info">
+Le integrazioni server usano le chiavi API, una per workspace. Le rotte di questa
+pagina che elencano e creano workspace accettano solo una sessione della
+dashboard, e gli SDK non le espongono.
+</Callout>
+
+## Elencare i tuoi workspace
+
+La dashboard legge l'elenco con `GET /v1/workspaces`. La rotta accetta solo una
+sessione della dashboard: una **chiave API riceve `403 FORBIDDEN`**.
+
+```json
+{
+  "data": [
+    { "id": "ws_abc123", "name": "Acme Production", "role": "owner", "status": "active" },
+    { "id": "ws_def456", "name": "Client Store", "role": "member", "status": "suspended" }
+  ]
+}
+```
+
+- `role` dice se l'account che fa la richiesta è il proprietario del workspace
+  (`owner`) o un membro (`member`).
+- `status` vale `active` o `suspended`. Un workspace sospeso è in sola lettura.
+- I workspace in eliminazione non compaiono.
+- L'elenco non è paginato.
+
+## Creare un workspace
+
+Dalla dashboard, oppure con `POST /v1/workspaces`. La rotta accetta solo una
+sessione della dashboard: una chiave API riceve `403 FORBIDDEN`, e così un
+account senza accesso alla beta. Il corpo è facoltativo:
+
+```json
+{ "name": "Acme Staging" }
+```
+
+`name` è lungo da 1 a 100 caratteri (predefinito `My Workspace`); un nome non
+valido riceve `422 VALIDATION_ERROR`. Una richiesta riuscita risponde
+**`201 Created`** con lo stesso oggetto di `GET /v1/workspace`. Il nuovo
+workspace diventa quello su cui lavora la sessione, e la dashboard aggiorna il
+proprio accesso per vederlo.
+
+Oltre il tuo primo workspace, la richiesta viene rifiutata in quest'ordine:
+
+| Stato | Codice | Quando |
+|---|---|---|
+| 403 | `TENANT_SUSPENDED` | Uno dei workspace che possiedi è sospeso: `Your account has a suspended workspace: a new one cannot be created.` |
+| 409 | `CONFLICT` | L'account non è ancora stato spostato sul piano per account: scrivi a **support@tratto.email** |
+| 429 | `QUOTA_EXCEEDED` | Possiedi già tanti workspace attivi quanti ne consente il piano: eliminane uno o passa a un piano superiore |
+
+Vedi [Codici di Errore](/it/docs/error-codes) per il formato del corpo d'errore.
 
 ## Eliminare un workspace
 
@@ -86,16 +179,6 @@ Quando un membro viene rimosso da un workspace:
 - perde subito l'accesso;
 - riceve un'email che lo avvisa che è stato rimosso dal workspace;
 - il suo account Tratto resta attivo.
-
-## Un solo workspace attivo per account
-
-Un account possiede un solo workspace attivo alla volta. Se lo elimini, puoi
-crearne un altro.
-
-I workspace eliminati continuano a contare: quando l'account ne possiede
-**10** in tutto, quello attivo più quelli eliminati, la creazione di un
-workspace (`POST /v1/workspaces`) risponde `409 CONFLICT`. A quel punto scrivi
-a **support@tratto.email**.
 
 ---
 
