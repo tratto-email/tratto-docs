@@ -41,15 +41,19 @@ Inviting members is being opened gradually. If your workspace gets the error
   to: the account counts as verified without a separate verification email. Do
   not forward it.
 - **It expires after 7 days.** After that, the owner sends a new invite.
-- **It works once.** A link that has already been used is refused.
+- **It works once.** A link that has already been used is refused, except
+  for the account that accepted it, while it is still a member: accepting again
+  succeeds and changes nothing.
 - **It stops working when the invite is revoked.**
 
 ### What happens to the person who accepts
 
 - They join the workspace as a `member`.
 - They can open the dashboard even without beta access of their own.
-- An account belongs to one workspace at a time: if theirs already belongs to
-  another workspace, the invite is refused.
+- If their account already owns a workspace or belongs to another one, they
+  keep it: their session moves to the workspace they joined, and the selector in
+  the dashboard takes them back to the others (see
+  [Workspaces](/en/docs/workspaces#switch-workspace-in-the-dashboard)).
 
 ## How many people each plan allows
 
@@ -161,7 +165,7 @@ workspace id and the token from the link in the request **body**:
 | 403 | `MEMBER_INVITES_RESTRICTED` | Invites are not available for this workspace yet: write to **support@tratto.email** |
 | 404 | `NOT_FOUND` | Revoking an invite that does not exist, or opening a link whose invite does not exist (`Invite not found.`) |
 | 409 | `CONFLICT` | Inviting: `That address is already a member of this workspace.` or `That address already has a pending invite.` |
-| 409 | `CONFLICT` | Accepting: `This invite has already been used.`, `This invite has expired.`, `You are already a member of this workspace.` or `You already belong to another workspace.` |
+| 409 | `CONFLICT` | Accepting: `This invite has already been used.`, `This invite has expired.` or `You are already a member of this workspace.` |
 | 409 | `CONFLICT` | Removing the owner: `The workspace owner cannot be removed.` |
 | 422 | `VALIDATION_ERROR` | Revoking with an id that is not 64 hexadecimal characters |
 | 429 | `QUOTA_EXCEEDED` | The workspace has reached its limit of people, counting pending invites, when inviting or accepting |

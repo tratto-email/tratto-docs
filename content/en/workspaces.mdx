@@ -1,10 +1,105 @@
 ---
 title: Workspaces
-description: Delete a workspace, remove a member, and the rule of one active workspace per account.
+description: Own several workspaces, switch between them, create and delete a workspace, remove a member.
 ---
 
 A workspace holds your domains, templates, contacts, campaigns and API keys.
-This page covers what ends a workspace or someone's access to it.
+This page covers how many workspaces an account can have, how to move between
+them, and what ends a workspace or someone's access to it.
+
+## Owned and joined workspaces
+
+An account can **own** several workspaces and **belong** to others as a member,
+when their owners invite it (see [Team](/en/docs/team)).
+
+The plan belongs to the person, not to the workspace: the plan of your account
+sets how many workspaces you can own. The limit counts the **active** workspaces
+you own, suspended ones included; workspaces being deleted do not count.
+
+| Plan | Workspaces you can own |
+|---|---|
+| Free | 1 |
+| Starter | 3 |
+| Growth | 5 |
+
+`GET /v1/workspace` returns the limit as `limits.workspaces`, next to
+`domains`, `emailsPerMonth` and `membersPerWorkspace`. The workspaces you join
+as a member do not count towards it. The value is the one of the plan of the
+workspace owner: a member who opens someone else's workspace reads the owner's
+limit, not their own.
+
+Deleted workspaces are kept as long as their data is (see
+[Delete a workspace](#delete-a-workspace)): an account can own at most
+**10 workspaces** in total, counting those being deleted. Past that point,
+creating a workspace returns `409 CONFLICT`: write to **support@tratto.email**.
+
+## Switch workspace in the dashboard
+
+The dashboard has a workspace selector listing the workspaces you own and those
+you belong to. The choice applies to the **browser tab**: two tabs can work on
+two different workspaces at the same time.
+
+API keys are not affected by the selector. A key belongs to the workspace it
+was created in and always acts on that one: switching workspace in the
+dashboard changes nothing for your integrations. The dashboard tells the API
+which workspace it is working on with the `Tratto-Workspace` header (see
+[Authentication](/en/docs/authentication#workspace-header)).
+
+Accepting an invite while you already own a workspace, or belong to one, is
+not an error: you become a member of the new workspace and your session moves
+to it right away. The selector takes you back to the others.
+
+<Callout type="info">
+Server integrations use API keys, one per workspace. The routes on this page
+that list and create workspaces accept a dashboard session only, and the SDKs
+do not expose them.
+</Callout>
+
+## List your workspaces
+
+The dashboard reads the list with `GET /v1/workspaces`. The route accepts a
+dashboard session only: an **API key gets `403 FORBIDDEN`**.
+
+```json
+{
+  "data": [
+    { "id": "ws_abc123", "name": "Acme Production", "role": "owner", "status": "active" },
+    { "id": "ws_def456", "name": "Client Store", "role": "member", "status": "suspended" }
+  ]
+}
+```
+
+- `role` says whether the account making the request owns the workspace
+  (`owner`) or belongs to it as a member (`member`).
+- `status` is `active` or `suspended`. A suspended workspace is read-only.
+- Workspaces being deleted are not listed.
+- The list is not paginated.
+
+## Create a workspace
+
+From the dashboard, or with `POST /v1/workspaces`. The route accepts a
+dashboard session only: an API key gets `403 FORBIDDEN`, and so does an account
+without beta access. The body is optional:
+
+```json
+{ "name": "Acme Staging" }
+```
+
+`name` is 1 to 100 characters (default `My Workspace`); an invalid name gets
+`422 VALIDATION_ERROR`. A successful request returns **`201 Created`** with the
+same object as `GET /v1/workspace`. The new workspace becomes the one the
+session works on, and the dashboard refreshes its sign-in to pick it up.
+
+Beyond your first workspace, the request is refused in this order:
+
+| Status | Code | When |
+|---|---|---|
+| 403 | `TENANT_SUSPENDED` | One of the workspaces you own is suspended: `Your account has a suspended workspace: a new one cannot be created.` |
+| 409 | `CONFLICT` | Another of your workspaces has not been migrated yet: `Another of your workspaces has not been migrated yet: a new one cannot be created.` Write to **support@tratto.email** |
+| 409 | `CONFLICT` | You already own 10 workspaces, counting those being deleted (see [Owned and joined workspaces](#owned-and-joined-workspaces)): write to **support@tratto.email** |
+| 429 | `QUOTA_EXCEEDED` | You already own as many active workspaces as your plan allows: delete one or upgrade the plan |
+
+See [Error Codes](/en/docs/error-codes) for the format of the error body.
 
 ## Delete a workspace
 
@@ -86,16 +181,6 @@ When a member is removed from a workspace:
 - they lose access to it immediately;
 - they receive an email telling them they have been removed from the workspace;
 - their Tratto account stays active.
-
-## One active workspace per account
-
-An account owns one active workspace at a time. If you delete it, you can
-create another one.
-
-Deleted workspaces keep counting: when the account owns **10 workspaces** in
-total, the active one plus the deleted ones, creating a workspace
-(`POST /v1/workspaces`) returns `409 CONFLICT`. At that point, write to
-**support@tratto.email**.
 
 ---
 
