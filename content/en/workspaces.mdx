@@ -24,7 +24,9 @@ you own, suspended ones included; workspaces being deleted do not count.
 
 `GET /v1/workspace` returns the limit as `limits.workspaces`, next to
 `domains`, `emailsPerMonth` and `membersPerWorkspace`. The workspaces you join
-as a member do not count towards it.
+as a member do not count towards it. The value is the one of the plan of the
+workspace owner: a member who opens someone else's workspace reads the owner's
+limit, not their own.
 
 Deleted workspaces are kept as long as their data is (see
 [Delete a workspace](#delete-a-workspace)): an account can own at most
