@@ -44,8 +44,8 @@ which workspace it is working on with the `Tratto-Workspace` header (see
 [Authentication](/en/docs/authentication#workspace-header)).
 
 Accepting an invite while you already own a workspace, or belong to one, is
-not an error: you become a member of the new workspace and move to it from the
-selector.
+not an error: you become a member of the new workspace and your session moves
+to it right away. The selector takes you back to the others.
 
 <Callout type="info">
 Server integrations use API keys, one per workspace. The routes on this page
@@ -93,7 +93,8 @@ Beyond your first workspace, the request is refused in this order:
 | Status | Code | When |
 |---|---|---|
 | 403 | `TENANT_SUSPENDED` | One of the workspaces you own is suspended: `Your account has a suspended workspace: a new one cannot be created.` |
-| 409 | `CONFLICT` | The account has not been moved to the per-account plan yet: write to **support@tratto.email** |
+| 409 | `CONFLICT` | Another of your workspaces has not been migrated yet: `Another of your workspaces has not been migrated yet: a new one cannot be created.` Write to **support@tratto.email** |
+| 409 | `CONFLICT` | You already own 10 workspaces, counting those being deleted (see [Owned and joined workspaces](#owned-and-joined-workspaces)): write to **support@tratto.email** |
 | 429 | `QUOTA_EXCEEDED` | You already own as many active workspaces as your plan allows: delete one or upgrade the plan |
 
 See [Error Codes](/en/docs/error-codes) for the format of the error body.

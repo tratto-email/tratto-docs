@@ -39,7 +39,7 @@ Gli errori di validazione aggiungono un array `details`: vedi sotto.
 | `MEMBER_INVITES_RESTRICTED` | 403 | Gli inviti ai membri non sono disponibili per questo workspace: vengono aperti gradualmente | Scrivi a **support@tratto.email**. Vedi [Team](/it/docs/team#invitare-qualcuno) |
 | `EMAIL_NOT_VERIFIED` | 403 | L'azione richiede un indirizzo email verificato sull'account (eliminazione del workspace) | Verifica l'indirizzo: la dashboard offre l'invio dell'email di verifica |
 | `NOT_FOUND` | 404 | La risorsa non esiste | Verifica l'ID: potrebbe appartenere a un altro workspace |
-| `CONFLICT` | 409 | La risorsa esiste già, oppure il suo stato attuale non consente l'azione (ad esempio modificare una campagna che non è più in bozza, o accettare un invito scaduto; i casi degli inviti sono elencati in [Team](/it/docs/team#errori)). Su `POST /v1/workspaces`: un workspace oltre il primo su un account non ancora spostato sul piano per account, oppure un account che possiede già 10 workspace contando quelli in eliminazione (vedi [Workspace](/it/docs/workspaces#creare-un-workspace)) | Recupera la risorsa e verificane lo stato prima di riprovare. Per la creazione di un workspace, scrivi a **support@tratto.email** |
+| `CONFLICT` | 409 | La risorsa esiste già, oppure il suo stato attuale non consente l'azione (ad esempio modificare una campagna che non è più in bozza, o accettare un invito scaduto; i casi degli inviti sono elencati in [Team](/it/docs/team#errori)). Su `POST /v1/workspaces`: un workspace oltre il primo quando un altro workspace dell'account non è ancora stato migrato, oppure un account che possiede già 10 workspace contando quelli in eliminazione (vedi [Workspace](/it/docs/workspaces#creare-un-workspace)) | Recupera la risorsa e verificane lo stato prima di riprovare. Per la creazione di un workspace, scrivi a **support@tratto.email** |
 | `VALIDATION_ERROR` | 422 | Il corpo è stato letto ma non rispetta lo schema, oppure l'header `Tratto-Workspace` non è un id di workspace valido | Per il corpo, leggi `details` per i campi errati. Per l'header non c'è `details`: `message` è `The Tratto-Workspace header is not a workspace id.`; invia l'id di un workspace a cui l'account ha accesso, oppure ometti l'header. Vedi [Autenticazione](/it/docs/authentication#header-del-workspace) |
 | `TEMPLATE_NOT_PUBLISHED` | 422 | Il template indicato nella richiesta è ancora in bozza e non può essere usato per inviare | Pubblicalo (`PATCH /v1/templates/:id` con `status: "published"`), poi ripeti la richiesta |
 | `BAD_REQUEST` | 400 | La richiesta non è arrivata a un handler: il corpo non è interpretabile (JSON malformato) | Correggi la sintassi del corpo: il payload non è mai arrivato allo schema |
@@ -151,8 +151,9 @@ richiesta e l'email fallisce in consegna. Vedi
 
 Una sessione della dashboard (un account che ha effettuato l'accesso, non una
 chiave API) il cui account non ha un workspace riceve questo codice su ogni
-rotta autenticata, tranne le due che accettano un invito e quella che crea il
-workspace. Prima viene il
+rotta autenticata, tranne le due che accettano un invito, quella che crea il
+workspace e quella che li elenca: `GET /v1/workspaces` risponde `200` con
+`{"data":[]}`, con o senza accesso alla beta. Prima viene il
 controllo dell'accesso alla beta: un account senza accesso alla beta riceve
 quell'errore.
 
