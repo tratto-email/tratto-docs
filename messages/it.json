@@ -23,7 +23,7 @@
   "home": {
     "eyebrow": "Documentazione",
     "title": "Sviluppa con Tratto",
-    "subtitle": "Email transazionali, campagne e flow di automazione da una sola API REST, ospitata in UE. SDK, guide e riferimento API.",
+    "subtitle": "Email transazionali, campagne e flow di automazione da una sola API REST, con i dati in UE. SDK, guide e riferimento API.",
     "ctaPrimary": "Quickstart",
     "ctaSecondary": "API Reference"
   },
