@@ -270,50 +270,12 @@ il contatore dell'account. Ripetere la richiesta dopo quell'attesa è sicuro.
 Gli SDK non hanno metodi per annullare o riprogrammare un'email: chiama l'API
 via HTTP come negli esempi qui sopra.
 
-## Aggiungi Allegati
+## Allegati
 
-Includi file come allegati codificati in base64:
-
-```bash
-curl -X POST https://api.tratto.email/v1/emails \
-  -H "Authorization: Bearer tratto_live_..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "from": "hello@tuodominio.it",
-    "to": "user@example.com",
-    "subject": "Fattura",
-    "text": "Vedi allegato fattura.",
-    "attachments": [
-      {
-        "filename": "fattura.pdf",
-        "contentType": "application/pdf",
-        "content": "JVBERi0xLjQKJeLj..."
-      }
-    ]
-  }'
-```
-
-**Passaggi per allegare un file:**
-
-1. Leggi il file come binario
-2. Codifica il contenuto in base64
-3. Includi `filename`, `contentType`, e `content` nell'array `attachments`
-
-**Esempio JavaScript:**
-```javascript
-const fs = require('fs');
-
-const fileBuffer = fs.readFileSync('fattura.pdf');
-const base64Content = fileBuffer.toString('base64');
-
-const attachments = [
-  {
-    filename: 'fattura.pdf',
-    contentType: 'application/pdf',
-    content: base64Content,
-  },
-];
-```
+Gli allegati non sono ancora supportati: `POST /v1/emails` non ha un campo
+`attachments`. Se lo invii, l'API lo ignora e l'email parte senza il file,
+senza alcun errore. Gli allegati sono in roadmap. Nel frattempo, metti nel
+corpo dell'email un link al file.
 
 ## Tag per l'Organizzazione
 
@@ -339,18 +301,17 @@ Successivamente, filtra le email per tag o usali nei webhook.
 | Campo | Tipo | Obbligatorio | Descrizione |
 |-------|------|--------------|-------------|
 | `from` | string | ✓ | Indirizzo email del mittente (deve essere da un dominio verificato) |
-| `to` | string | ✓ | Indirizzo email del destinatario |
+| `to` | string \| string[] | ✓ | Indirizzo del destinatario, o un array di indirizzi |
 | `cc` | string[] | | Destinatari di copia carbone |
 | `bcc` | string[] | | Destinatari di copia carbone nascosta |
-| `subject` | string | ✓ (se non usi template) | Riga di oggetto dell'email |
+| `subject` | string | ✓ | Riga di oggetto dell'email (obbligatoria anche con un template, max 998 caratteri) |
 | `text` | string | | Contenuto testo semplice (usato come fallback) |
 | `html` | string | | Contenuto HTML (mutuamente esclusivo con `markdown`) |
 | `markdown` | string | | [Markdown](/it/docs/emailmd-templates), renderizzato lato server (mutuamente esclusivo con `html`, max 100.000 caratteri) |
-| `templateId` | string | | Template ID (al posto di `subject`/`text`/`html`) |
+| `templateId` | string | | Template ID (al posto di `text`/`html`/`markdown`) |
 | `variables` | object | | Variabili da interpolate nel template |
-| `attachments` | array | | Array di oggetti allegati |
 | `scheduledAt` | string (ISO 8601) | | Programma email per consegna futura |
-| `tags` | string[] | | Tag di organizzazione (max 10) |
+| `tags` | string[] | | Tag di organizzazione |
 | `replyTo` | string | | Indirizzo di risposta |
 | `headers` | object | | Custom email headers (avanzato) |
 
