@@ -268,50 +268,12 @@ moment. Repeating the request after that delay is safe.
 The SDKs have no method to cancel or reschedule an email: call the API over
 HTTP as shown above.
 
-## Add Attachments
+## Attachments
 
-Include files as base64-encoded attachments:
-
-```bash
-curl -X POST https://api.tratto.email/v1/emails \
-  -H "Authorization: Bearer tratto_live_..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "from": "hello@yourdomain.com",
-    "to": "user@example.com",
-    "subject": "Invoice",
-    "text": "See attached invoice.",
-    "attachments": [
-      {
-        "filename": "invoice.pdf",
-        "contentType": "application/pdf",
-        "content": "JVBERi0xLjQKJeLj..."
-      }
-    ]
-  }'
-```
-
-**Steps to attach a file:**
-
-1. Read the file as binary
-2. Base64-encode the content
-3. Include `filename`, `contentType`, and `content` in the `attachments` array
-
-**JavaScript example:**
-```javascript
-const fs = require('fs');
-
-const fileBuffer = fs.readFileSync('invoice.pdf');
-const base64Content = fileBuffer.toString('base64');
-
-const attachments = [
-  {
-    filename: 'invoice.pdf',
-    contentType: 'application/pdf',
-    content: base64Content,
-  },
-];
-```
+Attachments are not supported yet: `POST /v1/emails` has no `attachments`
+field. If you send one, the API ignores it and the email goes out without the
+file, with no error. Attachments are on the roadmap. Until then, link to the
+file from the email body instead.
 
 ## Tags for Organization
 
@@ -337,18 +299,17 @@ Later, filter emails by tags or use them in webhooks.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `from` | string | ✓ | Sender email address (must be from a verified domain) |
-| `to` | string | ✓ | Recipient email address |
+| `to` | string \| string[] | ✓ | Recipient address, or an array of addresses |
 | `cc` | string[] | | Carbon copy recipients |
 | `bcc` | string[] | | Blind carbon copy recipients |
-| `subject` | string | ✓ (if not using template) | Email subject line |
+| `subject` | string | ✓ | Email subject line (required with a template too, max 998 chars) |
 | `text` | string | | Plain text content (used as fallback) |
 | `html` | string | | HTML content (mutually exclusive with `markdown`) |
 | `markdown` | string | | [Markdown](/en/docs/emailmd-templates), rendered server-side (mutually exclusive with `html`, max 100,000 chars) |
-| `templateId` | string | | Template ID (instead of `subject`/`text`/`html`) |
+| `templateId` | string | | Template ID (instead of `text`/`html`/`markdown`) |
 | `variables` | object | | Variables to interpolate in template |
-| `attachments` | array | | Array of attachment objects |
 | `scheduledAt` | string (ISO 8601) | | Schedule email for future delivery |
-| `tags` | string[] | | Organization tags (max 10) |
+| `tags` | string[] | | Organization tags |
 | `replyTo` | string | | Reply-to address |
 | `headers` | object | | Custom email headers (advanced) |
 
