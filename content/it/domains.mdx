@@ -56,6 +56,14 @@ data = response.json()['data']
 print(f"Domain ID: {data['id']}")
 ```
 
+**PHP**
+```php
+$tratto = new \Tratto\Client(getenv('TRATTO_API_KEY'));
+
+$domain = $tratto->domains->add('hello.tuodominio.it');
+echo "Domain ID: {$domain['id']}\n";
+```
+
 **Risposta** (`201`; i valori sono esempi, usa sempre quelli della **tua** risposta):
 ```json
 {
@@ -166,6 +174,14 @@ response = requests.post(
 )
 data = response.json()['data']
 print(f"Status: {data['status']}")
+```
+
+**PHP**
+```php
+$tratto = new \Tratto\Client(getenv('TRATTO_API_KEY'));
+
+$domain = $tratto->domains->verify('dom_abc123');
+echo "Status: {$domain['status']}\n";
 ```
 
 La risposta è il dominio completo, `records` inclusi, con `200` qualunque sia l'esito: leggi `status`, non il codice HTTP.

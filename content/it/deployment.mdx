@@ -63,7 +63,7 @@ export const sendWelcome = onCall(
       from: 'Acme <hello@mail.acme.com>',
       to: email,
       subject: 'Benvenuto in Acme',
-      templateId: 'tpl_welcome',
+      templateId: 'tmpl_welcome',
       variables: { name: request.auth.token.name ?? 'ciao' },
     });
 
@@ -105,7 +105,7 @@ export const onSignup = onDocumentCreated(
       from: 'Acme <hello@mail.acme.com>',
       to: user.email,
       subject: 'Benvenuto in Acme',
-      templateId: 'tpl_welcome',
+      templateId: 'tmpl_welcome',
       variables: { name: user.name ?? 'ciao' },
     }, event.params.userId);
   },
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
     from: 'Acme <hello@mail.acme.com>',
     to: body.email,
     subject: 'Benvenuto in Acme',
-    templateId: 'tpl_welcome',
+    templateId: 'tmpl_welcome',
   });
 
   return NextResponse.json({ id: result.id });
@@ -197,7 +197,7 @@ export default {
       from: 'Acme <hello@mail.acme.com>',
       to: body.email,
       subject: 'Benvenuto in Acme',
-      templateId: 'tpl_welcome',
+      templateId: 'tmpl_welcome',
     });
 
     return Response.json({ id: result.id });

@@ -243,6 +243,8 @@ def tratto_webhook():
 
 ## PHP
 
+With the [PHP SDK](/en/docs/sdk-php#verify-webhooks), `Tratto\Webhook::verify($payload, $header, $secret)` does this check for you. By hand:
+
 ```php
 function verify_webhook(string $raw_body, string $header, string $secret, int $tolerance_s = 300): bool {
     $timestamp = null;

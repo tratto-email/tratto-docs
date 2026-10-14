@@ -279,6 +279,24 @@ except TrattoError as e:
     print(e.docs)          # link a questa pagina
 ```
 
+### PHP
+
+`tratto/email` solleva `TrattoException` con `errorCode`, `statusCode`,
+`suggestion` e `docs`. Gli ultimi due valgono `null` quando la risposta non
+li contiene:
+
+```php
+use Tratto\TrattoException;
+
+try {
+    $tratto->campaigns->unschedule('camp_xyz789');
+} catch (TrattoException $e) {
+    echo $e->errorCode, "\n";   // 'CONFLICT'
+    echo $e->suggestion, "\n";  // cosa fare invece, nelle parole dell'API
+    echo $e->docs, "\n";        // link a questa pagina
+}
+```
+
 È il caso per cui `suggestion` esiste: il 409 di `campaigns.send` e quello di
 `campaigns.unschedule` sono un codice solo per più stati diversi, e a dire quale
 hai incontrato c'è solo il testo. Vedi

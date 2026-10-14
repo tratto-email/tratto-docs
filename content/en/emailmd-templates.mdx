@@ -350,6 +350,25 @@ template = client.templates.create(CreateTemplateOptions(
 ))
 ```
 
+**PHP (`tratto/email`, 1.0.0+)**
+
+```php
+// One-off markdown email, no template
+$tratto->emails->send([
+    'from' => 'hello@yourdomain.com',
+    'to' => 'user@example.com',
+    'subject' => 'Welcome!',
+    'markdown' => '# Welcome, {{firstName}}!',
+    'variables' => ['firstName' => 'Alice'],
+]);
+
+// Create a Markdown template
+$template = $tratto->templates->create([
+    'name' => 'Welcome Email',
+    'markdown' => '# Welcome, {{firstName}}!',
+]);
+```
+
 ## Next Steps
 
 - **Prefer the dashboard?** See [Markdown templates in the dashboard](/en/docs/emailmd-dashboard)

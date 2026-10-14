@@ -66,6 +66,19 @@ data = response.json()['data']
 print(f"Email sent: {data['id']}")
 ```
 
+**PHP**
+```php
+$tratto = new \Tratto\Client(getenv('TRATTO_API_KEY'));
+
+$email = $tratto->emails->send([
+    'from' => 'hello@yourdomain.com',
+    'to' => 'user@example.com',
+    'subject' => 'Welcome!',
+    'text' => 'Hello, this is a test email.',
+]);
+echo "Email sent: {$email['id']}\n";
+```
+
 **Response:**
 ```json
 {

@@ -276,6 +276,24 @@ except TrattoError as e:
     print(e.docs)          # link to this page
 ```
 
+### PHP
+
+`tratto/email` throws `TrattoException` with `errorCode`, `statusCode`,
+`suggestion` and `docs`. The last two are `null` when the response omits
+them:
+
+```php
+use Tratto\TrattoException;
+
+try {
+    $tratto->campaigns->unschedule('camp_xyz789');
+} catch (TrattoException $e) {
+    echo $e->errorCode, "\n";   // 'CONFLICT'
+    echo $e->suggestion, "\n";  // what to do instead, in the API's own words
+    echo $e->docs, "\n";        // link to this page
+}
+```
+
 This is the case `suggestion` exists for: the 409 on `campaigns.send` and on
 `campaigns.unschedule` is one code covering several states, and only the text
 says which one you hit. See

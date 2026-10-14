@@ -56,6 +56,14 @@ data = response.json()['data']
 print(f"Domain ID: {data['id']}")
 ```
 
+**PHP**
+```php
+$tratto = new \Tratto\Client(getenv('TRATTO_API_KEY'));
+
+$domain = $tratto->domains->add('hello.yourdomain.com');
+echo "Domain ID: {$domain['id']}\n";
+```
+
 **Response** (`201`; values are examples, always use the ones from **your** response):
 ```json
 {
@@ -166,6 +174,14 @@ response = requests.post(
 )
 data = response.json()['data']
 print(f"Status: {data['status']}")
+```
+
+**PHP**
+```php
+$tratto = new \Tratto\Client(getenv('TRATTO_API_KEY'));
+
+$domain = $tratto->domains->verify('dom_abc123');
+echo "Status: {$domain['status']}\n";
 ```
 
 The response is the full domain, `records` included, with `200` whatever the outcome: read `status`, not the HTTP code.

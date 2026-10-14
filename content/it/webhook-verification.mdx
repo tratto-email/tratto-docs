@@ -243,6 +243,8 @@ def tratto_webhook():
 
 ## PHP
 
+Con l'[SDK PHP](/it/docs/sdk-php#verifica-dei-webhook), `Tratto\Webhook::verify($payload, $header, $secret)` fa questo controllo per te. A mano:
+
 ```php
 function verify_webhook(string $raw_body, string $header, string $secret, int $tolerance_s = 300): bool {
     $timestamp = null;

@@ -74,6 +74,21 @@ response = requests.post(
 data = response.json()
 ```
 
+### PHP
+
+```php
+$tratto = new \Tratto\Client(getenv('TRATTO_API_KEY'));
+
+$idempotencyKey = bin2hex(random_bytes(16));
+
+$data = $tratto->emails->send([
+    'from' => 'hello@yourdomain.com',
+    'to' => 'user@example.com',
+    'subject' => 'Hello',
+    'text' => 'Test',
+], $idempotencyKey);
+```
+
 ## Endpoint Supportati
 
 Due endpoint rispettano `Idempotency-Key`:

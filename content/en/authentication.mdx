@@ -115,6 +115,23 @@ api_key = response.json()['data']['key']
 print(f"New API Key: {api_key}")
 ```
 
+**PHP**
+```php
+// tratto/email has no API key methods: plain HTTP with ext-curl
+$ch = curl_init('https://api.tratto.email/v1/api-keys');
+curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_HTTPHEADER => [
+        'Authorization: Bearer tratto_live_EXISTING_KEY',
+        'Content-Type: application/json',
+    ],
+    CURLOPT_POSTFIELDS => json_encode(['name' => 'production', 'env' => 'live', 'permissions' => ['emails:send']]),
+    CURLOPT_RETURNTRANSFER => true,
+]);
+$apiKey = json_decode(curl_exec($ch), true)['data']['key'];
+echo "New API Key: {$apiKey}\n";
+```
+
 **Response:**
 ```json
 {
@@ -168,6 +185,20 @@ response = requests.get(
 keys = response.json()['data']
 for key in keys:
   print(f"Key: {key['prefix']} (Created: {key['createdAt']})")
+```
+
+**PHP**
+```php
+// tratto/email has no API key methods: plain HTTP with ext-curl
+$ch = curl_init('https://api.tratto.email/v1/api-keys');
+curl_setopt_array($ch, [
+    CURLOPT_HTTPHEADER => ['Authorization: Bearer tratto_live_...'],
+    CURLOPT_RETURNTRANSFER => true,
+]);
+$keys = json_decode(curl_exec($ch), true)['data'];
+foreach ($keys as $key) {
+    echo "Key: {$key['prefix']} (Created: {$key['createdAt']})\n";
+}
 ```
 
 **Response:**
@@ -237,6 +268,23 @@ response = requests.patch(
 print(f"Permissions: {response.json()['data']['permissions']}")
 ```
 
+**PHP**
+```php
+// tratto/email has no API key methods: plain HTTP with ext-curl
+$ch = curl_init('https://api.tratto.email/v1/api-keys/key_abc123');
+curl_setopt_array($ch, [
+    CURLOPT_CUSTOMREQUEST => 'PATCH',
+    CURLOPT_HTTPHEADER => [
+        'Authorization: Bearer tratto_live_...',
+        'Content-Type: application/json',
+    ],
+    CURLOPT_POSTFIELDS => json_encode(['permissions' => ['emails:send', 'contacts:write']]),
+    CURLOPT_RETURNTRANSFER => true,
+]);
+$data = json_decode(curl_exec($ch), true)['data'];
+echo 'Permissions: ', implode(', ', $data['permissions']), "\n";
+```
+
 `permissions` replaces the previous set — it is not merged into it. Send the complete list you want the key to end up with.
 
 Requires `api-keys:write`. Other responses:
@@ -281,6 +329,19 @@ response = requests.delete(
   headers={'Authorization': 'Bearer tratto_live_...'},
 )
 print(f"Revoked: {response.json()['data']['id']}")
+```
+
+**PHP**
+```php
+// tratto/email has no API key methods: plain HTTP with ext-curl
+$ch = curl_init('https://api.tratto.email/v1/api-keys/key_abc123');
+curl_setopt_array($ch, [
+    CURLOPT_CUSTOMREQUEST => 'DELETE',
+    CURLOPT_HTTPHEADER => ['Authorization: Bearer tratto_live_...'],
+    CURLOPT_RETURNTRANSFER => true,
+]);
+$data = json_decode(curl_exec($ch), true)['data'];
+echo "Revoked: {$data['id']}\n";
 ```
 
 Once revoked, requests with that key will return `401 Unauthorized`.

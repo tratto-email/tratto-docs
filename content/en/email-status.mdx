@@ -114,6 +114,15 @@ print(f"Status: {data['status']}")
 print(f"Created: {data['createdAt']}")
 ```
 
+**PHP**
+```php
+$tratto = new \Tratto\Client(getenv('TRATTO_API_KEY'));
+
+$email = $tratto->emails->get('email_abc123');
+echo "Status: {$email['status']}\n";
+echo "Created: {$email['createdAt']}\n";
+```
+
 **Response**
 ```json
 {
@@ -180,6 +189,16 @@ response = requests.get(
 events = response.json()['data']
 for event in events:
   print(f"{event['type']} at {event['occurredAt']}")
+```
+
+**PHP**
+```php
+$tratto = new \Tratto\Client(getenv('TRATTO_API_KEY'));
+
+$events = $tratto->emails->listEvents('email_abc123');
+foreach ($events as $event) {
+    echo "{$event['type']} at {$event['occurredAt']}\n";
+}
 ```
 
 **Response**

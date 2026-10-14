@@ -64,7 +64,7 @@ export const sendWelcome = onCall(
       from: 'Acme <hello@mail.acme.com>',
       to: email,
       subject: 'Welcome to Acme',
-      templateId: 'tpl_welcome',
+      templateId: 'tmpl_welcome',
       variables: { name: request.auth.token.name ?? 'there' },
     });
 
@@ -106,7 +106,7 @@ export const onSignup = onDocumentCreated(
       from: 'Acme <hello@mail.acme.com>',
       to: user.email,
       subject: 'Welcome to Acme',
-      templateId: 'tpl_welcome',
+      templateId: 'tmpl_welcome',
       // The document id makes retries idempotent: a re-fired trigger will not
       // send a second copy.
       variables: { name: user.name ?? 'there' },
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
     from: 'Acme <hello@mail.acme.com>',
     to: body.email,
     subject: 'Welcome to Acme',
-    templateId: 'tpl_welcome',
+    templateId: 'tmpl_welcome',
   });
 
   return NextResponse.json({ id: result.id });
@@ -200,7 +200,7 @@ export default {
       from: 'Acme <hello@mail.acme.com>',
       to: body.email,
       subject: 'Welcome to Acme',
-      templateId: 'tpl_welcome',
+      templateId: 'tmpl_welcome',
     });
 
     return Response.json({ id: result.id });

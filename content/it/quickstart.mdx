@@ -46,6 +46,22 @@ response = requests.post(
 api_key = response.json()['data']['key']  # tratto_live_...
 ```
 
+**PHP**
+```php
+// tratto/email non ha metodi per le API key: HTTP con ext-curl
+$ch = curl_init('https://api.tratto.email/v1/api-keys');
+curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_HTTPHEADER => [
+        'Authorization: Bearer TUA_KEY_ESISTENTE',
+        'Content-Type: application/json',
+    ],
+    CURLOPT_POSTFIELDS => json_encode(['name' => 'quickstart']),
+    CURLOPT_RETURNTRANSFER => true,
+]);
+$apiKey = json_decode(curl_exec($ch), true)['data']['key']; // tratto_live_...
+```
+
 <Callout type="warning">
 Salva la tua API key in un luogo sicuro. Viene mostrata solo una volta. Trattala come una password, non esporla mai client-side.
 </Callout>
@@ -155,6 +171,20 @@ response = requests.post(
 data = response.json()['data']
 print(f"Email ID: {data['id']}")
 print(f"Status: {data['status']}")
+```
+
+**PHP**
+```php
+$tratto = new \Tratto\Client(getenv('TRATTO_API_KEY'));
+
+$email = $tratto->emails->send([
+    'from' => 'hello@tuodominio.it',
+    'to' => 'tua-email@example.com',
+    'subject' => 'Ciao da Tratto!',
+    'text' => 'Se vedi questo, funziona!',
+]);
+echo "Email ID: {$email['id']}\n";
+echo "Status: {$email['status']}\n";
 ```
 
 Risposta:

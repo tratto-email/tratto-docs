@@ -88,6 +88,19 @@ data = response.json()['data']
 print(data['id'], data['livemode'])  # email_...  False
 ```
 
+**PHP**
+```php
+$tratto = new \Tratto\Client(getenv('TRATTO_API_KEY')); // tratto_test_...
+
+$email = $tratto->emails->send([
+    'from' => 'hello@yourdomain.com',
+    'to' => 'delivered@simulator.tratto.email',
+    'subject' => 'Hello from Tratto!',
+    'text' => 'If you see this, it works!',
+]);
+echo $email['id'], ' ', var_export($email['livemode'], true); // email_...  false
+```
+
 Response:
 ```json
 {
