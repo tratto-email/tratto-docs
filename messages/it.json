@@ -21,11 +21,12 @@
     "breadcrumb": "Percorso"
   },
   "home": {
-    "eyebrow": "Documentazione",
-    "title": "Sviluppa con Tratto",
+    "eyebrow": "API REST · SDK · Guide",
+    "title": "Documentazione dell'API email di Tratto",
     "subtitle": "Email transazionali, campagne e flow di automazione da una sola API REST, con i dati in UE. SDK, guide e riferimento API.",
     "ctaPrimary": "Quickstart",
-    "ctaSecondary": "API Reference"
+    "ctaSecondary": "API Reference",
+    "metaTitle": "Documentazione dell'API email di Tratto: SDK, guide, API reference"
   },
   "cookieBanner": {
     "message": "Usiamo cookie analitici per capire come viene usata la documentazione e migliorarla. Leggi la nostra",

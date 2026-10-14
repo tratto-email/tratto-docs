@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 
@@ -10,6 +11,24 @@ import { SignalTrace } from '@/components/signal-trace';
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
+}
+
+// The docs home names what it documents (tratto-docs issue from the
+// 2026-10-14 audit): "Tratto Docs" / "Build with Tratto" said nothing about an
+// email API to search engines or LLMs. Absolute title, so the layout's
+// "- Tratto Docs" template does not repeat the brand.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const locale = toLocale((await params).locale);
+  if (!locale) return {};
+  const t = await getTranslations({ locale, namespace: 'home' });
+  return {
+    title: { absolute: t('metaTitle') },
+    description: t('subtitle'),
+  };
 }
 
 export default async function LocaleHome({

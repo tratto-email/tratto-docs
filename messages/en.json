@@ -21,11 +21,12 @@
     "breadcrumb": "Breadcrumb"
   },
   "home": {
-    "eyebrow": "Documentation",
-    "title": "Build with Tratto",
+    "eyebrow": "REST API · SDKs · Guides",
+    "title": "Tratto Email API documentation",
     "subtitle": "Transactional email, campaigns and automation flows from one REST API, hosted in the EU. SDKs, guides and the API reference.",
     "ctaPrimary": "Quickstart",
-    "ctaSecondary": "API Reference"
+    "ctaSecondary": "API Reference",
+    "metaTitle": "Tratto Email API documentation: SDKs, guides, API reference"
   },
   "cookieBanner": {
     "message": "We use analytics cookies to understand how the docs are used and improve them. Read our",
