@@ -34,6 +34,7 @@
     "---SDK & Integrazioni---",
     "sdk-nodejs",
     "sdk-python",
+    "sdk-php",
     "sdk-http",
     "sdk-react",
     "sdk-angular",

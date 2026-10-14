@@ -1,0 +1,235 @@
+---
+title: PHP SDK
+description: Official PHP SDK for the Tratto Email API
+---
+
+The official SDK for PHP: **`tratto/email`**, on Packagist. Everything on this
+page requires **1.0.0 or newer**.
+
+## Requirements
+
+- PHP 8.1 or later
+- the `curl` extension (`ext-curl`)
+
+There are no other runtime dependencies.
+
+## Installation
+
+```bash
+composer require tratto/email
+```
+
+## Initialization
+
+```php
+use Tratto\Client;
+
+$tratto = new Client((string) getenv('TRATTO_API_KEY'));
+```
+
+Keep the key out of your code: read it from the environment or your secret
+store. API keys are created in the dashboard, under API Keys.
+
+The second argument takes options:
+
+```php
+$tratto = new Tratto\Client($apiKey, [
+    'baseUrl' => 'https://api.tratto.email', // default
+    'timeout' => 30,                         // seconds, default 30 (connection: at most 10)
+]);
+```
+
+| Option | Type | Description |
+|---|---|---|
+| `baseUrl` | `string` | `http://` or `https://` URL, without `/v1` (the SDK adds it). With `http://` the key travels in clear text: use it only for a local server. |
+| `timeout` | `int\|float` | Total time per request, in seconds. |
+| `transport` | `Tratto\Http\Transport` | Replaces the built-in curl transport, for example with a fake in your tests. |
+
+An empty key, an unknown option or an invalid value throws
+`\InvalidArgumentException`. There is no option to pass curl settings: TLS
+verification is always on and redirects are never followed.
+
+## Responses
+
+Methods return the decoded JSON as associative arrays, so a field added by the
+API is available without updating the SDK.
+
+- Single objects come **without** the `data` envelope:
+  `$tratto->emails->get($id)['status']`.
+- Paginated lists return the whole page,
+  `['data' => [...], 'pagination' => ['hasMore' => bool, 'nextCursor' => ?string]]`:
+  pass `nextCursor` as `after` to read the next page.
+- Methods that answer 204 (`webhooks->delete`, `templates->delete`) return nothing.
+- A `\DateTimeInterface` you pass is sent in UTC with milliseconds; a string is
+  sent as it is.
+
+## Send Email
+
+```php
+$email = $tratto->emails->send([
+    'from' => 'Acme <hello@yourdomain.com>',
+    'to' => 'user@example.com',
+    'subject' => 'Welcome!',
+    'html' => '<h1>Welcome!</h1>',
+    'text' => 'Welcome to Tratto',
+]);
+
+echo $email['id'];
+```
+
+## Send with Markdown
+
+Send [Markdown](/en/docs/emailmd-templates) and let the server render
+responsive email HTML. `markdown` and `html` are mutually exclusive.
+
+```php
+$tratto->emails->send([
+    'from' => 'Acme <hello@yourdomain.com>',
+    'to' => 'user@example.com',
+    'subject' => 'Welcome!',
+    'markdown' => "# Welcome, {{firstName}}\n\nGlad to have you on board.",
+    'variables' => ['firstName' => 'Alice'],
+]);
+```
+
+## Send with Template, Schedule and Idempotency Key
+
+The second argument of `emails->send` is the
+[idempotency key](/en/docs/idempotency): retrying with the same key never sends
+twice. Only `emails->send` takes one, and a key containing a line break is
+rejected before sending.
+
+```php
+$tratto->emails->send([
+    'from' => 'hello@yourdomain.com',
+    'to' => ['alice@example.com', 'bob@example.com'],
+    'subject' => 'Your receipt',
+    'templateId' => 'tpl_abc123',
+    'variables' => ['name' => 'Alice'],
+    'scheduledAt' => new DateTimeImmutable('+1 hour'),
+], 'receipt-order-1234');
+```
+
+<Callout type="warn">
+In PHP `[]` is both an empty list and an empty object, and an empty nested
+array goes out as a JSON array. For fields that are objects, such as
+`variables` or `headers`, omit the field or pass `new \stdClass()`.
+</Callout>
+
+## Get Email Status and Timeline
+
+```php
+$email = $tratto->emails->get('em_abc123');
+echo $email['status']; // 'delivered'
+
+$events = $tratto->emails->listEvents('em_abc123');
+```
+
+## List Emails
+
+```php
+$page = $tratto->emails->list(['status' => 'delivered', 'limit' => 20]);
+foreach ($page['data'] as $email) {
+    echo "{$email['id']}: {$email['status']}\n";
+}
+
+if ($page['pagination']['hasMore']) {
+    $next = $tratto->emails->list(['limit' => 20, 'after' => $page['pagination']['nextCursor']]);
+}
+```
+
+## Other Resources
+
+The client exposes ten resources: `emails`, `contacts`, `audiences`,
+`campaigns`, `templates`, `webhooks`, `domains`, `analytics`, `flows` and
+`workspace`. The
+[README](https://github.com/tratto-email/tratto-php#resources) shows every
+method, and [`examples/`](https://github.com/tratto-email/tratto-php/tree/main/examples)
+has one runnable file per resource plus Laravel and Symfony integrations.
+
+[Flows](/en/docs/flows) need an API key with the `*` permission: there are no
+`flows:read` or `flows:write` scopes.
+
+## Error Handling
+
+Every failed API call throws `Tratto\TrattoException`: HTTP errors, responses
+that are not JSON, and network errors. Configuration mistakes throw
+`\InvalidArgumentException`.
+
+```php
+use Tratto\TrattoException;
+
+try {
+    $tratto->emails->send($params);
+} catch (TrattoException $e) {
+    error_log(sprintf('[%d] %s: %s', $e->statusCode, $e->errorCode, $e->getMessage()));
+    // $e->suggestion: what to do about it, when the API says
+    // $e->docs: a link to the documentation of this error, when available
+}
+```
+
+| Property | Type | |
+|---|---|---|
+| `getMessage()` | `string` | The API message, or `HTTP <status>` when the response has none |
+| `errorCode` | `string` | The API error code, or `unknown_error`, `invalid_response`, `invalid_header`, `connection_error` |
+| `statusCode` | `int` | The HTTP status (also `getCode()`), 0 when no response was received |
+| `suggestion` | `?string` | The API's own words on what to do, `null` when the response has none |
+| `docs` | `?string` | A link to the page that explains the code, `null` when the response has none |
+
+`errorCode` is the same code listed in [Error Codes](/en/docs/error-codes).
+The SDK does not retry. To retry a send safely, pass the same idempotency key.
+
+### PHP 8.1: Do Not Log Full Exception Traces
+
+On PHP 8.2 and later the API key and the webhook secret are marked
+`#[\SensitiveParameter]` and never appear in the SDK's own traces. PHP 8.1
+ignores that attribute: the SDK moves them out of its parameters before doing
+anything else, but an argument of the wrong type (for example an array where a
+string is expected) raises a `TypeError` before that, and the trace of that
+error holds the arguments.
+
+On PHP 8.1, log the message, `errorCode` and `statusCode` of SDK exceptions,
+not `getTraceAsString()` or a dump of the exception, or set
+`zend.exception_ignore_args=On`.
+
+## Verify Webhooks
+
+`Tratto\Webhook::verify()` checks the `X-Tratto-Signature` header of a
+delivery: the HMAC-SHA256 of `{t}.{raw body}` with your secret (`whsec_...`,
+used as it is). It accepts several `v1` values (secret rotation) and rejects
+deliveries older or newer than the tolerance, 5 minutes by default. It returns
+`bool` and never throws for a bad signature. See
+[Webhook Verification](/en/docs/webhook-verification) for the scheme.
+
+Always pass the **raw** body: a decoded and re-encoded JSON will not match.
+
+```php
+use Tratto\Webhook;
+
+$payload = file_get_contents('php://input');
+$header = $_SERVER['HTTP_X_TRATTO_SIGNATURE'] ?? null;
+
+if (!Webhook::verify($payload, $header, (string) getenv('TRATTO_WEBHOOK_SECRET'))) {
+    http_response_code(400);
+    exit;
+}
+
+$event = json_decode($payload, true);
+// Deliveries can repeat: use $event['id'] to process each event once.
+```
+
+The tolerance is the fourth argument, in seconds:
+`Webhook::verify($payload, $header, $secret, 600)`.
+
+## Not Included
+
+Members and the workspace itself are managed from the dashboard: the SDK has no
+`workspace->delete()`, `inviteMember()`, `removeMember()` or `updateMember()`.
+
+---
+
+## Links
+
+- **Packagist:** https://packagist.org/packages/tratto/email
+- **GitHub:** https://github.com/tratto-email/tratto-php
+- **API Docs:** [API Reference](/en/docs/api-reference)

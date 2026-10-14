@@ -1,0 +1,238 @@
+---
+title: PHP SDK
+description: SDK ufficiale PHP per Tratto Email API
+---
+
+SDK ufficiale per PHP: **`tratto/email`**, su Packagist. Tutto quello che c'è
+in questa pagina richiede la **1.0.0 o successiva**.
+
+## Requisiti
+
+- PHP 8.1 o successivo
+- l'estensione `curl` (`ext-curl`)
+
+Nessun'altra dipendenza a runtime.
+
+## Installazione
+
+```bash
+composer require tratto/email
+```
+
+## Inizializzazione
+
+```php
+use Tratto\Client;
+
+$tratto = new Client((string) getenv('TRATTO_API_KEY'));
+```
+
+Tieni la chiave fuori dal codice: leggila dall'ambiente o dal tuo secret
+store. Le API key si creano in dashboard, alla voce API Keys.
+
+Il secondo argomento accetta le opzioni:
+
+```php
+$tratto = new Tratto\Client($apiKey, [
+    'baseUrl' => 'https://api.tratto.email', // default
+    'timeout' => 30,                         // secondi, default 30 (connessione: al massimo 10)
+]);
+```
+
+| Opzione | Tipo | Descrizione |
+|---|---|---|
+| `baseUrl` | `string` | URL `http://` o `https://`, senza `/v1` (lo aggiunge l'SDK). Con `http://` la chiave viaggia in chiaro: usalo solo per un server locale. |
+| `timeout` | `int\|float` | Tempo totale per richiesta, in secondi. |
+| `transport` | `Tratto\Http\Transport` | Sostituisce il transport curl integrato, per esempio con un fake nei test. |
+
+Una chiave vuota, un'opzione sconosciuta o un valore non valido sollevano
+`\InvalidArgumentException`. Non esiste un'opzione per passare impostazioni a
+curl: la verifica TLS è sempre attiva e i redirect non vengono mai seguiti.
+
+## Risposte
+
+I metodi restituiscono il JSON decodificato come array associativi, quindi un
+campo aggiunto dall'API è disponibile senza aggiornare l'SDK.
+
+- I singoli oggetti arrivano **senza** l'involucro `data`:
+  `$tratto->emails->get($id)['status']`.
+- Le liste paginate restituiscono la pagina intera,
+  `['data' => [...], 'pagination' => ['hasMore' => bool, 'nextCursor' => ?string]]`:
+  passa `nextCursor` come `after` per leggere la pagina successiva.
+- I metodi che rispondono 204 (`webhooks->delete`, `templates->delete`) non
+  restituiscono nulla.
+- Un `\DateTimeInterface` passato all'SDK viene inviato in UTC con i
+  millisecondi; una stringa viene inviata così com'è.
+
+## Invia Email
+
+```php
+$email = $tratto->emails->send([
+    'from' => 'Acme <hello@tuodominio.it>',
+    'to' => 'user@example.com',
+    'subject' => 'Benvenuto!',
+    'html' => '<h1>Benvenuto!</h1>',
+    'text' => 'Benvenuto su Tratto',
+]);
+
+echo $email['id'];
+```
+
+## Invia con Markdown
+
+Invia [Markdown](/it/docs/emailmd-templates) e lascia al server il rendering in
+HTML email responsive. `markdown` e `html` si escludono a vicenda.
+
+```php
+$tratto->emails->send([
+    'from' => 'Acme <hello@tuodominio.it>',
+    'to' => 'user@example.com',
+    'subject' => 'Benvenuto!',
+    'markdown' => "# Benvenuto, {{firstName}}\n\nSiamo felici di averti a bordo.",
+    'variables' => ['firstName' => 'Alice'],
+]);
+```
+
+## Invia con Template, Programmazione e Chiave di Idempotenza
+
+Il secondo argomento di `emails->send` è la
+[chiave di idempotenza](/it/docs/idempotency): ripetere la chiamata con la
+stessa chiave non invia mai due volte. Solo `emails->send` la accetta, e una
+chiave che contiene un a capo viene rifiutata prima dell'invio.
+
+```php
+$tratto->emails->send([
+    'from' => 'hello@tuodominio.it',
+    'to' => ['alice@example.com', 'bob@example.com'],
+    'subject' => 'La tua ricevuta',
+    'templateId' => 'tpl_abc123',
+    'variables' => ['name' => 'Alice'],
+    'scheduledAt' => new DateTimeImmutable('+1 hour'),
+], 'receipt-order-1234');
+```
+
+<Callout type="warn">
+In PHP `[]` è sia una lista vuota sia un oggetto vuoto, e un array annidato
+vuoto parte come array JSON. Per i campi che sono oggetti, come `variables` o
+`headers`, ometti il campo oppure passa `new \stdClass()`.
+</Callout>
+
+## Stato e Timeline di un'Email
+
+```php
+$email = $tratto->emails->get('em_abc123');
+echo $email['status']; // 'delivered'
+
+$events = $tratto->emails->listEvents('em_abc123');
+```
+
+## Elenca Email
+
+```php
+$page = $tratto->emails->list(['status' => 'delivered', 'limit' => 20]);
+foreach ($page['data'] as $email) {
+    echo "{$email['id']}: {$email['status']}\n";
+}
+
+if ($page['pagination']['hasMore']) {
+    $next = $tratto->emails->list(['limit' => 20, 'after' => $page['pagination']['nextCursor']]);
+}
+```
+
+## Altre Risorse
+
+Il client espone dieci risorse: `emails`, `contacts`, `audiences`,
+`campaigns`, `templates`, `webhooks`, `domains`, `analytics`, `flows` e
+`workspace`. Il
+[README](https://github.com/tratto-email/tratto-php#resources) mostra ogni
+metodo, e [`examples/`](https://github.com/tratto-email/tratto-php/tree/main/examples)
+ha un file eseguibile per risorsa più le integrazioni Laravel e Symfony.
+
+I [flow](/it/docs/flows) richiedono una API key con il permesso `*`: non
+esistono scope `flows:read` o `flows:write`.
+
+## Gestione Errori
+
+Ogni chiamata API fallita solleva `Tratto\TrattoException`: errori HTTP,
+risposte che non sono JSON ed errori di rete. Gli errori di configurazione
+sollevano `\InvalidArgumentException`.
+
+```php
+use Tratto\TrattoException;
+
+try {
+    $tratto->emails->send($params);
+} catch (TrattoException $e) {
+    error_log(sprintf('[%d] %s: %s', $e->statusCode, $e->errorCode, $e->getMessage()));
+    // $e->suggestion: cosa fare, quando l'API lo dice
+    // $e->docs: link alla documentazione dell'errore, quando disponibile
+}
+```
+
+| Proprietà | Tipo | |
+|---|---|---|
+| `getMessage()` | `string` | Il messaggio dell'API, oppure `HTTP <status>` se la risposta non ne ha |
+| `errorCode` | `string` | Il codice d'errore dell'API, oppure `unknown_error`, `invalid_response`, `invalid_header`, `connection_error` |
+| `statusCode` | `int` | Lo status HTTP (anche `getCode()`), 0 se non è arrivata alcuna risposta |
+| `suggestion` | `?string` | Cosa fare, nelle parole dell'API; `null` se la risposta non lo contiene |
+| `docs` | `?string` | Link alla pagina che spiega il codice; `null` se la risposta non lo contiene |
+
+`errorCode` è lo stesso codice elencato in [Codici di Errore](/it/docs/error-codes).
+L'SDK non ripete le chiamate. Per ripetere un invio in sicurezza, passa la
+stessa chiave di idempotenza.
+
+### PHP 8.1: Non Loggare il Trace Completo delle Eccezioni
+
+Da PHP 8.2 in poi la API key e il secret dei webhook sono marcati
+`#[\SensitiveParameter]` e non compaiono mai nei trace dell'SDK. PHP 8.1 ignora
+quell'attributo: l'SDK li toglie dai propri parametri prima di fare qualsiasi
+altra cosa, ma un argomento di tipo sbagliato (per esempio un array dove è
+attesa una stringa) solleva un `TypeError` prima di quel punto, e il trace di
+quell'errore contiene gli argomenti.
+
+Su PHP 8.1 logga il messaggio, `errorCode` e `statusCode` delle eccezioni
+dell'SDK, non `getTraceAsString()` né un dump dell'eccezione, oppure imposta
+`zend.exception_ignore_args=On`.
+
+## Verifica dei Webhook
+
+`Tratto\Webhook::verify()` controlla l'header `X-Tratto-Signature` di una
+consegna: l'HMAC-SHA256 di `{t}.{raw body}` con il tuo secret (`whsec_...`,
+usato così com'è). Accetta più valori `v1` (rotazione del secret) e rifiuta le
+consegne più vecchie o più nuove della tolleranza, 5 minuti di default.
+Restituisce un `bool` e non solleva mai eccezioni per una firma non valida.
+Lo schema è descritto in [Verifica Webhook](/it/docs/webhook-verification).
+
+Passa sempre il body **grezzo**: un JSON decodificato e ricodificato non
+corrisponde.
+
+```php
+use Tratto\Webhook;
+
+$payload = file_get_contents('php://input');
+$header = $_SERVER['HTTP_X_TRATTO_SIGNATURE'] ?? null;
+
+if (!Webhook::verify($payload, $header, (string) getenv('TRATTO_WEBHOOK_SECRET'))) {
+    http_response_code(400);
+    exit;
+}
+
+$event = json_decode($payload, true);
+// Le consegne possono ripetersi: usa $event['id'] per elaborare ogni evento una volta sola.
+```
+
+La tolleranza è il quarto argomento, in secondi:
+`Webhook::verify($payload, $header, $secret, 600)`.
+
+## Cosa Non È Incluso
+
+I membri e il workspace stesso si gestiscono dalla dashboard: l'SDK non ha
+`workspace->delete()`, `inviteMember()`, `removeMember()` né `updateMember()`.
+
+---
+
+## Links
+
+- **Packagist:** https://packagist.org/packages/tratto/email
+- **GitHub:** https://github.com/tratto-email/tratto-php
+- **API Docs:** [API Reference](/it/docs/api-reference)
