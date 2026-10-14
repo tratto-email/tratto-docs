@@ -95,8 +95,8 @@ $tratto->emails->send([
 ## Send with Template, Schedule and Idempotency Key
 
 The second argument of `emails->send` is the
-[idempotency key](/en/docs/idempotency): retrying with the same key never sends
-twice. Only `emails->send` takes one, and a key containing a line break is
+[idempotency key](/en/docs/idempotency): within 24 hours, retrying with the same key returns the
+original response instead of sending again (best-effort). Only `emails->send` takes one, and a key containing a line break is
 rejected before sending.
 
 ```php
@@ -104,7 +104,7 @@ $tratto->emails->send([
     'from' => 'hello@yourdomain.com',
     'to' => ['alice@example.com', 'bob@example.com'],
     'subject' => 'Your receipt',
-    'templateId' => 'tpl_abc123',
+    'templateId' => 'tmpl_abc123',
     'variables' => ['name' => 'Alice'],
     'scheduledAt' => new DateTimeImmutable('+1 hour'),
 ], 'receipt-order-1234');
@@ -119,10 +119,10 @@ array goes out as a JSON array. For fields that are objects, such as
 ## Get Email Status and Timeline
 
 ```php
-$email = $tratto->emails->get('em_abc123');
+$email = $tratto->emails->get('email_abc123');
 echo $email['status']; // 'delivered'
 
-$events = $tratto->emails->listEvents('em_abc123');
+$events = $tratto->emails->listEvents('email_abc123');
 ```
 
 ## List Emails

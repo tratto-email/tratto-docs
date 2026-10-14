@@ -96,8 +96,9 @@ $tratto->emails->send([
 ## Invia con Template, Programmazione e Chiave di Idempotenza
 
 Il secondo argomento di `emails->send` è la
-[chiave di idempotenza](/it/docs/idempotency): ripetere la chiamata con la
-stessa chiave non invia mai due volte. Solo `emails->send` la accetta, e una
+[chiave di idempotenza](/it/docs/idempotency): entro 24 ore, ripetere la chiamata
+con la stessa chiave restituisce la risposta originale invece di inviare di
+nuovo (best-effort). Solo `emails->send` la accetta, e una
 chiave che contiene un a capo viene rifiutata prima dell'invio.
 
 ```php
@@ -105,7 +106,7 @@ $tratto->emails->send([
     'from' => 'hello@tuodominio.it',
     'to' => ['alice@example.com', 'bob@example.com'],
     'subject' => 'La tua ricevuta',
-    'templateId' => 'tpl_abc123',
+    'templateId' => 'tmpl_abc123',
     'variables' => ['name' => 'Alice'],
     'scheduledAt' => new DateTimeImmutable('+1 hour'),
 ], 'receipt-order-1234');
@@ -120,10 +121,10 @@ vuoto parte come array JSON. Per i campi che sono oggetti, come `variables` o
 ## Stato e Timeline di un'Email
 
 ```php
-$email = $tratto->emails->get('em_abc123');
+$email = $tratto->emails->get('email_abc123');
 echo $email['status']; // 'delivered'
 
-$events = $tratto->emails->listEvents('em_abc123');
+$events = $tratto->emails->listEvents('email_abc123');
 ```
 
 ## Elenca Email
