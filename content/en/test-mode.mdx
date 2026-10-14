@@ -26,8 +26,8 @@ The recipient address picks the simulated outcome:
 | Recipient | Outcome |
 |------|-------|
 | any address | `delivered` event, email ends `delivered` |
-| `bounced@simulator.tratto.email` | permanent bounce — email ends `failed`, `bounced` event with `type: "Permanent"` |
-| `soft-bounced@simulator.tratto.email` | transient bounce — `bounced` event with `type: "Transient"` |
+| `bounced@simulator.tratto.email` | permanent bounce, the email ends `bounced`, `bounced` event with `type: "Permanent"` |
+| `soft-bounced@simulator.tratto.email` | transient bounce, the email also ends `bounced`, `bounced` event with `type: "Transient"` |
 | `complained@simulator.tratto.email` | spam complaint — `complained` event |
 
 The `simulator.tratto.email` domain never receives mail; it exists only as a

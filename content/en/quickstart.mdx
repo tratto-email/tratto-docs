@@ -126,8 +126,8 @@ Special recipient addresses simulate the other outcomes:
 | Recipient | Outcome |
 |------|-------|
 | `delivered@simulator.tratto.email` (or any other address) | `delivered` |
-| `bounced@simulator.tratto.email` | permanent bounce — email ends `failed` |
-| `soft-bounced@simulator.tratto.email` | transient bounce |
+| `bounced@simulator.tratto.email` | permanent bounce, the email ends `bounced` |
+| `soft-bounced@simulator.tratto.email` | transient bounce, the email also ends `bounced` |
 | `complained@simulator.tratto.email` | spam complaint |
 
 If you have a [webhook](/en/docs/webhooks) registered, these events are

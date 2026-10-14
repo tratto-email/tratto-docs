@@ -126,8 +126,8 @@ Alcuni indirizzi destinatario speciali simulano gli altri esiti:
 | Destinatario | Esito |
 |------|-------|
 | `delivered@simulator.tratto.email` (o qualsiasi altro indirizzo) | `delivered` |
-| `bounced@simulator.tratto.email` | bounce permanente: l'email finisce in `failed` |
-| `soft-bounced@simulator.tratto.email` | bounce temporaneo |
+| `bounced@simulator.tratto.email` | bounce permanente: l'email finisce in `bounced` |
+| `soft-bounced@simulator.tratto.email` | bounce temporaneo: anche questa finisce in `bounced` |
 | `complained@simulator.tratto.email` | segnalazione di spam |
 
 Se hai registrato un [webhook](/it/docs/webhooks), ricevi anche lì questi
