@@ -76,7 +76,7 @@ echo "Domain ID: {$domain['id']}\n";
       { "type": "CNAME", "host": "token2._domainkey.hello.tuodominio.it", "value": "token2.dkim.amazonses.com", "verified": false, "purpose": "dkim" },
       { "type": "CNAME", "host": "token3._domainkey.hello.tuodominio.it", "value": "token3.dkim.amazonses.com", "verified": false, "purpose": "dkim" },
       { "type": "TXT", "host": "hello.tuodominio.it", "value": "v=spf1 include:amazonses.com ~all", "verified": false, "purpose": "spf" },
-      { "type": "TXT", "host": "_dmarc.hello.tuodominio.it", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email", "verified": false, "purpose": "dmarc" }
+      { "type": "TXT", "host": "_dmarc.hello.tuodominio.it", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@hello.tuodominio.it", "verified": false, "purpose": "dmarc" }
     ],
     "createdAt": "2026-06-30T12:00:00.000Z",
     "updatedAt": "2026-06-30T12:00:00.000Z",
@@ -97,7 +97,7 @@ Aggiungi i record di `records` presso il tuo provider DNS (GoDaddy, Namecheap, C
 | DKIM | CNAME | `<token2>._domainkey.hello.tuodominio.it` | `<token2>.dkim.amazonses.com` | Sì |
 | DKIM | CNAME | `<token3>._domainkey.hello.tuodominio.it` | `<token3>.dkim.amazonses.com` | Sì |
 | SPF | TXT | `hello.tuodominio.it` | `v=spf1 include:amazonses.com ~all` | Consigliato; se l'host ha già un record SPF, aggiungi `include:amazonses.com` a quello |
-| DMARC | TXT | `_dmarc.hello.tuodominio.it` | `v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email` | Consigliato |
+| DMARC | TXT | `_dmarc.hello.tuodominio.it` | `v=DMARC1; p=quarantine; rua=mailto:dmarc@hello.tuodominio.it` | Consigliato |
 
 ### 1. Record DKIM (obbligatori)
 
@@ -129,9 +129,11 @@ Un hostname deve avere esattamente un record `v=spf1` (RFC 7208, sezione 3.2). C
 
 **Tipo:** TXT  
 **Host:** `_dmarc.hello.tuodominio.it`  
-**Valore:** `v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email`
+**Valore:** `v=DMARC1; p=quarantine; rua=mailto:dmarc@hello.tuodominio.it`
 
-Questo chiede ai server riceventi di mettere in quarantena la posta che non supera l'autenticazione. La policy vale per tutta la posta inviata a nome del dominio, non solo per quella inviata tramite Tratto: assicurati che gli altri servizi che inviano per il dominio siano autenticati prima di pubblicarla. Tieni un solo record DMARC per host. Tratto non controlla questo record, quindi puoi adattare la policy e l'indirizzo `rua` al tuo dominio.
+Questo chiede ai server riceventi di mettere in quarantena la posta che non supera l'autenticazione. La policy vale per tutta la posta inviata a nome del dominio, non solo per quella inviata tramite Tratto: assicurati che gli altri servizi che inviano per il dominio siano autenticati prima di pubblicarla. Tieni un solo record DMARC per host. Tratto non controlla questo record, quindi puoi adattare la policy e l'indirizzo `rua`.
+
+L'indirizzo `rua` suggerito è una casella sul dominio stesso, perché i report aggregati elencano IP e volumi di tutte le fonti che inviano a nome del tuo dominio, Tratto o no, e quei dati sono tuoi. Un `rua` su un altro dominio funziona solo se quel dominio pubblica un record di autorizzazione per il tuo (RFC 7489, sezione 7.1); senza, i server riceventi scartano i report. Tratto non controlla che la casella esista: creala, oppure fai puntare `rua` a un indirizzo dello stesso dominio che leggi già.
 
 ## Verifica
 

@@ -76,7 +76,7 @@ echo "Domain ID: {$domain['id']}\n";
       { "type": "CNAME", "host": "token2._domainkey.hello.yourdomain.com", "value": "token2.dkim.amazonses.com", "verified": false, "purpose": "dkim" },
       { "type": "CNAME", "host": "token3._domainkey.hello.yourdomain.com", "value": "token3.dkim.amazonses.com", "verified": false, "purpose": "dkim" },
       { "type": "TXT", "host": "hello.yourdomain.com", "value": "v=spf1 include:amazonses.com ~all", "verified": false, "purpose": "spf" },
-      { "type": "TXT", "host": "_dmarc.hello.yourdomain.com", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email", "verified": false, "purpose": "dmarc" }
+      { "type": "TXT", "host": "_dmarc.hello.yourdomain.com", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@hello.yourdomain.com", "verified": false, "purpose": "dmarc" }
     ],
     "createdAt": "2026-06-30T12:00:00.000Z",
     "updatedAt": "2026-06-30T12:00:00.000Z",
@@ -97,7 +97,7 @@ Add the records from `records` at your DNS provider (GoDaddy, Namecheap, Cloudfl
 | DKIM | CNAME | `<token2>._domainkey.hello.yourdomain.com` | `<token2>.dkim.amazonses.com` | Yes |
 | DKIM | CNAME | `<token3>._domainkey.hello.yourdomain.com` | `<token3>.dkim.amazonses.com` | Yes |
 | SPF | TXT | `hello.yourdomain.com` | `v=spf1 include:amazonses.com ~all` | Recommended; if the host already has an SPF record, add `include:amazonses.com` to it |
-| DMARC | TXT | `_dmarc.hello.yourdomain.com` | `v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email` | Recommended |
+| DMARC | TXT | `_dmarc.hello.yourdomain.com` | `v=DMARC1; p=quarantine; rua=mailto:dmarc@hello.yourdomain.com` | Recommended |
 
 ### 1. DKIM Records (required)
 
@@ -129,9 +129,11 @@ A hostname must have exactly one `v=spf1` record (RFC 7208, section 3.2). With t
 
 **Type:** TXT  
 **Host:** `_dmarc.hello.yourdomain.com`  
-**Value:** `v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email`
+**Value:** `v=DMARC1; p=quarantine; rua=mailto:dmarc@hello.yourdomain.com`
 
-This asks receiving servers to quarantine mail that fails authentication. The policy covers all mail sent as this domain, not only mail sent through Tratto, so make sure your other senders authenticate before you publish it. Keep a single DMARC record per host. Tratto doesn't check this record, so you can adapt the policy and the `rua` address to your domain.
+This asks receiving servers to quarantine mail that fails authentication. The policy covers all mail sent as this domain, not only mail sent through Tratto, so make sure your other senders authenticate before you publish it. Keep a single DMARC record per host. Tratto doesn't check this record, so you can adapt the policy and the `rua` address.
+
+The suggested `rua` is a mailbox on the domain itself, because aggregate reports list the IPs and volumes of every source sending as your domain, Tratto or not, and that data belongs to you. A `rua` on a different domain only works if that domain publishes an authorization record for yours (RFC 7489, section 7.1); without it, receivers drop the reports. Tratto doesn't check that the mailbox exists: create it, or point `rua` at an address on the same domain that you already read.
 
 ## Verification
 

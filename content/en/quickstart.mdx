@@ -157,7 +157,7 @@ Response (values are examples — always use the ones from **your** response):
       { "type": "CNAME", "host": "token2._domainkey.yourdomain.com", "value": "token2.dkim.amazonses.com", "purpose": "dkim" },
       { "type": "CNAME", "host": "token3._domainkey.yourdomain.com", "value": "token3.dkim.amazonses.com", "purpose": "dkim" },
       { "type": "TXT", "host": "yourdomain.com", "value": "v=spf1 include:amazonses.com ~all", "purpose": "spf" },
-      { "type": "TXT", "host": "_dmarc.yourdomain.com", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@tratto.email", "purpose": "dmarc" }
+      { "type": "TXT", "host": "_dmarc.yourdomain.com", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@yourdomain.com", "purpose": "dmarc" }
     ]
   }
 }
