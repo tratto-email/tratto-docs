@@ -18,6 +18,8 @@ ed è contato su tutti i workspace dell'account, compresi i domini ancora
 `pending` e quelli `failed`: oltre il tetto la richiesta fallisce con
 `429 QUOTA_EXCEEDED`. Vedi [Limiti di Piano](/it/docs/rate-limits#limiti-di-piano).
 
+Nella dashboard solo il proprietario del workspace aggiunge, verifica e rimuove i domini: un membro può leggerli, e riceve `403 FORBIDDEN` (`Only the workspace owner can do this.`) sul resto. Vedi [Team](/it/docs/team#ruoli).
+
 **cURL**
 ```bash
 curl -X POST https://api.tratto.email/v1/domains \

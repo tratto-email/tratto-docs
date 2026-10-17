@@ -18,6 +18,8 @@ counted across all the workspaces of the account, including domains still
 `pending` and those that `failed`: past the cap the request fails with
 `429 QUOTA_EXCEEDED`. See [Plan Limits](/en/docs/rate-limits#plan-limits).
 
+In the dashboard only the workspace owner adds, verifies and removes domains: a member can read them, and gets `403 FORBIDDEN` (`Only the workspace owner can do this.`) on the rest. See [Team](/en/docs/team#roles).
+
 **cURL**
 ```bash
 curl -X POST https://api.tratto.email/v1/domains \

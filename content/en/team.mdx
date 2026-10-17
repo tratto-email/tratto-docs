@@ -18,6 +18,18 @@ A workspace has two roles:
 Accepting an invite always makes you a `member`. The dashboard has no other
 role and does not change roles.
 
+Some actions belong to the owner alone. A signed-in member who tries them gets
+`403 FORBIDDEN` with the message `Only the workspace owner can do this.`:
+
+- API keys: listing, creating, updating and revoking them
+- Sending domains: adding, verifying and removing them (members can still read them)
+- Webhooks: reading, registering, editing and deleting them
+- Billing: reading the plan and usage, starting a checkout, opening the billing portal
+- Workspace settings: changing or deleting the workspace, its logo and its preferences
+
+API keys are not affected: a key keeps the permissions it was created with,
+whoever created it. See [Permissions](/en/docs/authentication#permissions).
+
 The plan and its quotas belong to the owner's account: what a member sends
 counts against the owner's monthly email quota. See
 [Rate Limits](/en/docs/rate-limits#the-caps-belong-to-the-account-not-the-workspace).
@@ -161,7 +173,7 @@ workspace id and the token from the link in the request **body**:
 |---|---|---|
 | 401 | `UNAUTHORIZED` | The session was started before a revocation of the account's sessions (`Sign in again.`) |
 | 401 | `REAUTH_REQUIRED` | Accepting with a session older than a revocation of the account's sessions (`Sign in again to accept this invite.`) |
-| 403 | `FORBIDDEN` | Inviting, listing, revoking or removing without being the owner, or with an API key |
+| 403 | `FORBIDDEN` | Inviting, listing, revoking or removing without being the owner, or with an API key. A member gets `Only the workspace owner can do this.` |
 | 403 | `MEMBER_INVITES_RESTRICTED` | Invites are not available for this workspace yet: write to **support@tratto.email** |
 | 404 | `NOT_FOUND` | Revoking an invite that does not exist, or opening a link whose invite does not exist (`Invite not found.`) |
 | 409 | `CONFLICT` | Inviting: `That address is already a member of this workspace.` or `That address already has a pending invite.` |

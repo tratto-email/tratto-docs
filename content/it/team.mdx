@@ -19,6 +19,18 @@ Un workspace ha due ruoli:
 Chi accetta un invito diventa sempre `member`. La dashboard non ha altri ruoli
 e non cambia i ruoli.
 
+Alcune azioni spettano solo al proprietario. Un membro che le tenta riceve
+`403 FORBIDDEN` con il messaggio `Only the workspace owner can do this.`:
+
+- Chiavi API: elencarle, crearle, modificarle e revocarle
+- Domini di invio: aggiungerli, verificarli e rimuoverli (i membri possono comunque leggerli)
+- Webhook: leggerli, registrarli, modificarli ed eliminarli
+- Billing: leggere piano e consumi, avviare un checkout, aprire il portale di fatturazione
+- Impostazioni del workspace: modificarlo o eliminarlo, cambiarne il logo e le preferenze
+
+Le chiavi API non sono toccate: una chiave mantiene i permessi con cui è stata
+creata, chiunque l'abbia creata. Vedi [Permessi](/it/docs/authentication#permessi).
+
 Il piano e le sue quote appartengono all'account del proprietario: ciò che
 invia un membro consuma la quota email mensile del proprietario. Vedi
 [Rate Limit](/it/docs/rate-limits#i-tetti-sono-dellaccount-non-del-workspace).
@@ -163,7 +175,7 @@ prendono l'id del workspace e il token del link nel **corpo** della richiesta:
 |---|---|---|
 | 401 | `UNAUTHORIZED` | La sessione è iniziata prima di una revoca delle sessioni dell'account (`Sign in again.`) |
 | 401 | `REAUTH_REQUIRED` | Si accetta con una sessione più vecchia di una revoca delle sessioni dell'account (`Sign in again to accept this invite.`) |
-| 403 | `FORBIDDEN` | Si invita, si elencano o revocano inviti, o si rimuove un membro senza essere il proprietario, oppure con una chiave API |
+| 403 | `FORBIDDEN` | Si invita, si elencano o revocano inviti, o si rimuove un membro senza essere il proprietario, oppure con una chiave API. Un membro riceve `Only the workspace owner can do this.` |
 | 403 | `MEMBER_INVITES_RESTRICTED` | Gli inviti non sono ancora disponibili per questo workspace: scrivi a **support@tratto.email** |
 | 404 | `NOT_FOUND` | Si revoca un invito che non esiste, o si apre un link il cui invito non esiste (`Invite not found.`) |
 | 409 | `CONFLICT` | Invito: `That address is already a member of this workspace.` oppure `That address already has a pending invite.` |

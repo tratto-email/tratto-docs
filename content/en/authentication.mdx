@@ -64,7 +64,7 @@ Every key carries a set of permissions, and they are enforced on each request: a
 | `api-keys:read` / `api-keys:write` | Read / create, update, revoke API keys |
 | `billing:read` / `billing:write` | Read plan and usage / start checkout, open the billing portal |
 | `workspace:write` | Change workspace settings, including the general sender and the per-type [senders](/en/docs/senders) |
-| `members:write` | Change a member's role with `PATCH /v1/workspace/members/:userId` (legacy, the dashboard has no roles to change). Inviting and removing members is dashboard-only: every API key gets `403` (see [Team](/en/docs/team#from-the-api)) |
+| `members:write` | No route uses it: `PATCH /v1/workspace/members/:userId`, which changed a member's role, no longer exists and answers `404`. Inviting and removing members is dashboard-only: every API key gets `403` (see [Team](/en/docs/team#from-the-api)) |
 | `*` | Full access — every permission above, including future ones |
 
 Grant the narrowest set that does the job. A key that only sends transactional email needs `emails:send` and nothing else; one that also mirrors signups into your contact list needs `contacts:write` too.
@@ -455,6 +455,8 @@ The response names the permission that was missing, so you can tell which one to
 ```
 
 Fix it by granting that permission to the key — see [Update Key Permissions](#update-key-permissions) — or by using a key that already has it. Check the key's current set with `GET /v1/api-keys`.
+
+In the dashboard, a workspace member who is not the owner gets `403` with `Only the workspace owner can do this.` on API keys, webhooks, billing, domain changes and workspace settings, whatever permissions they hold. See [Team](/en/docs/team#roles).
 
 ## Workspace Header
 
