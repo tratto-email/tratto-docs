@@ -154,7 +154,7 @@ Questo record dimostra che il tuo workspace controlla il DNS del dominio. I reco
 
 ## Verifica
 
-Tratto controlla due cose: chiede ad Amazon SES se ha trovato i tre record CNAME DKIM, poi cerca da sé il record TXT di proprietà. Il dominio diventa `verified` solo quando li trova entrambi. SPF e DMARC non vengono mai controllati: il loro flag `verified` è sempre `false`, anche su un dominio verificato. I record DKIM e quello di proprietà condividono un unico flag, che diventa `true` quando il dominio è `verified`.
+Tratto controlla due cose: chiede ad Amazon SES se ha trovato i tre record CNAME DKIM, poi cerca da sé il record TXT di proprietà. Il dominio diventa `verified` solo quando li trova entrambi. SPF e DMARC non vengono mai controllati: il loro flag `verified` è sempre `false`, anche su un dominio verificato. I tre record DKIM condividono un unico flag, che diventa `true` quando Amazon SES li ha trovati. Il record di proprietà ha un flag suo, che diventa `true` quando Tratto trova il record TXT. Tratto cerca il record TXT solo dopo che i record DKIM sono stati trovati, quindi finché DKIM è in attesa il flag di proprietà resta `false`, anche se il record TXT è già pubblicato.
 
 Il controllo avviene in due modi:
 

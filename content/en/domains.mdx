@@ -154,7 +154,7 @@ This record proves that your workspace controls the domain's DNS. The DKIM recor
 
 ## Verification
 
-Tratto checks two things: it asks Amazon SES whether it has found the three DKIM CNAME records, then looks up the ownership TXT record itself. The domain becomes `verified` only when both are found. SPF and DMARC are never checked: their `verified` flag is always `false`, even on a verified domain. The DKIM and ownership records share one flag, which turns `true` when the domain is `verified`.
+Tratto checks two things: it asks Amazon SES whether it has found the three DKIM CNAME records, then looks up the ownership TXT record itself. The domain becomes `verified` only when both are found. SPF and DMARC are never checked: their `verified` flag is always `false`, even on a verified domain. The three DKIM records share one flag, which turns `true` when Amazon SES has found them. The ownership record has its own flag, which turns `true` when Tratto finds the TXT record. Tratto looks up the TXT record only once the DKIM records are found, so while DKIM is still pending the ownership flag stays `false`, even if the TXT record is already published.
 
 Checks happen in two ways:
 
