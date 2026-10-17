@@ -31,6 +31,12 @@ Alcune azioni spettano solo al proprietario. Un membro che le tenta riceve
 Le chiavi API non sono toccate: una chiave mantiene i permessi con cui è stata
 creata, chiunque l'abbia creata. Vedi [Permessi](/it/docs/authentication#permessi).
 
+Per conoscere il tuo ruolo prima di provare, leggi `role` nella risposta di
+`GET /v1/workspace` (lo stesso oggetto arriva da `PATCH /v1/workspace` e, con
+`201`, da `POST /v1/workspaces`): `owner` per il proprietario autenticato,
+`member` per ogni altra persona autenticata, `null` quando la chiamata usa una
+chiave API.
+
 Il piano e le sue quote appartengono all'account del proprietario: ciò che
 invia un membro consuma la quota email mensile del proprietario. Vedi
 [Rate Limit](/it/docs/rate-limits#i-tetti-sono-dellaccount-non-del-workspace).

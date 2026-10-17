@@ -30,6 +30,11 @@ Some actions belong to the owner alone. A signed-in member who tries them gets
 API keys are not affected: a key keeps the permissions it was created with,
 whoever created it. See [Permissions](/en/docs/authentication#permissions).
 
+To know your role before trying, read `role` in the response of
+`GET /v1/workspace` (the same object is returned by `PATCH /v1/workspace` and,
+with `201`, by `POST /v1/workspaces`): `owner` for the signed-in owner, `member`
+for any other signed-in person, `null` when the call uses an API key.
+
 The plan and its quotas belong to the owner's account: what a member sends
 counts against the owner's monthly email quota. See
 [Rate Limits](/en/docs/rate-limits#the-caps-belong-to-the-account-not-the-workspace).
