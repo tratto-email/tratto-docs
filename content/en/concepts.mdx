@@ -39,13 +39,13 @@ See [Authentication](/en/docs/authentication) for managing keys.
 A **domain** is a verified sending domain. Before you send emails, you must:
 
 1. Add your domain to Tratto
-2. Publish the DNS records from the API response: three DKIM CNAME records (required), plus SPF and DMARC (recommended)
-3. Wait for Tratto to verify DKIM: it re-checks every 10 minutes, or on demand
+2. Publish the DNS records from the API response: three DKIM CNAME records and the `_tratto` ownership TXT record (required), plus SPF and DMARC (recommended)
+3. Wait for Tratto to verify DKIM and the ownership record: it re-checks every 10 minutes, or on demand
 
 The records prove to receiving mail servers that you control the domain and are authorized to send from it.
 
 **Domain lifecycle:**
-- `pending`: waiting for Amazon SES to find the DKIM records
+- `pending`: waiting for Amazon SES to find the DKIM records, or for the ownership record
 - `verified`: ready to send
 - `failed`: the DKIM records were not found
 

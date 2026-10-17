@@ -157,14 +157,15 @@ Risposta (i valori sono esempi: usa sempre quelli della **tua** risposta):
       { "type": "CNAME", "host": "token2._domainkey.tuodominio.it", "value": "token2.dkim.amazonses.com", "purpose": "dkim" },
       { "type": "CNAME", "host": "token3._domainkey.tuodominio.it", "value": "token3.dkim.amazonses.com", "purpose": "dkim" },
       { "type": "TXT", "host": "tuodominio.it", "value": "v=spf1 include:amazonses.com ~all", "purpose": "spf" },
-      { "type": "TXT", "host": "_dmarc.tuodominio.it", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@tuodominio.it", "purpose": "dmarc" }
+      { "type": "TXT", "host": "_dmarc.tuodominio.it", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@tuodominio.it", "purpose": "dmarc" },
+      { "type": "TXT", "host": "_tratto.tuodominio.it", "value": "tratto-verify=4f1c9a0e...", "purpose": "ownership" }
     ]
   }
 }
 ```
 
 Aggiungi presso il tuo provider DNS tutti i record della risposta. I tre **record
-CNAME DKIM sono obbligatori** per la verifica; SPF e DMARC sono fortemente
+CNAME DKIM e il record TXT di proprietà `_tratto` sono obbligatori** per la verifica; SPF e DMARC sono fortemente
 consigliati per la deliverability.
 
 Se il tuo dominio ha già un record SPF (da Cloudflare Email Routing, Google

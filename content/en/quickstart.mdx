@@ -157,14 +157,15 @@ Response (values are examples — always use the ones from **your** response):
       { "type": "CNAME", "host": "token2._domainkey.yourdomain.com", "value": "token2.dkim.amazonses.com", "purpose": "dkim" },
       { "type": "CNAME", "host": "token3._domainkey.yourdomain.com", "value": "token3.dkim.amazonses.com", "purpose": "dkim" },
       { "type": "TXT", "host": "yourdomain.com", "value": "v=spf1 include:amazonses.com ~all", "purpose": "spf" },
-      { "type": "TXT", "host": "_dmarc.yourdomain.com", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@yourdomain.com", "purpose": "dmarc" }
+      { "type": "TXT", "host": "_dmarc.yourdomain.com", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@yourdomain.com", "purpose": "dmarc" },
+      { "type": "TXT", "host": "_tratto.yourdomain.com", "value": "tratto-verify=4f1c9a0e...", "purpose": "ownership" }
     ]
   }
 }
 ```
 
 Add every record from the response at your DNS provider. The three **DKIM
-CNAME records are required** for verification; SPF and DMARC are strongly
+CNAME records and the `_tratto` ownership TXT record are required** for verification; SPF and DMARC are strongly
 recommended for deliverability.
 
 If your domain already has an SPF record (from Cloudflare Email Routing, Google

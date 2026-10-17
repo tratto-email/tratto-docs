@@ -78,7 +78,8 @@ echo "Domain ID: {$domain['id']}\n";
       { "type": "CNAME", "host": "token2._domainkey.hello.yourdomain.com", "value": "token2.dkim.amazonses.com", "verified": false, "purpose": "dkim" },
       { "type": "CNAME", "host": "token3._domainkey.hello.yourdomain.com", "value": "token3.dkim.amazonses.com", "verified": false, "purpose": "dkim" },
       { "type": "TXT", "host": "hello.yourdomain.com", "value": "v=spf1 include:amazonses.com ~all", "verified": false, "purpose": "spf" },
-      { "type": "TXT", "host": "_dmarc.hello.yourdomain.com", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@hello.yourdomain.com", "verified": false, "purpose": "dmarc" }
+      { "type": "TXT", "host": "_dmarc.hello.yourdomain.com", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@hello.yourdomain.com", "verified": false, "purpose": "dmarc" },
+      { "type": "TXT", "host": "_tratto.hello.yourdomain.com", "value": "tratto-verify=4f1c9a0e...", "verified": false, "purpose": "ownership" }
     ],
     "createdAt": "2026-06-30T12:00:00.000Z",
     "updatedAt": "2026-06-30T12:00:00.000Z",
@@ -87,11 +88,11 @@ echo "Domain ID: {$domain['id']}\n";
 }
 ```
 
-Domain status is `pending`: Tratto is waiting for Amazon SES, which delivers your email, to find the DKIM records.
+Domain status is `pending`: Tratto is waiting for Amazon SES, which delivers your email, to find the DKIM records, and for the ownership record to be published.
 
 ## DNS Records Setup
 
-Add the records from `records` at your DNS provider (GoDaddy, Namecheap, Cloudflare, Route 53, etc.). Every domain gets five:
+Add the records from `records` at your DNS provider (GoDaddy, Namecheap, Cloudflare, Route 53, etc.). Every domain gets six:
 
 | Purpose | Type | Host | Value | Needed to send |
 |---------|------|------|-------|----------------|
@@ -100,6 +101,7 @@ Add the records from `records` at your DNS provider (GoDaddy, Namecheap, Cloudfl
 | DKIM | CNAME | `<token3>._domainkey.hello.yourdomain.com` | `<token3>.dkim.amazonses.com` | Yes |
 | SPF | TXT | `hello.yourdomain.com` | `v=spf1 include:amazonses.com ~all` | Recommended; if the host already has an SPF record, add `include:amazonses.com` to it |
 | DMARC | TXT | `_dmarc.hello.yourdomain.com` | `v=DMARC1; p=quarantine; rua=mailto:dmarc@hello.yourdomain.com` | Recommended |
+| Ownership | TXT | `_tratto.hello.yourdomain.com` | `tratto-verify=<token>` | Yes |
 
 ### 1. DKIM Records (required)
 
@@ -107,7 +109,7 @@ Add the records from `records` at your DNS provider (GoDaddy, Namecheap, Cloudfl
 **Host:** `<token>._domainkey.hello.yourdomain.com`  
 **Value:** `<token>.dkim.amazonses.com`
 
-The three tokens are unique to your domain: copy each host and value from your response. Amazon SES generates and manages the signing key, and the CNAME records point to its public keys. These are the only records Tratto checks: all three must resolve before the domain becomes `verified`.
+The three tokens are unique to your domain: copy each host and value from your response. Amazon SES generates and manages the signing key, and the CNAME records point to its public keys. All three must resolve before the domain becomes `verified`, together with the [ownership record](#4-ownership-record-required).
 
 <Callout>
 `host` is the full name. If your DNS provider appends your domain automatically, enter only the part before it (for example `<token1>._domainkey.hello` in the `yourdomain.com` zone), or the record ends up as `<token1>._domainkey.hello.yourdomain.com.yourdomain.com`.
@@ -137,9 +139,22 @@ This asks receiving servers to quarantine mail that fails authentication. The po
 
 The suggested `rua` is a mailbox on the domain itself, because aggregate reports list the IPs and volumes of every source sending as your domain, Tratto or not, and that data belongs to you. A `rua` on a different domain only works if that domain publishes an authorization record for yours (RFC 7489, section 7.1); without it, receivers drop the reports. Tratto doesn't check that the mailbox exists: create it, or point `rua` at an address on the same domain that you already read.
 
+### 4. Ownership Record (required)
+
+**Type:** TXT  
+**Host:** `_tratto.hello.yourdomain.com`  
+**Value:** `tratto-verify=<token>`
+
+This record proves that your workspace controls the domain's DNS. The DKIM records alone do not: a domain removed from one workspace and added to another would otherwise be verified by the records the previous owner left in place. The token belongs to your workspace and to this exact domain, so a record published for another workspace never matches.
+
+- Copy the value from the record with `purpose: "ownership"` in `records`, returned by `POST /v1/domains` and `GET /v1/domains/{id}`.
+- The token stays the same if you remove the domain and add it again in the same workspace.
+- A subdomain and its parent domain are two domains: `hello.yourdomain.com` and `yourdomain.com` in the same workspace need two TXT records, `_tratto.hello.yourdomain.com` and `_tratto.yourdomain.com`, with different tokens.
+- A domain that is already `verified` does not need it: Tratto checks the record only when a domain moves to `verified`.
+
 ## Verification
 
-Tratto verifies **DKIM only**, by asking Amazon SES whether it has found the three CNAME records. SPF and DMARC are never checked: their `verified` flag is always `false`, even on a verified domain. The three DKIM records share one flag, which turns `true` when the domain is `verified`.
+Tratto checks two things: it asks Amazon SES whether it has found the three DKIM CNAME records, then looks up the ownership TXT record itself. The domain becomes `verified` only when both are found. SPF and DMARC are never checked: their `verified` flag is always `false`, even on a verified domain. The DKIM and ownership records share one flag, which turns `true` when the domain is `verified`.
 
 Checks happen in two ways:
 
@@ -149,6 +164,8 @@ Checks happen in two ways:
 <Callout type="warning">
 Amazon SES notes that DNS changes can take **up to 72 hours** to propagate, and it keeps looking for the DKIM records for up to 72 hours.
 </Callout>
+
+If the ownership record was looked up before you published it, a DNS resolver can remember that it was missing for as long as your zone's negative-caching TTL (RFC 2308), so the domain can stay `pending` for that long after you publish it. If the lookup itself fails (a DNS timeout or server error), the status stays as it was and the next check tries again.
 
 ### Verify Now
 
@@ -192,8 +209,8 @@ The response is the full domain, `records` included, with `200` whatever the out
 
 | Status | Meaning |
 |--------|---------|
-| `pending` | Amazon SES hasn't found all three DKIM records yet, or a temporary SES issue prevented the check. Wait, or check again later. |
-| `verified` | The DKIM records were found. Live emails can be sent from this domain. |
+| `pending` | Amazon SES hasn't found all three DKIM records yet, the ownership record is not published yet, or a temporary SES or DNS issue prevented the check. Wait, or check again later. |
+| `verified` | The DKIM records and the ownership record were found. Live emails can be sent from this domain. |
 | `failed` | Amazon SES stopped looking, typically because it couldn't find the DKIM records. The automatic check skips `failed` domains: see [DNS Troubleshooting](#dns-troubleshooting). |
 
 ### What `verified` Unlocks
@@ -256,12 +273,12 @@ Removing a domain cannot be undone. Live emails from that domain are rejected un
 
 ### Still `pending` after adding records
 
-**Cause:** DNS hasn't propagated yet, or a DKIM record doesn't match.
+**Cause:** DNS hasn't propagated yet, or a DKIM or ownership record doesn't match.
 
 **Fix:**
-1. Compare each DKIM host and value with `records` from `GET /v1/domains/{id}`
+1. Compare each DKIM and ownership host and value with `records` from `GET /v1/domains/{id}`
 2. Check that your provider didn't append your domain to the host a second time
-3. Use [MXToolbox](https://mxtoolbox.com) or `dig CNAME <token1>._domainkey.hello.yourdomain.com` to check that the records are live
+3. Use [MXToolbox](https://mxtoolbox.com) or `dig CNAME <token1>._domainkey.hello.yourdomain.com` and `dig TXT _tratto.hello.yourdomain.com` to check that the records are live
 4. Wait for the next automatic check (every 10 minutes), or call `POST /v1/domains/{id}/verify`
 
 SPF and DMARC don't affect the status: a missing SPF or DMARC record never keeps a domain `pending`.
@@ -272,19 +289,20 @@ SPF and DMARC don't affect the status: a missing SPF or DMARC record never keeps
 
 **Fix:** correct the DKIM records, then call `POST /v1/domains/{id}/verify`, which reads the current status from Amazon SES. If the domain stays `failed`, remove it, add it again and publish the records from the new response.
 
-### SPF vs DKIM vs DMARC
+### Which Records Tratto Checks
 
 | Record | Purpose | Checked by Tratto |
 |--------|---------|-------------------|
 | **DKIM** | Signs every email with a key Amazon SES manages for your domain | Yes, required to send |
 | **SPF** | Authorizes Amazon SES to send for the hostname | No, recommended |
 | **DMARC** | Instructs mail servers how to handle failed SPF/DKIM | No, recommended |
+| **Ownership** | Proves your workspace controls the domain's DNS | Yes, required to send |
 
-**Best practice:** Publish all five records for maximum deliverability.
+**Best practice:** Publish all six records for maximum deliverability.
 
 ## Subdomain Sending
 
-You can use subdomains for sending (e.g., `hello.yourdomain.com`) while your main domain stays clean. Tratto matches the `from` domain exactly, so add and verify the subdomain itself.
+You can use subdomains for sending (e.g., `hello.yourdomain.com`) while your main domain stays clean. Tratto matches the `from` domain exactly, so add and verify the subdomain itself, with its own ownership record.
 
 **Advantages:**
 - Isolate email reputation from main domain

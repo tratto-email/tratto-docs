@@ -78,7 +78,8 @@ echo "Domain ID: {$domain['id']}\n";
       { "type": "CNAME", "host": "token2._domainkey.hello.tuodominio.it", "value": "token2.dkim.amazonses.com", "verified": false, "purpose": "dkim" },
       { "type": "CNAME", "host": "token3._domainkey.hello.tuodominio.it", "value": "token3.dkim.amazonses.com", "verified": false, "purpose": "dkim" },
       { "type": "TXT", "host": "hello.tuodominio.it", "value": "v=spf1 include:amazonses.com ~all", "verified": false, "purpose": "spf" },
-      { "type": "TXT", "host": "_dmarc.hello.tuodominio.it", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@hello.tuodominio.it", "verified": false, "purpose": "dmarc" }
+      { "type": "TXT", "host": "_dmarc.hello.tuodominio.it", "value": "v=DMARC1; p=quarantine; rua=mailto:dmarc@hello.tuodominio.it", "verified": false, "purpose": "dmarc" },
+      { "type": "TXT", "host": "_tratto.hello.tuodominio.it", "value": "tratto-verify=4f1c9a0e...", "verified": false, "purpose": "ownership" }
     ],
     "createdAt": "2026-06-30T12:00:00.000Z",
     "updatedAt": "2026-06-30T12:00:00.000Z",
@@ -87,11 +88,11 @@ echo "Domain ID: {$domain['id']}\n";
 }
 ```
 
-Lo status del dominio è `pending`: Tratto attende che Amazon SES, che consegna le tue email, trovi i record DKIM.
+Lo status del dominio è `pending`: Tratto attende che Amazon SES, che consegna le tue email, trovi i record DKIM, e che il record di proprietà sia pubblicato.
 
 ## Configurazione Record DNS
 
-Aggiungi i record di `records` presso il tuo provider DNS (GoDaddy, Namecheap, Cloudflare, Route 53, ecc.). Ogni dominio ne riceve cinque:
+Aggiungi i record di `records` presso il tuo provider DNS (GoDaddy, Namecheap, Cloudflare, Route 53, ecc.). Ogni dominio ne riceve sei:
 
 | Scopo | Tipo | Host | Valore | Necessario per inviare |
 |-------|------|------|--------|------------------------|
@@ -100,6 +101,7 @@ Aggiungi i record di `records` presso il tuo provider DNS (GoDaddy, Namecheap, C
 | DKIM | CNAME | `<token3>._domainkey.hello.tuodominio.it` | `<token3>.dkim.amazonses.com` | Sì |
 | SPF | TXT | `hello.tuodominio.it` | `v=spf1 include:amazonses.com ~all` | Consigliato; se l'host ha già un record SPF, aggiungi `include:amazonses.com` a quello |
 | DMARC | TXT | `_dmarc.hello.tuodominio.it` | `v=DMARC1; p=quarantine; rua=mailto:dmarc@hello.tuodominio.it` | Consigliato |
+| Proprietà | TXT | `_tratto.hello.tuodominio.it` | `tratto-verify=<token>` | Sì |
 
 ### 1. Record DKIM (obbligatori)
 
@@ -107,7 +109,7 @@ Aggiungi i record di `records` presso il tuo provider DNS (GoDaddy, Namecheap, C
 **Host:** `<token>._domainkey.hello.tuodominio.it`  
 **Valore:** `<token>.dkim.amazonses.com`
 
-I tre token sono unici per il tuo dominio: copia host e valore di ciascuno dalla tua risposta. Amazon SES genera e gestisce la chiave di firma, e i record CNAME puntano alle sue chiavi pubbliche. Sono gli unici record che Tratto controlla: devono risolversi tutti e tre prima che il dominio diventi `verified`.
+I tre token sono unici per il tuo dominio: copia host e valore di ciascuno dalla tua risposta. Amazon SES genera e gestisce la chiave di firma, e i record CNAME puntano alle sue chiavi pubbliche. Devono risolversi tutti e tre prima che il dominio diventi `verified`, insieme al [record di proprietà](#4-record-di-proprietà-obbligatorio).
 
 <Callout>
 `host` è il nome completo. Se il tuo provider DNS aggiunge il dominio in automatico, inserisci solo la parte che lo precede (per esempio `<token1>._domainkey.hello` nella zona `tuodominio.it`), altrimenti il record diventa `<token1>._domainkey.hello.tuodominio.it.tuodominio.it`.
@@ -137,9 +139,22 @@ Questo chiede ai server riceventi di mettere in quarantena la posta che non supe
 
 L'indirizzo `rua` suggerito è una casella sul dominio stesso, perché i report aggregati elencano IP e volumi di tutte le fonti che inviano a nome del tuo dominio, Tratto o no, e quei dati sono tuoi. Un `rua` su un altro dominio funziona solo se quel dominio pubblica un record di autorizzazione per il tuo (RFC 7489, sezione 7.1); senza, i server riceventi scartano i report. Tratto non controlla che la casella esista: creala, oppure fai puntare `rua` a un indirizzo dello stesso dominio che leggi già.
 
+### 4. Record di proprietà (obbligatorio)
+
+**Tipo:** TXT  
+**Host:** `_tratto.hello.tuodominio.it`  
+**Valore:** `tratto-verify=<token>`
+
+Questo record dimostra che il tuo workspace controlla il DNS del dominio. I record DKIM da soli non bastano: un dominio rimosso da un workspace e aggiunto in un altro verrebbe altrimenti verificato dai record lasciati dal proprietario precedente. Il token appartiene al tuo workspace e a questo dominio esatto, quindi un record pubblicato per un altro workspace non corrisponde mai.
+
+- Copia il valore dal record con `purpose: "ownership"` in `records`, restituito da `POST /v1/domains` e da `GET /v1/domains/{id}`.
+- Il token resta lo stesso se rimuovi il dominio e lo aggiungi di nuovo nello stesso workspace.
+- Un sottodominio e il dominio padre sono due domini: `hello.tuodominio.it` e `tuodominio.it` nello stesso workspace richiedono due record TXT, `_tratto.hello.tuodominio.it` e `_tratto.tuodominio.it`, con token diversi.
+- Un dominio già `verified` non ne ha bisogno: Tratto controlla il record solo quando un dominio passa a `verified`.
+
 ## Verifica
 
-Tratto verifica **solo DKIM**, chiedendo ad Amazon SES se ha trovato i tre record CNAME. SPF e DMARC non vengono mai controllati: il loro flag `verified` è sempre `false`, anche su un dominio verificato. I tre record DKIM condividono un unico flag, che diventa `true` quando il dominio è `verified`.
+Tratto controlla due cose: chiede ad Amazon SES se ha trovato i tre record CNAME DKIM, poi cerca da sé il record TXT di proprietà. Il dominio diventa `verified` solo quando li trova entrambi. SPF e DMARC non vengono mai controllati: il loro flag `verified` è sempre `false`, anche su un dominio verificato. I record DKIM e quello di proprietà condividono un unico flag, che diventa `true` quando il dominio è `verified`.
 
 Il controllo avviene in due modi:
 
@@ -149,6 +164,8 @@ Il controllo avviene in due modi:
 <Callout type="warning">
 Amazon SES indica che le modifiche DNS possono richiedere **fino a 72 ore** per propagarsi, e cerca i record DKIM per un massimo di 72 ore.
 </Callout>
+
+Se il record di proprietà è stato cercato prima che tu lo pubblicassi, un resolver DNS può ricordarne l'assenza per tutto il TTL di cache negativa della tua zona (RFC 2308): il dominio può restare `pending` per quel tempo dopo la pubblicazione. Se la ricerca stessa non riesce (timeout DNS o errore del server), lo status resta quello che era e il controllo successivo riprova.
 
 ### Verifica Subito
 
@@ -192,8 +209,8 @@ La risposta è il dominio completo, `records` inclusi, con `200` qualunque sia l
 
 | Status | Significato |
 |--------|-------------|
-| `pending` | Amazon SES non ha ancora trovato tutti e tre i record DKIM, oppure un problema temporaneo di SES ha impedito il controllo. Attendi o ricontrolla più tardi. |
-| `verified` | I record DKIM sono stati trovati. Puoi inviare email reali da questo dominio. |
+| `pending` | Amazon SES non ha ancora trovato tutti e tre i record DKIM, il record di proprietà non è ancora pubblicato, oppure un problema temporaneo di SES o del DNS ha impedito il controllo. Attendi o ricontrolla più tardi. |
+| `verified` | I record DKIM e il record di proprietà sono stati trovati. Puoi inviare email reali da questo dominio. |
 | `failed` | Amazon SES ha smesso di cercare, di solito perché non ha trovato i record DKIM. Il controllo automatico salta i domini `failed`: vedi [Risoluzione dei Problemi DNS](#risoluzione-dei-problemi-dns). |
 
 ### Cosa Sblocca `verified`
@@ -256,12 +273,12 @@ La rimozione di un dominio non può essere annullata. Le email reali da quel dom
 
 ### Ancora `pending` dopo l'aggiunta dei record
 
-**Causa:** il DNS non si è ancora propagato, oppure un record DKIM non corrisponde.
+**Causa:** il DNS non si è ancora propagato, oppure un record DKIM o di proprietà non corrisponde.
 
 **Fix:**
-1. Confronta host e valore di ogni record DKIM con `records` di `GET /v1/domains/{id}`
+1. Confronta host e valore di ogni record DKIM e di quello di proprietà con `records` di `GET /v1/domains/{id}`
 2. Controlla che il provider non abbia aggiunto il dominio all'host una seconda volta
-3. Usa [MXToolbox](https://mxtoolbox.com) o `dig CNAME <token1>._domainkey.hello.tuodominio.it` per verificare che i record siano live
+3. Usa [MXToolbox](https://mxtoolbox.com) o `dig CNAME <token1>._domainkey.hello.tuodominio.it` e `dig TXT _tratto.hello.tuodominio.it` per verificare che i record siano live
 4. Attendi il prossimo controllo automatico (ogni 10 minuti), oppure chiama `POST /v1/domains/{id}/verify`
 
 SPF e DMARC non influiscono sullo status: un record SPF o DMARC mancante non lascia mai un dominio in `pending`.
@@ -272,19 +289,20 @@ SPF e DMARC non influiscono sullo status: un record SPF o DMARC mancante non las
 
 **Fix:** correggi i record DKIM, poi chiama `POST /v1/domains/{id}/verify`, che legge lo status attuale da Amazon SES. Se il dominio resta `failed`, rimuovilo, aggiungilo di nuovo e pubblica i record della nuova risposta.
 
-### SPF vs DKIM vs DMARC
+### Quali Record Controlla Tratto
 
 | Record | Scopo | Controllato da Tratto |
 |--------|-------|-----------------------|
 | **DKIM** | Firma ogni email con una chiave che Amazon SES gestisce per il tuo dominio | Sì, necessario per inviare |
 | **SPF** | Autorizza Amazon SES a inviare per l'hostname | No, consigliato |
 | **DMARC** | Istruisce i server di posta su come gestire SPF/DKIM falliti | No, consigliato |
+| **Proprietà** | Dimostra che il tuo workspace controlla il DNS del dominio | Sì, necessario per inviare |
 
-**Best practice:** Pubblica tutti e cinque i record per la massima deliverability.
+**Best practice:** Pubblica tutti e sei i record per la massima deliverability.
 
 ## Invio da Sottodominio
 
-Puoi usare i sottodomini per inviare (es., `hello.tuodominio.it`) mentre il tuo dominio principale rimane pulito. Tratto confronta il dominio del `from` in modo esatto, quindi aggiungi e verifica il sottodominio stesso.
+Puoi usare i sottodomini per inviare (es., `hello.tuodominio.it`) mentre il tuo dominio principale rimane pulito. Tratto confronta il dominio del `from` in modo esatto, quindi aggiungi e verifica il sottodominio stesso, con il suo record di proprietà.
 
 **Vantaggi:**
 - Isola la reputazione email dal dominio principale
