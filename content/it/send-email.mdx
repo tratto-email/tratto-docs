@@ -394,19 +394,14 @@ Successivamente, filtra le email per tag o usali nei webhook.
 
 ## Risposta
 
-**Successo (2xx):**
+**Successo (`202 Accepted`):** l'email è accettata e messa in coda. `livemode`
+è `true` con una chiave live e `false` con una chiave di test. Per leggere lo
+status e gli altri campi, chiama `GET /v1/emails/{id}`.
 ```json
 {
   "data": {
     "id": "email_abc123xyz",
-    "status": "queued",
-    "from": "hello@tuodominio.it",
-    "to": "user@example.com",
-    "cc": [],
-    "bcc": [],
-    "subject": "Benvenuto!",
-    "createdAt": "2025-06-30T12:00:00Z",
-    "scheduledAt": null
+    "livemode": true
   }
 }
 ```

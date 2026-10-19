@@ -154,7 +154,7 @@ controllo è tutto o niente. A differenza di `RATE_LIMITED` non si risolve ripro
 
 Un'email programmata conta nel mese UTC per cui è programmata, non in quello
 in cui l'hai creata. Il contatore di un mese, quello che viene confrontato col
-limite e che la dashboard mostra come **Email usate questo mese**, include i
+limite e che la dashboard mostra come **Destinatari usati questo mese**, include i
 destinatari delle email live programmate per quel mese, già partite o ancora
 in attesa. Annullare un'email programmata restituisce le sue unità, e
 riprogrammarla in un altro mese sposta le unità: vedi
@@ -182,7 +182,9 @@ da eliminare. Oltre il tetto l'API risponde `429 QUOTA_EXCEEDED`:
 
 Non scrivere a mano i numeri qui sopra. `GET /v1/workspace` restituisce i
 limiti realmente applicati, dove `null` significa nessun limite.
-`limits.emailsPerMonth` e `limits.domains` sono i tetti dell'**account**
+`limits.emailsPerMonth` (destinatari per mese UTC, dove ogni indirizzo
+distinto in `to`, `cc` e `bcc` conta uno) e `limits.domains` sono i tetti
+dell'**account**
 proprietario del workspace, condivisi con i suoi altri workspace, non una
 dotazione di questo solo workspace. `limits.membersPerWorkspace` è il numero di
 persone che ogni workspace può avere, inviti in attesa compresi (vedi

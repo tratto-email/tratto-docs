@@ -392,19 +392,14 @@ Later, filter emails by tags or use them in webhooks.
 
 ## Response
 
-**Success (2xx):**
+**Success (`202 Accepted`):** the email is accepted and queued. `livemode` is
+`true` with a live key and `false` with a test key. To read the status and the
+other fields, call `GET /v1/emails/{id}`.
 ```json
 {
   "data": {
     "id": "email_abc123xyz",
-    "status": "queued",
-    "from": "hello@yourdomain.com",
-    "to": "user@example.com",
-    "cc": [],
-    "bcc": [],
-    "subject": "Welcome!",
-    "createdAt": "2025-06-30T12:00:00Z",
-    "scheduledAt": null
+    "livemode": true
   }
 }
 ```
