@@ -198,6 +198,69 @@ what you see is a `failed` email and no explanation. Publish the template
 before you send: see
 [Templates](/en/docs/templates#publish-before-you-send).
 
+## Recipients: to, cc and bcc
+
+Requires API 0.21.0 or later.
+
+An email can have at most **50 distinct recipients** across `to`, `cc` and
+`bcc` together. Addresses are compared ignoring case, and an address that
+appears more than once, in the same field or in different ones, counts once.
+Over 50 the API answers `422 VALIDATION_ERROR` and nothing is written or
+charged:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Request validation failed.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
+    "details": [{ "path": "/to", "message": "An email can have at most 50 recipients across to, cc and bcc (got 51). Split the send, or use a campaign for a larger audience." }]
+  }
+}
+```
+
+Split the send into several emails, or use a [campaign](/en/docs/campaigns)
+for a larger audience.
+
+**Each distinct recipient uses one unit of the
+[monthly quota](/en/docs/rate-limits#plan-limits).** An email with `to` set to
+`a@example.com`, `cc` set to `A@example.com` and `bcc` set to `b@example.com`
+uses two units. The check is all or nothing: if the account has fewer
+recipients left than the email has, the API answers `429 QUOTA_EXCEEDED` and
+nothing is sent, not even to the first recipients.
+
+The message depends on who makes the request. The workspace owner, signed in
+to the dashboard, sees how many recipients are left:
+
+```json
+{
+  "error": {
+    "code": "QUOTA_EXCEEDED",
+    "message": "This email has 3 recipients, but only 2 of the 3000 monthly recipients of the free plan remain. Every distinct address in to, cc and bcc counts. The quota is shared by every workspace of the account that owns this one.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
+    "suggestion": "Send to fewer recipients, or have the workspace owner upgrade the plan at https://app.tratto.email/settings/billing."
+  }
+}
+```
+
+An API key or a member gets the same error without the remaining count:
+
+```json
+{
+  "error": {
+    "code": "QUOTA_EXCEEDED",
+    "message": "This email has 3 recipients, more than the recipients left on the free plan (3000 per month). Every distinct address in to, cc and bcc counts. The quota is shared by every workspace of the account that owns this one.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
+    "suggestion": "Send to fewer recipients, or have the workspace owner upgrade the plan at https://app.tratto.email/settings/billing."
+  }
+}
+```
+
+`GET /v1/emails/{id}` and `GET /v1/emails` return `to`, `cc` and `bcc`
+deduplicated: the first spelling of each address is kept, in the order `to`,
+then `cc`, then `bcc`, and a `cc` or `bcc` left empty by the deduplication is
+omitted.
+
 ## Schedule an Email
 
 Send an email at a future time using the `scheduledAt` field (ISO 8601 format):
@@ -221,17 +284,18 @@ The email will be queued and sent at the specified time (must be in the future).
 
 A live scheduled email counts against the [monthly quota](/en/docs/rate-limits#plan-limits)
 of the **UTC month of its `scheduledAt`**, not the month in which you make the
-request. The unit is booked when the API accepts the `POST`. If that month is
-already full, the request fails with `429 QUOTA_EXCEEDED` and the message
+request: one unit per distinct recipient (requires API 0.21.0 or later). The
+units are booked when the API accepts the `POST`. If that month has fewer
+recipients left than the email has, the request fails with `429 QUOTA_EXCEEDED` and the message
 names the month:
 
 ```json
 {
   "error": {
     "code": "QUOTA_EXCEEDED",
-    "message": "Monthly quota of 3000 emails for 2026-11 reached for the free plan. A scheduled email counts against the UTC month of its scheduledAt. The quota is shared by every workspace of the account that owns this one.",
+    "message": "This email has 3 recipients, more than the recipients left for 2026-11 on the free plan (3000 per month). Every distinct address in to, cc and bcc counts. A scheduled email counts against the UTC month of its scheduledAt. The quota is shared by every workspace of the account that owns this one.",
     "docs": "https://docs.tratto.email/en/docs/error-codes",
-    "suggestion": "Cancel or reschedule other emails for 2026-11, or have the workspace owner upgrade the plan at https://app.tratto.email/settings/billing."
+    "suggestion": "Cancel or reschedule other emails for 2026-11, send to fewer recipients, or have the workspace owner upgrade the plan at https://app.tratto.email/settings/billing."
   }
 }
 ```
@@ -246,7 +310,7 @@ scheduled stay valid after a plan downgrade.
 ### Cancel a scheduled email
 
 `DELETE /v1/emails/{id}` cancels an email that is still `scheduled` and gives
-its unit back to the month it was booked on. It answers `204` with no body.
+its units back, one per distinct recipient, to the month they were booked on. It answers `204` with no body.
 An email that is already `queued` or `sent` cannot be canceled: the API
 answers `409 CONFLICT`.
 
@@ -259,8 +323,8 @@ curl -X DELETE https://api.tratto.email/v1/emails/email_abc123xyz \
 
 `PATCH /v1/emails/{id}` with a new `scheduledAt`, which must be in the future,
 moves an email that is still `scheduled`. Within the same UTC month nothing
-changes on the quota. Into another month the unit moves with the email: if
-the destination month is full, the API answers `429 QUOTA_EXCEEDED` and the
+changes on the quota. Into another month the units move with the email: if
+the destination month has fewer recipients left than the email has, the API answers `429 QUOTA_EXCEEDED` and the
 email stays as it was.
 
 ```bash
@@ -312,7 +376,7 @@ Later, filter emails by tags or use them in webhooks.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `from` | string | | Sender, as `Name <email>` or a bare address. With a live key its domain must be verified. If omitted, the workspace transactional sender is used, or the general default sender; with neither, `422`. See [Senders](/en/docs/senders#transactional) |
-| `to` | string \| string[] | ✓ | Recipient address, or an array of addresses |
+| `to` | string \| string[] | ✓ | Recipient address, or an array of addresses. `to`, `cc` and `bcc` together: at most 50 distinct recipients, see [Recipients](#recipients-to-cc-and-bcc) |
 | `cc` | string[] | | Carbon copy recipients |
 | `bcc` | string[] | | Blind carbon copy recipients |
 | `subject` | string | ✓ | Email subject line (required with a template too, max 998 chars) |
@@ -366,6 +430,16 @@ the domain named in `message`.
 
 **Fix:** Complete the [domain verification process](/en/docs/domains).
 
+### QUOTA_EXCEEDED
+
+**Cause:** The account has fewer recipients left this month than the email
+has, or, with `scheduledAt`, in the month it is scheduled for. Nothing was
+sent.
+
+**Fix:** Send to fewer recipients, wait for the next UTC month or upgrade the
+plan. Retrying the same request will not help. See
+[Recipients](#recipients-to-cc-and-bcc).
+
 ### RATE_LIMITED
 
 **Cause:** More than 100 requests in one second with the same API key, or more than 500 requests in one minute from the same IP.
@@ -380,12 +454,20 @@ header and the message `Nothing was sent and nothing was charged. Retry the requ
 
 No email was created and no quota was used, so retrying cannot send twice.
 
+With API 0.21.0 or later the same 503, with `Retry-After: 1` and the same
+message, also covers an email that could not be stored: the quota is given
+back. If giving the quota back fails as well, the message is
+`Nothing was sent. This request may still count against the monthly quota. Retry the request; the same Idempotency-Key can be reused.` Nothing was sent in this case either. If the store reports an
+error but the email was in fact written, the request goes on and answers
+`202`.
+
 **Fix:** Retry after `Retry-After` seconds. If you sent an `Idempotency-Key`,
 reuse the same key. See [Idempotency](/en/docs/idempotency).
 
 ### VALIDATION_ERROR
 
-**Cause:** Invalid request (missing required field, malformed JSON, etc.).
+**Cause:** Invalid request (missing required field, malformed JSON, more than
+50 distinct recipients across `to`, `cc` and `bcc`, etc.).
 
 **Fix:** Check the error message and refer to the [Error Codes](/en/docs/error-codes) reference.
 

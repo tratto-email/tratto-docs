@@ -114,11 +114,20 @@ async function sendWithRetry(url, options, maxRetries = 3) {
 
 Ogni piano ha due tetti:
 
-| Piano | Email al mese | Domini |
+| Piano | Destinatari al mese | Domini |
 |---|---|---|
 | Free | 3.000 | 3 |
 | Starter | 75.000 | 10 |
 | Growth | 500.000 | 100 |
+
+La quota mensile conta i **destinatari**, non le email (richiede l'API 0.21.0
+o successiva): ogni indirizzo distinto in `to`, `cc` e `bcc` di un'email
+consuma un'unità, ignorando maiuscole e minuscole, e un indirizzo ripetuto
+nella stessa email conta una volta sola. Un'email a una persona consuma
+un'unità, un'email a tre persone distinte ne consuma tre. Una campagna o un
+flusso inviano un'email per destinatario, quindi per loro un destinatario resta
+un'email. Un'email può avere al massimo 50 destinatari distinti: vedi
+[Destinatari](/it/docs/send-email#destinatari-to-cc-e-bcc).
 
 La generazione di template con l'AI nella dashboard ha una dotazione a sé,
 **50 generazioni al mese** su ogni piano, azzerata alle 00:00 UTC del primo
@@ -135,19 +144,20 @@ proprietario o da un membro, consumano la stessa dotazione. Un
 altro workspace dello stesso account o da un altro membro.
 
 **Non esiste un tetto giornaliero** legato al piano. L'unico limite giornaliero
-del prodotto è quello del test mode — 100 invii di test al giorno, vedi
+del prodotto è quello del test mode, 100 destinatari di test al giorno, vedi
 [Test Mode](/it/docs/test-mode).
 
-Se superi la quota mensile le richieste falliscono con `QUOTA_EXCEEDED`,
-anch'esso 429. A differenza di `RATE_LIMITED` non si risolve riprovando: vedi
+Quando un'email ha più destinatari di quanti ne restano all'account, la
+richiesta fallisce con `QUOTA_EXCEEDED`, anch'esso 429, e non parte niente: il
+controllo è tutto o niente. A differenza di `RATE_LIMITED` non si risolve riprovando: vedi
 [Codici di Errore](/it/docs/error-codes).
 
 Un'email programmata conta nel mese UTC per cui è programmata, non in quello
 in cui l'hai creata. Il contatore di un mese, quello che viene confrontato col
-limite e che la dashboard mostra come **Email usate questo mese**, include le
-email live programmate per quel mese, già partite o ancora in attesa.
-Annullare un'email programmata restituisce la sua unità, e riprogrammarla in
-un altro mese sposta l'unità: vedi
+limite e che la dashboard mostra come **Email usate questo mese**, include i
+destinatari delle email live programmate per quel mese, già partite o ancora
+in attesa. Annullare un'email programmata restituisce le sue unità, e
+riprogrammarla in un altro mese sposta le unità: vedi
 [Quota delle email programmate](/it/docs/send-email#quota-delle-email-programmate).
 
 Il limite di domini conta tutti i domini di tutti i workspace dell'account,
@@ -203,7 +213,7 @@ nuovo**: non c'è nessun job schedulato di reset. Un account che a ottobre non
 invia nulla riparte comunque da zero a novembre, al primo invio di novembre.
 
 <Callout type="warn">
-**Non esiste un piano "Pro", né un piano senza tetto mensile di email.** I
+**Non esiste un piano "Pro", né un piano senza tetto mensile di destinatari.** I
 piani sono quelli della tabella qui sopra, e `GET /v1/workspace` riporta sempre
 uno di questi.
 </Callout>

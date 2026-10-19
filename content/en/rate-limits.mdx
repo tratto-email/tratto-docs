@@ -113,11 +113,19 @@ async function sendWithRetry(url, options, maxRetries = 3) {
 
 Each plan has two caps:
 
-| Plan | Emails per month | Domains |
+| Plan | Recipients per month | Domains |
 |---|---|---|
 | Free | 3,000 | 3 |
 | Starter | 75,000 | 10 |
 | Growth | 500,000 | 100 |
+
+The monthly quota counts **recipients**, not emails (requires API 0.21.0 or
+later): every distinct address in `to`, `cc` and `bcc` of an email uses one
+unit, ignoring case, and an address repeated in the same email counts once.
+An email to one person uses one unit, an email to three distinct people uses
+three. A campaign or a flow sends one email per recipient, so for them one
+recipient is still one email. An email can have at most 50 distinct
+recipients: see [Recipients](/en/docs/send-email#recipients-to-cc-and-bcc).
 
 AI template generation in the dashboard has an allowance of its own, **50
 generations per month** on every plan, reset at 00:00 UTC on the 1st.
@@ -132,19 +140,20 @@ allowance. A `QUOTA_EXCEEDED` can therefore come from usage you did not make
 yourself, in another workspace of the same account or by another member.
 
 There is **no per-day cap** on a plan. The only daily limit in the product is
-the test-mode one — 100 test sends per day, see
+the test-mode one, 100 test recipients per day, see
 [Test Mode](/en/docs/test-mode).
 
-Exceed the monthly quota and requests fail with `QUOTA_EXCEEDED`, which also
-returns 429. Unlike `RATE_LIMITED` it will not clear by retrying: see
+When an email has more recipients than the account has left, the request
+fails with `QUOTA_EXCEEDED`, which also returns 429, and nothing is sent: the
+check is all or nothing. Unlike `RATE_LIMITED` it will not clear by retrying: see
 [Error Codes](/en/docs/error-codes).
 
 A scheduled email counts in the UTC month it is scheduled for, not the month
 you created it. A month's counter, the one compared with the limit and shown
-in the dashboard as **Emails used this month**, includes the live emails
-scheduled for that month, whether they have already gone out or are still
-waiting. Canceling a scheduled email gives its unit back, and rescheduling it
-into another month moves the unit: see
+in the dashboard as **Emails used this month**, includes the recipients of the
+live emails scheduled for that month, whether they have already gone out or
+are still waiting. Canceling a scheduled email gives its units back, and
+rescheduling it into another month moves the units: see
 [Quota of scheduled emails](/en/docs/send-email#quota-of-scheduled-emails).
 
 The domain limit counts every domain in every workspace of the account,
@@ -169,7 +178,8 @@ the cap the API answers `429 QUOTA_EXCEEDED`:
 
 Do not hard-code the numbers above. `GET /v1/workspace` returns the limits
 that are actually enforced, and `null` means no limit. `limits.emailsPerMonth`
-and `limits.domains` are the caps of the **account** that owns the workspace,
+(recipients per UTC month, every distinct address in `to`, `cc` and `bcc`
+counting as one) and `limits.domains` are the caps of the **account** that owns the workspace,
 shared with its other workspaces, not an allowance of this workspace alone.
 `limits.membersPerWorkspace` is the number of people each workspace can have,
 counting pending invites (see [Team](/en/docs/team#how-many-people-each-plan-allows)):
@@ -199,7 +209,7 @@ month**. There is no scheduled reset job: an account that sends nothing in
 October still starts November at zero, on its first November send.
 
 <Callout type="warn">
-**There is no "Pro" plan, and no plan without a monthly email cap.** The plans
+**There is no "Pro" plan, and no plan without a monthly recipient cap.** The plans
 are the ones in the table above, and `GET /v1/workspace` always reports one of
 them.
 </Callout>

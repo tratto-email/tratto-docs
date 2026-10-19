@@ -201,6 +201,69 @@ quello che vedi è un'email `failed` e nessuna spiegazione. Pubblica il template
 prima di inviare: vedi
 [Template](/it/docs/templates#pubblica-prima-di-inviare).
 
+## Destinatari: to, cc e bcc
+
+Richiede l'API 0.21.0 o successiva.
+
+Un'email può avere al massimo **50 destinatari distinti** fra `to`, `cc` e
+`bcc` insieme. Gli indirizzi si confrontano ignorando maiuscole e minuscole, e
+un indirizzo che compare più volte, nello stesso campo o in campi diversi,
+conta una volta sola. Oltre 50 l'API risponde `422 VALIDATION_ERROR` e non
+viene scritto né addebitato niente:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Request validation failed.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
+    "details": [{ "path": "/to", "message": "An email can have at most 50 recipients across to, cc and bcc (got 51). Split the send, or use a campaign for a larger audience." }]
+  }
+}
+```
+
+Dividi l'invio in più email, oppure usa una [campagna](/it/docs/campaigns)
+per un pubblico più ampio.
+
+**Ogni destinatario distinto consuma un'unità della
+[quota mensile](/it/docs/rate-limits#limiti-di-piano).** Un'email con `to`
+`a@example.com`, `cc` `A@example.com` e `bcc` `b@example.com` consuma due
+unità. Il controllo è tutto o niente: se all'account restano meno destinatari
+di quanti ne ha l'email, l'API risponde `429 QUOTA_EXCEEDED` e non parte
+niente, nemmeno verso i primi destinatari.
+
+Il messaggio dipende da chi fa la richiesta. Il proprietario del workspace,
+nella dashboard, vede quanti destinatari restano:
+
+```json
+{
+  "error": {
+    "code": "QUOTA_EXCEEDED",
+    "message": "This email has 3 recipients, but only 2 of the 3000 monthly recipients of the free plan remain. Every distinct address in to, cc and bcc counts. The quota is shared by every workspace of the account that owns this one.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
+    "suggestion": "Send to fewer recipients, or have the workspace owner upgrade the plan at https://app.tratto.email/settings/billing."
+  }
+}
+```
+
+Una chiave API o un membro ricevono lo stesso errore senza il residuo:
+
+```json
+{
+  "error": {
+    "code": "QUOTA_EXCEEDED",
+    "message": "This email has 3 recipients, more than the recipients left on the free plan (3000 per month). Every distinct address in to, cc and bcc counts. The quota is shared by every workspace of the account that owns this one.",
+    "docs": "https://docs.tratto.email/en/docs/error-codes",
+    "suggestion": "Send to fewer recipients, or have the workspace owner upgrade the plan at https://app.tratto.email/settings/billing."
+  }
+}
+```
+
+`GET /v1/emails/{id}` e `GET /v1/emails` restituiscono `to`, `cc` e `bcc`
+senza duplicati: di ogni indirizzo resta la prima grafia, nell'ordine `to`,
+poi `cc`, poi `bcc`, e un `cc` o un `bcc` rimasto vuoto dopo la deduplica
+viene omesso.
+
 ## Programma un'Email
 
 Invia un'email a un orario futuro usando il campo `scheduledAt` (formato ISO 8601):
@@ -223,18 +286,19 @@ L'email verrà messa in coda e inviata all'orario specificato (deve essere nel f
 ### Quota delle email programmate
 
 Un'email live programmata consuma la [quota mensile](/it/docs/rate-limits#limiti-di-piano)
-del **mese UTC del suo `scheduledAt`**, non del mese in cui fai la richiesta.
-L'unità viene prenotata quando l'API accetta il `POST`. Se quel mese è già
-pieno, la richiesta fallisce con `429 QUOTA_EXCEEDED` e il messaggio nomina il
+del **mese UTC del suo `scheduledAt`**, non del mese in cui fai la richiesta:
+un'unità per destinatario distinto (richiede l'API 0.21.0 o successiva). Le
+unità vengono prenotate quando l'API accetta il `POST`. Se in quel mese
+restano meno destinatari di quanti ne ha l'email, la richiesta fallisce con `429 QUOTA_EXCEEDED` e il messaggio nomina il
 mese:
 
 ```json
 {
   "error": {
     "code": "QUOTA_EXCEEDED",
-    "message": "Monthly quota of 3000 emails for 2026-11 reached for the free plan. A scheduled email counts against the UTC month of its scheduledAt. The quota is shared by every workspace of the account that owns this one.",
+    "message": "This email has 3 recipients, more than the recipients left for 2026-11 on the free plan (3000 per month). Every distinct address in to, cc and bcc counts. A scheduled email counts against the UTC month of its scheduledAt. The quota is shared by every workspace of the account that owns this one.",
     "docs": "https://docs.tratto.email/en/docs/error-codes",
-    "suggestion": "Cancel or reschedule other emails for 2026-11, or have the workspace owner upgrade the plan at https://app.tratto.email/settings/billing."
+    "suggestion": "Cancel or reschedule other emails for 2026-11, send to fewer recipients, or have the workspace owner upgrade the plan at https://app.tratto.email/settings/billing."
   }
 }
 ```
@@ -248,8 +312,8 @@ programmate restano valide dopo un downgrade di piano.
 
 ### Annullare un'email programmata
 
-`DELETE /v1/emails/{id}` annulla un'email ancora `scheduled` e restituisce la
-sua unità al mese su cui era prenotata. Risponde `204` senza corpo. Un'email
+`DELETE /v1/emails/{id}` annulla un'email ancora `scheduled` e restituisce le
+sue unità, una per destinatario distinto, al mese su cui erano prenotate. Risponde `204` senza corpo. Un'email
 già `queued` o `sent` non si può annullare: l'API risponde `409 CONFLICT`.
 
 ```bash
@@ -261,8 +325,8 @@ curl -X DELETE https://api.tratto.email/v1/emails/email_abc123xyz \
 
 `PATCH /v1/emails/{id}` con un nuovo `scheduledAt`, che deve essere nel
 futuro, sposta un'email ancora `scheduled`. Nello stesso mese UTC la quota non
-cambia. In un altro mese l'unità si sposta con l'email: se il mese di
-destinazione è pieno, l'API risponde `429 QUOTA_EXCEEDED` e l'email resta
+cambia. In un altro mese le unità si spostano con l'email: se nel mese di
+destinazione restano meno destinatari di quanti ne ha l'email, l'API risponde `429 QUOTA_EXCEEDED` e l'email resta
 com'era.
 
 ```bash
@@ -314,7 +378,7 @@ Successivamente, filtra le email per tag o usali nei webhook.
 | Campo | Tipo | Obbligatorio | Descrizione |
 |-------|------|--------------|-------------|
 | `from` | string | | Mittente, come `Nome <email>` o indirizzo nudo. Con una chiave live il dominio deve essere verificato. Se omesso si usa il mittente transazionale del workspace, o quello generale; se mancano entrambi, `422`. Vedi [Mittenti](/it/docs/senders#transazionale) |
-| `to` | string \| string[] | ✓ | Indirizzo del destinatario, o un array di indirizzi |
+| `to` | string \| string[] | ✓ | Indirizzo del destinatario, o un array di indirizzi. `to`, `cc` e `bcc` insieme: al massimo 50 destinatari distinti, vedi [Destinatari](#destinatari-to-cc-e-bcc) |
 | `cc` | string[] | | Destinatari di copia carbone |
 | `bcc` | string[] | | Destinatari di copia carbone nascosta |
 | `subject` | string | ✓ | Riga di oggetto dell'email (obbligatoria anche con un template, max 998 caratteri) |
@@ -368,6 +432,16 @@ dominio indicato in `message`.
 
 **Fix:** Completa il [processo di verifica del dominio](/it/docs/domains).
 
+### QUOTA_EXCEEDED
+
+**Causa:** All'account restano, questo mese, meno destinatari di quanti ne ha
+l'email, oppure, con `scheduledAt`, nel mese per cui è programmata. Non è
+partito niente.
+
+**Fix:** Invia a meno destinatari, aspetta il mese UTC successivo o passa a un
+piano superiore. Riprovare la stessa richiesta non serve. Vedi
+[Destinatari](#destinatari-to-cc-e-bcc).
+
 ### RATE_LIMITED
 
 **Causa:** Più di 100 richieste in un secondo con la stessa chiave API, o più di 500 richieste in un minuto dallo stesso IP.
@@ -383,12 +457,20 @@ con l'header `Retry-After` e il messaggio `Nothing was sent and nothing was char
 Nessuna email è stata creata e nessuna quota è stata consumata: riprovare non
 può causare un doppio invio.
 
+Con l'API 0.21.0 o successiva lo stesso 503, con `Retry-After: 1` e lo stesso
+messaggio, copre anche un'email che non è stato possibile salvare: la quota
+viene restituita. Se fallisce anche la restituzione, il messaggio è
+`Nothing was sent. This request may still count against the monthly quota. Retry the request; the same Idempotency-Key can be reused.` Anche in questo caso non è partito niente. Se il salvataggio
+segnala un errore ma l'email è stata scritta comunque, la richiesta prosegue e
+risponde `202`.
+
 **Fix:** Riprova dopo i secondi indicati da `Retry-After`. Se hai inviato una
 `Idempotency-Key`, riusa la stessa chiave. Vedi [Idempotenza](/it/docs/idempotency).
 
 ### VALIDATION_ERROR
 
-**Causa:** Richiesta non valida (campo mancante, JSON malformato, ecc.).
+**Causa:** Richiesta non valida (campo mancante, JSON malformato, più di 50
+destinatari distinti fra `to`, `cc` e `bcc`, ecc.).
 
 **Fix:** Controlla il messaggio di errore e consulta il riferimento [Codici di Errore](/it/docs/error-codes).
 
