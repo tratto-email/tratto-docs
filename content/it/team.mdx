@@ -78,26 +78,38 @@ l'errore `MEMBER_INVITES_RESTRICTED`, scrivi a **support@tratto.email**.
 
 ## Quante persone ammette ogni piano
 
-Il piano del proprietario del workspace stabilisce quante persone può avere il
-workspace. Il conteggio include il proprietario e gli **inviti in attesa**:
+Il piano dell'account che possiede il workspace stabilisce quanti membri del
+team può avere. I membri del team del tuo piano sono condivisi da tutti i
+workspace che possiedi. Una persona in più workspace conta una volta. Il
+conteggio include il proprietario (una persona) e gli **inviti in attesa**:
 
-| Piano | Persone per workspace |
+| Piano | Membri del team per account |
 |---|---|
 | Free | 1 (solo il proprietario: il piano Free non può invitare) |
 | Starter | 2 |
 | Growth | 10 |
 | Scale | 25 |
 
-A differenza della quota mensile di email, questo limite vale per ogni workspace. Viene
-controllato quando il proprietario invia un invito e di nuovo quando l'invito
-viene accettato: se nel frattempo il posto è stato preso, la persona invitata
-non può entrare finché il proprietario non ne libera uno.
+Come la quota mensile di email, questo limite appartiene all'account ed è
+condiviso da tutti i suoi workspace (richiede l'API 0.28.0 o successiva; prima
+valeva per ogni workspace separatamente). Un invito in attesa occupa il suo
+posto dal momento in cui viene creato. Il limite viene controllato quando il
+proprietario invia un invito e di nuovo quando l'invito viene accettato: se nel
+frattempo il posto è stato preso, la persona invitata non può entrare finché il
+proprietario non ne libera uno. Oltre il limite, entrambe le chiamate
+rispondono `429` con `QUOTA_EXCEEDED`.
+
+Se un account è già oltre il limite, per esempio dopo un downgrade, nessuno
+viene rimosso: le nuove persone non possono essere invitate finché il conteggio
+non torna sotto il limite.
 
 Per liberare un posto, revoca un invito in attesa o rimuovi un membro. Per
 alzare il limite, passa a un piano superiore da **Impostazioni → Fatturazione**.
 
-`GET /v1/workspace` restituisce il limite come `limits.membersPerWorkspace`,
-accanto a `emailsPerMonth` e `domains`.
+`GET /v1/workspace` restituisce il limite come `limits.membersPerAccount`,
+accanto a `emailsPerMonth` e `domains`. `limits.membersPerWorkspace` viene
+ancora restituito con lo stesso numero, mantenuto per compatibilità: leggi
+`membersPerAccount`.
 
 ## Inviti in attesa
 

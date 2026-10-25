@@ -202,8 +202,11 @@ that are actually enforced, and `null` means no limit. `limits.emailsPerMonth`
 (emails per UTC month, every distinct address in `to`, `cc` and `bcc`
 counting as one email) and `limits.domains` are the caps of the **account** that owns the workspace,
 shared with its other workspaces, not an allowance of this workspace alone.
-`limits.membersPerWorkspace` is the number of people each workspace can have,
-counting pending invites (see [Team](/en/docs/team#how-many-people-each-plan-allows)).
+`limits.membersPerAccount` is the number of team members of the account,
+shared by every workspace it owns, a person in several workspaces counting
+once, pending invites included (requires API 0.28.0 or later;
+`limits.membersPerWorkspace` is still returned with the same number, kept for
+compatibility; see [Team](/en/docs/team#how-many-people-each-plan-allows)).
 `limits.webhooks` says whether the workspace's plan includes webhooks
 (requires API 0.23.0 or later, see [Webhooks](/en/docs/webhooks#plan-availability)).
 `limits.testSendsPerDay` is the daily cap of test sends of this workspace,
@@ -219,7 +222,7 @@ curl https://api.tratto.email/v1/workspace \
 {
   "data": {
     "plan": "free",
-    "limits": { "domains": 3, "emailsPerMonth": 3000, "membersPerWorkspace": 1, "workspaces": 1, "webhooks": false, "testSendsPerDay": 20 }
+    "limits": { "domains": 3, "emailsPerMonth": 3000, "membersPerAccount": 1, "membersPerWorkspace": 1, "workspaces": 1, "webhooks": false, "testSendsPerDay": 20 }
   }
 }
 ```

@@ -75,26 +75,35 @@ Inviting members is being opened gradually. If your workspace gets the error
 
 ## How many people each plan allows
 
-The plan of the workspace owner sets how many people the workspace can have.
-The count includes the owner and **pending invites**:
+The plan of the account that owns the workspace sets how many team members it
+can have. The team members of your plan are shared by every workspace you own.
+A person in several workspaces counts once. The count includes the owner (one
+person) and **pending invites**:
 
-| Plan | People per workspace |
+| Plan | Team members per account |
 |---|---|
 | Free | 1 (the owner only: the Free plan cannot invite) |
 | Starter | 2 |
 | Growth | 10 |
 | Scale | 25 |
 
-Unlike the monthly email quota, this limit applies to each workspace. It is checked
-when the owner sends an invite and again when the invite is accepted: if the
-place was taken in the meantime, the invited person cannot join until the
-owner frees one.
+Like the monthly email quota, this limit belongs to the account and is shared
+by all its workspaces (requires API 0.28.0 or later; before that, it applied to
+each workspace separately). A pending invite holds its place from the moment
+the invite is created. The limit is checked when the owner sends an invite and
+again when the invite is accepted: if the place was taken in the meantime, the
+invited person cannot join until the owner frees one. Over the limit, both
+calls answer `429` with `QUOTA_EXCEEDED`.
+
+If an account is already over the limit, for example after a downgrade, nobody
+is removed: new people just cannot be invited until the count is back under it.
 
 To free a place, revoke a pending invite or remove a member. To raise the
 limit, upgrade the plan in **Settings → Billing**.
 
-`GET /v1/workspace` returns the limit as `limits.membersPerWorkspace`, next to
-`emailsPerMonth` and `domains`.
+`GET /v1/workspace` returns the limit as `limits.membersPerAccount`, next to
+`emailsPerMonth` and `domains`. `limits.membersPerWorkspace` is still returned
+with the same number, kept for compatibility: read `membersPerAccount`.
 
 ## Pending invites
 

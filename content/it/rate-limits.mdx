@@ -206,8 +206,11 @@ limiti realmente applicati, dove `null` significa nessun limite.
 distinto in `to`, `cc` e `bcc` conta come un'email) e `limits.domains` sono i tetti
 dell'**account**
 proprietario del workspace, condivisi con i suoi altri workspace, non una
-dotazione di questo solo workspace. `limits.membersPerWorkspace` è il numero di
-persone che ogni workspace può avere, inviti in attesa compresi (vedi
+dotazione di questo solo workspace. `limits.membersPerAccount` è il numero di
+membri del team dell'account, condivisi da tutti i workspace che possiede, dove
+una persona in più workspace conta una volta, inviti in attesa compresi
+(richiede l'API 0.28.0 o successiva; `limits.membersPerWorkspace` viene ancora
+restituito con lo stesso numero, mantenuto per compatibilità; vedi
 [Team](/it/docs/team#quante-persone-ammette-ogni-piano)). `limits.webhooks` dice
 se il piano del workspace include i webhook (richiede l'API 0.23.0 o
 successiva, vedi [Webhook](/it/docs/webhooks#piani-che-includono-i-webhook)).
@@ -224,7 +227,7 @@ curl https://api.tratto.email/v1/workspace \
 {
   "data": {
     "plan": "free",
-    "limits": { "domains": 3, "emailsPerMonth": 3000, "membersPerWorkspace": 1, "workspaces": 1, "webhooks": false, "testSendsPerDay": 20 }
+    "limits": { "domains": 3, "emailsPerMonth": 3000, "membersPerAccount": 1, "membersPerWorkspace": 1, "workspaces": 1, "webhooks": false, "testSendsPerDay": 20 }
   }
 }
 ```
