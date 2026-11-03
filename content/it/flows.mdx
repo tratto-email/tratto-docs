@@ -269,6 +269,57 @@ Non esiste oggi una scorciatoia di iscrizione manuale via API (vedi [Tipi di Tri
 3. Aggiungi il tag esatto per cui il trigger è configurato, via [`PATCH /v1/contacts/:id`](/it/docs/contacts).
 4. Controlla `GET /v1/flows/flow_abc123` — `enrollments` dovrebbe incrementare, e il contatto di test dovrebbe ricevere il primo step `send_email` entro pochi secondi.
 
+## Fermare una sequenza quando il contatto diventa cliente
+
+Un caso comune: una sequenza di nurturing che deve fermarsi per chi acquista a metà strada. Dal tuo codice, al momento dell'acquisto, assegna al contatto il tag `buyer` e metti uno step `branch` davanti a ogni email che non deve arrivare ai clienti.
+
+Il branch viene valutato quando lo step gira, quindi un tag aggiunto durante una `wait` viene visto dal branch successivo. Usa `not_equals` su `tags`: la condizione è vera quando `buyer` **non** è tra i tag del contatto, e una condizione vera senza `trueNextStep` passa semplicemente allo step dopo. Quando è falsa (il contatto è un cliente) e manca `falseNextStep`, l'iscrizione termina. Non serve alcun indice di step.
+
+```json
+{
+  "steps": [
+    { "id": "s0", "type": "send_email", "config": { "templateId": "tmpl_offer_1", "subject": "La tua prima offerta", "from": "hello@yourdomain.com", "fromName": "La Tua Azienda" } },
+    { "id": "s1", "type": "wait", "config": { "delay": "3", "unit": "days" } },
+    { "id": "s2", "type": "branch", "config": { "conditionField": "tags", "conditionOperator": "not_equals", "conditionValue": "buyer" } },
+    { "id": "s3", "type": "send_email", "config": { "templateId": "tmpl_offer_2", "subject": "Ci stai ancora pensando?", "from": "hello@yourdomain.com", "fromName": "La Tua Azienda" } },
+    { "id": "s4", "type": "wait", "config": { "delay": "4", "unit": "days" } },
+    { "id": "s5", "type": "branch", "config": { "conditionField": "tags", "conditionOperator": "not_equals", "conditionValue": "buyer" } },
+    { "id": "s6", "type": "send_email", "config": { "templateId": "tmpl_offer_3", "subject": "Ultima occasione", "from": "hello@yourdomain.com", "fromName": "La Tua Azienda" } }
+  ]
+}
+```
+
+Invialo con `PATCH /v1/flows/{id}` come in [Crea un Flusso](#crea-un-flusso), poi attiva il flusso. Gli step di un flusso attivo non si possono modificare: se cambi una sequenza esistente, disattivala prima. I flussi richiedono una chiave API con il permesso `*`.
+
+Quando avviene l'acquisto, aggiungi il tag. `tags` su `PATCH /v1/contacts/{id}` **sostituisce l'intera lista**, quindi invia i tag già presenti sul contatto insieme a `buyer`. Aggiungere un tag fa partire anche `contact_tag_added`, quindi parte pure ogni flusso che usa quel trigger.
+
+```ts
+import { Tratto } from '@tratto/email';
+
+const tratto = new Tratto(process.env.TRATTO_API_KEY!);
+
+await tratto.contacts.update('cont_abc123', { tags: ['offer-sequence', 'buyer'] });
+```
+
+```python
+import os
+
+from tratto import Tratto, UpdateContactOptions
+
+tratto = Tratto(os.environ["TRATTO_API_KEY"])
+
+tratto.contacts.update(
+    "cont_abc123",
+    UpdateContactOptions(tags=["offer-sequence", "buyer"]),
+)
+```
+
+Nell'editor dei flussi della dashboard questo step si chiama **Condizione**, ma offre solo un campo e un valore atteso, che non bastano per `not_equals`. Configura questo schema tramite l'API (vedi l'avviso sotto [`branch`](#branch)).
+
+<Callout type="info">
+**Il confronto sul tag intero richiede tratto-api 0.30.0 o successiva** (l'API ospitata lo ha dal 3 novembre 2026). Su `tags`, `equals`, `not_equals` e `contains` confrontano un tag intero, in modo esatto e sensibile alle maiuscole: `buyer` non corrisponde a `Buyer` né a `nonbuyer`. Prima di quel rilascio, `contains` su `tags` cercava sottostringhe (quindi `buyer` corrispondeva a `nonbuyer`) e `equals` non corrispondeva mai a un contatto con più di un tag, per cui i branch basati sui tag potevano saltare o trattenere i contatti sbagliati. Se hai scritto un branch così in passato, ricontrollalo.
+</Callout>
+
 ## Perché Costruire un Flusso
 
 Qualsiasi cosa del tipo "quando succede X a un contatto, fai Y nel tempo" — senza dover scrivere e ospitare tu la logica di scheduling.
