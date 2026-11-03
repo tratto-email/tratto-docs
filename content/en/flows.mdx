@@ -268,6 +268,57 @@ There's no `manual` enroll-via-API shortcut today (see [Trigger Types](#trigger-
 3. Add the exact tag the trigger is configured for, via [`PATCH /v1/contacts/:id`](/en/docs/contacts).
 4. Check `GET /v1/flows/flow_abc123` — `enrollments` should increment, and the test contact should receive the first `send_email` step within seconds.
 
+## Stop a sequence when the contact becomes a buyer
+
+A common need: run a nurture sequence, and stop it for anyone who buys halfway through. Tag the contact `buyer` from your own code when the purchase happens, and put a `branch` step in front of every email that must not reach buyers.
+
+The branch is read fresh when the step runs, so a tag added during a `wait` is seen by the next branch. Use `not_equals` on `tags`: the condition is true when `buyer` is **not** one of the contact's tags, and a true condition with no `trueNextStep` simply moves on to the next step. When the condition is false (the contact is a buyer) and there is no `falseNextStep`, the enrollment ends. You don't need any step index.
+
+```json
+{
+  "steps": [
+    { "id": "s0", "type": "send_email", "config": { "templateId": "tmpl_offer_1", "subject": "Your first offer", "from": "hello@yourdomain.com", "fromName": "Your Company" } },
+    { "id": "s1", "type": "wait", "config": { "delay": "3", "unit": "days" } },
+    { "id": "s2", "type": "branch", "config": { "conditionField": "tags", "conditionOperator": "not_equals", "conditionValue": "buyer" } },
+    { "id": "s3", "type": "send_email", "config": { "templateId": "tmpl_offer_2", "subject": "Still thinking about it?", "from": "hello@yourdomain.com", "fromName": "Your Company" } },
+    { "id": "s4", "type": "wait", "config": { "delay": "4", "unit": "days" } },
+    { "id": "s5", "type": "branch", "config": { "conditionField": "tags", "conditionOperator": "not_equals", "conditionValue": "buyer" } },
+    { "id": "s6", "type": "send_email", "config": { "templateId": "tmpl_offer_3", "subject": "Last call", "from": "hello@yourdomain.com", "fromName": "Your Company" } }
+  ]
+}
+```
+
+Send it with `PATCH /v1/flows/{id}` as in [Creating a Flow](#creating-a-flow), then activate the flow. Because the steps of an active flow can't be edited, deactivate it first if you are changing an existing sequence. Flows need an API key with the `*` permission.
+
+When the purchase happens, add the tag. `tags` on `PATCH /v1/contacts/{id}` **replaces the whole list**, so send the contact's existing tags together with `buyer`. Adding a tag also fires `contact_tag_added`, so any flow triggered by it starts as well.
+
+```ts
+import { Tratto } from '@tratto/email';
+
+const tratto = new Tratto(process.env.TRATTO_API_KEY!);
+
+await tratto.contacts.update('cont_abc123', { tags: ['offer-sequence', 'buyer'] });
+```
+
+```python
+import os
+
+from tratto import Tratto, UpdateContactOptions
+
+tratto = Tratto(os.environ["TRATTO_API_KEY"])
+
+tratto.contacts.update(
+    "cont_abc123",
+    UpdateContactOptions(tags=["offer-sequence", "buyer"]),
+)
+```
+
+The dashboard flow editor labels this step **Condition**, but it only offers a field and an expected value, which is not enough for `not_equals`. Set up this pattern through the API (see the warning under [`branch`](#branch)).
+
+<Callout type="info">
+**Whole-tag matching requires tratto-api 0.30.0 or later** (the hosted API has had it since 3 November 2026). On `tags`, `equals`, `not_equals` and `contains` match one whole tag, exactly and case-sensitively: `buyer` does not match `Buyer` or `nonbuyer`. Before that release, `contains` on `tags` matched substrings (so `buyer` matched `nonbuyer`) and `equals` never matched a contact with more than one tag, so branches built on tags could skip or keep the wrong contacts. If you wrote such a branch earlier, review it.
+</Callout>
+
 ## Why Build a Flow
 
 Anything that's "when X happens to a contact, do Y over time" — without you writing and hosting the scheduling logic yourself.
