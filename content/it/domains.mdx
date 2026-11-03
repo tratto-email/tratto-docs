@@ -90,6 +90,24 @@ echo "Domain ID: {$domain['id']}\n";
 
 Lo status del dominio è `pending`: Tratto attende che Amazon SES, che consegna le tue email, trovi i record DKIM, e che il record di proprietà sia pubblicato.
 
+### Formato del nome di dominio
+
+`domain` deve essere un hostname con un TLD, per esempio `esempio.it` o
+`ciao.esempio.it`. Dall'API 0.30.0 il nome viene portato in minuscolo e
+controllato prima che qualcosa venga registrato su Amazon SES:
+
+- almeno due etichette, ciascuna di 1-63 caratteri tra lettere, cifre e trattini,
+  senza trattino all'inizio o alla fine;
+- un TLD di sole lettere (da 2 a 63) oppure un TLD punycode `xn--`;
+- al massimo 253 caratteri.
+
+Un nome internazionalizzato (per esempio `esempio.中国`) è accettato e salvato
+in forma punycode (`xn--...`), quella da pubblicare nel DNS. Qualsiasi altra
+cosa (`non-un-dominio`, `foo_bar.com`, `esempio.it.`, un nome con spazi)
+restituisce `422 VALIDATION_ERROR` con `details[0].path` uguale a `/domain` e il
+messaggio `Must be a domain name with a TLD, e.g. example.com.`. Prima di questa
+versione questi nomi venivano accettati.
+
 ## Configurazione Record DNS
 
 Aggiungi i record di `records` presso il tuo provider DNS (GoDaddy, Namecheap, Cloudflare, Route 53, ecc.). Ogni dominio ne riceve sei:

@@ -40,9 +40,9 @@ Gli errori di validazione aggiungono un array `details`: vedi sotto.
 | `MEMBER_INVITES_RESTRICTED` | 403 | Gli inviti ai membri non sono disponibili per questo workspace: vengono aperti gradualmente | Scrivi a **support@tratto.email**. Vedi [Team](/it/docs/team#invitare-qualcuno) |
 | `PLAN_UPGRADE_REQUIRED` | 403 | Il piano del workspace non include la funzionalità. Sul Free: creare un webhook, inviare una consegna di prova o ruotarne il segreto (richiede l'API 0.23.0 o successiva); caricare un allegato o inviare un'email con `attachments` (richiede l'API 0.29.0 o successiva) | Il proprietario dell'account passa a un piano superiore dalla dashboard in **Impostazioni > Fatturazione** (`/settings/billing`). Vedi [Webhook](/it/docs/webhooks#piani-che-includono-i-webhook) e [Allegati](/it/docs/attachments#piani-che-includono-gli-allegati) |
 | `EMAIL_NOT_VERIFIED` | 403 | L'azione richiede un indirizzo email verificato sull'account (eliminazione del workspace) | Verifica l'indirizzo: la dashboard offre l'invio dell'email di verifica |
-| `NOT_FOUND` | 404 | La risorsa non esiste | Verifica l'ID: potrebbe appartenere a un altro workspace |
+| `NOT_FOUND` | 404 | La risorsa non esiste, oppure l'id nel percorso non può essere un id valido (vedi [Id malformati](#id-malformati)) | Verifica l'ID: potrebbe appartenere a un altro workspace |
 | `CONFLICT` | 409 | La risorsa esiste già, oppure il suo stato attuale non consente l'azione (ad esempio modificare una campagna che non è più in bozza, eliminare un template usato da un flusso o da una campagna non conclusa, o accettare un invito scaduto; i casi dei template sono in [Template](/it/docs/templates#elimina-un-template), i casi degli inviti sono elencati in [Team](/it/docs/team#errori)). Su `POST /v1/workspaces`: un account che possiede già 10 workspace contando quelli in eliminazione (vedi [Workspace](/it/docs/workspaces#creare-un-workspace)) | Recupera la risorsa e verificane lo stato prima di riprovare. Per la creazione di un workspace, scrivi a **support@tratto.email** |
-| `VALIDATION_ERROR` | 422 | Il corpo è stato letto ma non rispetta lo schema, oppure l'header `Tratto-Workspace` non è un id di workspace valido | Per il corpo, leggi `details` per i campi errati. Per l'header non c'è `details`: `message` è `The Tratto-Workspace header is not a workspace id.`; invia l'id di un workspace a cui l'account ha accesso, oppure ometti l'header. Vedi [Autenticazione](/it/docs/authentication#header-del-workspace) |
+| `VALIDATION_ERROR` | 422 | Il corpo o la query string sono stati letti ma non rispettano lo schema (anche per un id che non può essere valido, vedi [Id malformati](#id-malformati)), oppure l'header `Tratto-Workspace` non è un id di workspace valido | Per il corpo, leggi `details` per i campi errati. Per l'header non c'è `details`: `message` è `The Tratto-Workspace header is not a workspace id.`; invia l'id di un workspace a cui l'account ha accesso, oppure ometti l'header. Vedi [Autenticazione](/it/docs/authentication#header-del-workspace) |
 | `TEMPLATE_NOT_PUBLISHED` | 422 | Il template indicato nella richiesta è ancora in bozza e non può essere usato per inviare | Pubblicalo (`PATCH /v1/templates/:id` con `status: "published"`), poi ripeti la richiesta |
 | `BAD_REQUEST` | 400 | La richiesta non è arrivata a un handler: il corpo non è interpretabile (JSON malformato) | Correggi la sintassi del corpo: il payload non è mai arrivato allo schema |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | Il `Content-Type` non è fra quelli che l'endpoint sa leggere | Usa il tipo atteso (`application/json` nella maggior parte dei casi, `text/csv` per l'import contatti, `image/png` o `image/jpeg` per il logo del marchio) |
@@ -61,6 +61,39 @@ Una risorsa inesistente non ha un codice tutto suo. Un template inesistente, un
 contatto inesistente e una campagna inesistente restituiscono tutti
 `NOT_FOUND`: la risorsa è indicata in `message`, non in `code`.
 </Callout>
+
+## Id malformati [#id-malformati]
+
+Gli id sono salvati come id di documento di un database, che non possono essere
+vuoti, contenere `/`, essere `.` o `..`, avere la forma `__nome__` o superare
+1500 byte. Gli id restituiti dall'API sono sempre validi. Dall'API 0.30.0 un
+valore che infrange la regola viene rifiutato come errore del client invece di
+`500 INTERNAL_ERROR`:
+
+- **Nel percorso** (qualunque rotta `/v1/...` autenticata con un id, per
+  esempio `GET /v1/emails/a%2Fb`): `404 NOT_FOUND` con `Resource not found.`,
+  la stessa risposta di un id che non esiste.
+- **Nel corpo o nella query string** (`after` sugli endpoint di elenco,
+  `templateId` su `POST /v1/emails`, `POST /v1/emails/batch` e sulle campagne,
+  `audienceId` sulle campagne, `contactIds` su
+  `POST /v1/audiences/{id}/contacts`, e il `templateId` di uno step di un
+  flow): `422 VALIDATION_ERROR`, con `details` che indica il campo.
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": [
+      {
+        "path": "/templateId",
+        "message": "Not a valid id: no '/', not '.' or '..', not '__name__', at most 1500 bytes."
+      }
+    ]
+  }
+}
+```
+
+Una stringa vuota è accettata dove lo era già (un `after` vuoto viene ignorato).
 
 ## `BAD_REQUEST` (400) e `VALIDATION_ERROR` (422)
 
