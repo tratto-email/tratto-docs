@@ -194,6 +194,17 @@ curl -X PATCH https://api.tratto.email/v1/contacts/cont_abc123 \
 }
 ```
 
+## Import from CSV
+
+`POST /v1/contacts/import` takes a `text/csv` body and starts an asynchronous
+import. A body that cannot be imported is refused with `400 VALIDATION_ERROR`:
+
+| Message | When |
+|---|---|
+| `Request body must be text/csv` | The body was not read as text |
+| `CSV file is empty or has no data rows.` | The body is empty, or has no data rows. An empty body used to get the message above (same status and code). |
+| `CSV exceeds maximum of 50,000 rows.` | More than 50,000 data rows |
+
 ## Next Steps
 
 - **Use contacts in campaigns?** See [Campaigns](/en/docs/campaigns)

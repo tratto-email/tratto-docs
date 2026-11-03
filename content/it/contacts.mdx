@@ -196,6 +196,18 @@ curl -X PATCH https://api.tratto.email/v1/contacts/cont_abc123 \
 }
 ```
 
+## Importa da CSV
+
+`POST /v1/contacts/import` accetta un corpo `text/csv` e avvia un'importazione
+asincrona. Un corpo che non si può importare viene rifiutato con
+`400 VALIDATION_ERROR`:
+
+| Messaggio | Quando |
+|---|---|
+| `Request body must be text/csv` | Il corpo non è stato letto come testo |
+| `CSV file is empty or has no data rows.` | Il corpo è vuoto o non ha righe di dati. Un corpo vuoto prima riceveva il messaggio qui sopra (stesso status e codice). |
+| `CSV exceeds maximum of 50,000 rows.` | Più di 50.000 righe di dati |
+
 ## Prossimi Passi
 
 - **Usare contatti nelle campagne?** Vedi [Campagne](/it/docs/campaigns)

@@ -90,6 +90,24 @@ echo "Domain ID: {$domain['id']}\n";
 
 Domain status is `pending`: Tratto is waiting for Amazon SES, which delivers your email, to find the DKIM records, and for the ownership record to be published.
 
+### Domain name format
+
+`domain` must be a hostname with a TLD, for example `example.com` or
+`hello.example.com`. From API 0.30.0 the name is lowercased and checked before
+anything is registered with Amazon SES:
+
+- at least two labels, each 1 to 63 characters of letters, digits and hyphens,
+  with no hyphen at either end;
+- a TLD of letters only (2 to 63) or a punycode `xn--` TLD;
+- 253 characters at most.
+
+An internationalized name (for example `esempio.中国`) is accepted and stored in
+its punycode form (`xn--...`), which is what you publish in DNS. Anything else
+(`non-un-dominio`, `foo_bar.com`, `example.com.`, a name with spaces) returns
+`422 VALIDATION_ERROR` with `details[0].path` equal to `/domain` and the message
+`Must be a domain name with a TLD, e.g. example.com.`. Before this release such
+names were accepted.
+
 ## DNS Records Setup
 
 Add the records from `records` at your DNS provider (GoDaddy, Namecheap, Cloudflare, Route 53, etc.). Every domain gets six:
