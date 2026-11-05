@@ -150,7 +150,7 @@ un aggregato che contiene solo dati live, quindi una chiave di test che chiede
 
 ## Finestre Dati: Firestore vs BigQuery
 
-- **`7d`/`30d`/`90d`** sono servite da Firestore in tempo reale — nessun ritardo di aggregazione, ma Firestore conserva i documenti email solo per 90 giorni.
+- **`7d`/`30d`/`90d`** sono servite da Firestore in tempo reale — nessun ritardo di aggregazione, ma Firestore conserva i documenti email solo per 90 giorni dopo l'invio (le email mai inviate, in coda o fallite, per 90 giorni dopo la creazione; quelle programmate restano finché non vengono inviate).
 - **`180d`/`1y`** sono servite invece da un aggregato BigQuery notturno. L'aggregazione gira una volta al giorno (intorno alle 02:30 UTC) — i dati molto recenti (oggi, e a volte ieri a seconda di quando controlli) non sono ancora riflessi per queste due finestre più lunghe. Usa `90d` o meno se ti servono numeri dello stesso giorno.
 
 ## Best Practice

@@ -13,7 +13,7 @@ Every workspace has two key environments, Stripe-style:
 | Monthly quota | Untouched (own cap: 100 test emails/day, each recipient counts as one) | Counts against your plan |
 | Statuses, timeline, webhooks | Identical to live | — |
 | Data visibility | A test key sees only test data | A live key sees only live data |
-| Retention | Deleted 7 days after creation | Deleted 90 days after sending, on every plan |
+| Retention | Deleted 7 days after creation | Deleted 90 days after sending, on every plan. Emails that were never sent (queued or failed) are deleted 90 days after creation. Scheduled emails are kept until they are sent |
 
 The point: your integration — sending, status polling, webhook handling,
 bounce handling — runs against the exact same pipeline as production, before
