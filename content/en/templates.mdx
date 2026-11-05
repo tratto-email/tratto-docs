@@ -308,7 +308,8 @@ variable you leave out renders empty, as on a real send.
 ### Free, with a daily cap
 
 Test sends are free: they do not count against the
-[monthly quota](/en/docs/rate-limits). Each call sends to one recipient. With
+[monthly quota](/en/docs/rate-limits), and their events are excluded from
+[analytics](/en/docs/analytics), campaign stats and top clicked links. Each call sends to one recipient. With
 API 0.24.0 or later, a workspace can make 20 test sends per day on
 Free, 100 on Starter and Growth and 200 on Scale, template and campaign test sends together, and the count resets at midnight
 UTC. Past the cap the API answers `429 QUOTA_EXCEEDED` and nothing is sent: do

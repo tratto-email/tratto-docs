@@ -40,6 +40,8 @@ curl "https://api.tratto.email/v1/analytics/summary?period=30d" \
 
 ## Metric Definitions
 
+Events from test sends (`POST /v1/campaigns/:id/test-send` and `POST /v1/templates/:id/test-send`) are never counted in these metrics, in the summary or the timeseries, for any period.
+
 | Metric | Definition |
 |--------|-----------|
 | `totalSent` | Emails sent to mail server |
@@ -101,7 +103,7 @@ Note the narrower shape than the summary endpoint: `sent`/`delivered`/`opened`/`
 
 ## Top Clicked Links
 
-Get the most-clicked links for a specific campaign.
+Get the most-clicked links for a specific campaign. Clicks from test sends are not counted.
 
 **cURL**
 ```bash
