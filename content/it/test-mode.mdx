@@ -13,7 +13,7 @@ Ogni workspace ha due ambienti di chiavi, come su Stripe:
 | Quota mensile | Non toccata (limite proprio: 100 email di test al giorno, ogni destinatario conta come una) | Conta sulla quota del piano |
 | Stati, timeline, webhook | Identici al live | Gli stessi |
 | Visibilità dei dati | Una chiave di test vede solo dati di test | Una chiave live vede solo dati live |
-| Conservazione | Cancellate 7 giorni dopo la creazione | Cancellate 90 giorni dopo l'invio, su ogni piano |
+| Conservazione | Cancellate 7 giorni dopo la creazione | Cancellate 90 giorni dopo l'invio, su ogni piano. Le email mai inviate (in coda o fallite) sono cancellate 90 giorni dopo la creazione. Quelle programmate restano finché non vengono inviate |
 
 Il senso è questo: la tua integrazione (invio, polling dello stato, gestione dei
 webhook e dei bounce) gira sulla stessa identica pipeline della produzione,
