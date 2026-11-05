@@ -40,7 +40,7 @@ curl "https://api.tratto.email/v1/analytics/summary?period=30d" \
 
 ## Definizioni Metriche
 
-Gli eventi dei test-send (`POST /v1/campaigns/:id/test-send` e `POST /v1/templates/:id/test-send`) non vengono mai contati in queste metriche, né nel riepilogo né nelle timeseries, per nessun periodo.
+Gli eventi dei test-send (`POST /v1/campaigns/:id/test-send` e `POST /v1/templates/:id/test-send`) non vengono contati nelle analytics, né nel riepilogo né nelle timeseries. L'attività dei test-send registrata prima di questa regola (novembre 2026) non viene ricalcolata e può ancora comparire nei periodi da 180 giorni e 1 anno e nei link più cliccati finché non scade, fino a 13 mesi.
 
 | Metrica | Definizione |
 |---------|-------------|
@@ -103,7 +103,7 @@ Nota lo shape più stretto rispetto all'endpoint di riepilogo: solo `sent`/`deli
 
 ## Link Più Cliccati
 
-Ottieni i link più cliccati per una campagna specifica. I click dei test-send non vengono contati.
+Ottieni i link più cliccati per una campagna specifica. I click dei test-send non vengono contati (vedi [Definizioni Metriche](#definizioni-metriche) per i dati più vecchi).
 
 **cURL**
 ```bash

@@ -315,8 +315,8 @@ invio reale.
 ### Gratis, con un tetto giornaliero
 
 I test-send sono gratuiti: non contano sulla
-[quota mensile](/it/docs/rate-limits) e i loro eventi sono esclusi dalle
-[analytics](/it/docs/analytics), dalle statistiche delle campagne e dai link più cliccati. Ogni chiamata invia a un solo
+[quota mensile](/it/docs/rate-limits) e i loro eventi non vengono contati nelle
+[analytics](/it/docs/analytics#definizioni-metriche). Ogni chiamata invia a un solo
 destinatario. Con l'API 0.24.0 o successiva, un workspace può fare 20
 test-send al giorno su Free, 100 su Starter e Growth e 200 su Scale, fra template e campagne insieme, e il conteggio si azzera
 a mezzanotte UTC. Oltre il tetto l'API risponde `429 QUOTA_EXCEEDED` e non
