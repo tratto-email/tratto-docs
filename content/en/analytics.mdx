@@ -149,7 +149,7 @@ aggregate that contains live data only, so a test key asking for `180d` or
 
 ## Data Windows: Firestore vs BigQuery
 
-- **`7d`/`30d`/`90d`** are served from Firestore in real time — no aggregation delay, but Firestore only retains email documents for 90 days after sending (emails never sent, queued or failed, for 90 days after creation; scheduled emails are kept until sent).
+- **`7d`/`30d`/`90d`** are served from Firestore in real time — no aggregation delay, but Firestore only retains email documents for 90 days after sending (emails never sent, queued or failed, for 90 days after creation; in live mode, scheduled emails are kept until sent; test-mode emails are deleted 7 days after creation regardless).
 - **`180d`/`1y`** are served from a nightly BigQuery aggregate instead. That aggregation runs once per day (around 02:30 UTC) — very recent data (today, and sometimes yesterday depending on when you check) won't be reflected yet for these two longer windows. Use `90d` or shorter if you need same-day numbers.
 
 ## Best Practices
