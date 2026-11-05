@@ -193,7 +193,17 @@ Notifica un URL esterno. Il corpo della richiesta è fisso — `{ "tenantId", "e
 { "id": "s4", "type": "webhook_call", "config": { "url": "https://tuaapi.com/hooks/flow-completed", "secret": "whsec_..." } }
 ```
 
-Timeout di 10 secondi; i fallimenti vengono loggati ma non fermano il flusso.
+Ogni tentativo ha un timeout di 10 secondi e porta un header `X-Tratto-Idempotency-Key` con valore `<enrollmentId>:<stepIndex>` (per esempio `enr_abc123:3`). La chiave è la stessa in ogni tentativo di quello step per quel contatto.
+
+**Nuovi tentativi.** Un timeout, un errore di rete o una risposta `5xx`, `408` o `429` vengono ritentati. Lo step fa al massimo 5 tentativi in tutto, a circa 1, 2, 4 e 8 minuti di distanza, quindi circa 15 minuti dal primo all'ultimo. Qualunque risposta `2xx` vale come consegnata e il flusso prosegue.
+
+**Quando lo step fallisce definitivamente.** Dopo il quinto tentativo fallito, o subito per un errore che un nuovo tentativo non può correggere (qualunque altro `4xx`, una risposta `3xx`, un `url` mancante o un URL il cui host è un indirizzo IP privato o riservato), l'iscrizione si ferma con stato `failed`: il flusso non prosegue per quel contatto e gli step successivi non vengono eseguiti. Ogni risposta sui flussi (`GET /v1/flows`, `GET /v1/flows/:id`) ha un conteggio `failedEnrollments` delle iscrizioni fermate perché uno step, di qualunque tipo, è fallito definitivamente. Un `webhook_call` che ha esaurito i tentativi è uno di questi casi. Vale `0` se non ce ne sono. Tienilo d'occhio dopo aver attivato un flusso che chiama il tuo endpoint.
+
+**Sul tuo endpoint che riceve la chiamata:**
+
+- La consegna è almeno una volta: la stessa chiamata può arrivare più di una volta, per esempio quando il tuo endpoint ha fatto il lavoro ma la risposta è andata in timeout. Salva la `X-Tratto-Idempotency-Key` e ignora una richiesta con una chiave già gestita. Un `branch` che torna a uno step precedente riusa la chiave di quello step: se il tuo flusso fa un ciclo, gestisci il caso in modo esplicito.
+- Rispondi `2xx` in fretta, entro i 10 secondi, e fai il lavoro lento dopo aver risposto. Una risposta lenta conta come timeout e viene rispedita.
+- Restituisci `4xx` solo quando ritentare non può servire: ferma l'iscrizione al primo tentativo.
 
 ## Attivare, Disattivare, Modificare
 
