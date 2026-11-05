@@ -87,6 +87,60 @@ curl "https://api.tratto.email/v1/contacts?status=subscribed&limit=50" \
 page. `trackingOptOut` reports whether the recipient asked not to be tracked —
 see [Privacy](/en/docs/privacy).
 
+## Import Contacts from CSV
+
+Send a CSV body (`Content-Type: text/csv`, up to 50,000 data rows). The first line is the header; the `email` column is required, and `firstName`, `lastName`, `tags` (separated by `;`) and `status` are optional. The import runs in the background and the call returns a job id.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/contacts/import \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: text/csv" \
+  --data-binary @contacts.csv
+```
+
+**Response:** `202 Accepted`
+```json
+{
+  "data": {
+    "jobId": "imp_abc123",
+    "totalRows": 1284
+  }
+}
+```
+
+### Poll the Import Job
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/contacts/import/imp_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "jobId": "imp_abc123",
+    "status": "completed",
+    "totalRows": 1284,
+    "processedRows": 1280,
+    "failedRows": 4,
+    "errors": [
+      "Row 12: invalid email",
+      "Row 87: duplicate email"
+    ],
+    "completedAt": "2025-06-30T12:00:42Z"
+  }
+}
+```
+
+`status` is `processing`, `completed` or `failed`. `processedRows` counts the contacts created and `failedRows` the rows that were rejected. `completedAt` is `null` until the job finishes.
+
+Each entry in `errors` gives the row number and the reason; the address is not included. The row number counts the data rows after the header, in order, and blank lines are skipped. Only the first 20 errors are kept, so use `failedRows` for the full count. `errors` is filled when the job completes.
+
+An address that is already one of your contacts is rejected as `duplicate email`, and its existing record is left untouched.
+
 ## Update a Contact
 
 Update a contact's details (status, tags, custom fields).
