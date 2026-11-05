@@ -140,7 +140,7 @@ curl https://api.tratto.email/v1/contacts/import/imp_abc123 \
 
 Ogni voce di `errors` indica il numero di riga e il motivo; l'indirizzo non è incluso. Il numero di riga conta le righe di dati dopo l'intestazione, in ordine, e le righe vuote vengono saltate. Vengono conservati solo i primi 20 errori, quindi per il totale usa `failedRows`. `errors` si popola al termine del job.
 
-Un indirizzo che è già tra i tuoi contatti viene rifiutato come `duplicate email` e il record esistente non viene modificato.
+Un indirizzo che è già tra i tuoi contatti, o che compare prima nello stesso file, viene rifiutato come `duplicate email`. Un record esistente non viene modificato.
 
 ## Aggiorna un Contatto
 
