@@ -259,6 +259,8 @@ curl -X DELETE https://api.tratto.email/v1/flows/flow_abc123 \
 
 Deleting an `active` flow is blocked the same way editing its steps is — deactivate first.
 
+Every flow response has an `enrollments` count: the number of times a contact entered the flow and started running its steps. It includes enrollments that completed, are paused or failed, and it never goes down, so it is a running total, not the number of contacts in the flow right now. A contact can enter the same flow more than once, once per distinct trigger event: a `contact_tag_added` flow with no `tagName` enrolls a contact again for each different tag added. Removing and re-adding the same tag does not enroll them again. `failedEnrollments` is the part of that total that stopped for good because a step failed or could not be found. The dashboard flows list shows both counts, with the failed count linking to the flow.
+
 ## Testing a Flow
 
 There's no `manual` enroll-via-API shortcut today (see [Trigger Types](#trigger-types)). To test a `contact_tag_added`/`contact_tag_removed` flow end to end:
