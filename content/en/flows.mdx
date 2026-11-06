@@ -71,6 +71,8 @@ Trigger config is a flat `{ key: value }` object, string values only. An empty/m
 
 Creating is two steps: the API only lets you name a flow on creation — trigger and steps are set afterward with `PATCH`. This mirrors the dashboard builder, which creates an empty draft the moment you click "New flow" and lets you wire it up on the canvas.
 
+On screens narrower than 768px the builder is view-only: it shows the trigger and the steps as a read-only list, and you can still activate or deactivate the flow. Adding or editing steps, renaming the flow and saving need a wider screen, while the flows list stays readable on a phone.
+
 **1. Create**
 ```bash
 curl -X POST https://api.tratto.email/v1/flows \
