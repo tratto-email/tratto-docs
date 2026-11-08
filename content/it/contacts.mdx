@@ -88,6 +88,60 @@ curl "https://api.tratto.email/v1/contacts?status=subscribed&limit=50" \
 quelli della pagina. `trackingOptOut` indica se il destinatario ha chiesto di
 non essere tracciato — vedi [Privacy](/it/docs/privacy).
 
+## Importa Contatti da CSV
+
+Invia un body CSV (`Content-Type: text/csv`, fino a 50.000 righe di dati). La prima riga è l'intestazione; la colonna `email` è obbligatoria, mentre `firstName`, `lastName`, `tags` (separati da `;`) e `status` sono opzionali. L'importazione gira in background e la chiamata restituisce l'id del job.
+
+**cURL**
+```bash
+curl -X POST https://api.tratto.email/v1/contacts/import \
+  -H "Authorization: Bearer tratto_live_..." \
+  -H "Content-Type: text/csv" \
+  --data-binary @contacts.csv
+```
+
+**Risposta:** `202 Accepted`
+```json
+{
+  "data": {
+    "jobId": "imp_abc123",
+    "totalRows": 1284
+  }
+}
+```
+
+### Controlla lo Stato del Job
+
+**cURL**
+```bash
+curl https://api.tratto.email/v1/contacts/import/imp_abc123 \
+  -H "Authorization: Bearer tratto_live_..."
+```
+
+**Risposta:**
+```json
+{
+  "data": {
+    "jobId": "imp_abc123",
+    "status": "completed",
+    "totalRows": 1284,
+    "processedRows": 1280,
+    "failedRows": 4,
+    "errors": [
+      "Row 12: invalid email",
+      "Row 87: duplicate email"
+    ],
+    "completedAt": "2025-06-30T12:00:42Z"
+  }
+}
+```
+
+`status` vale `processing`, `completed` o `failed`. `processedRows` conta i contatti creati e `failedRows` le righe rifiutate. `completedAt` è `null` finché il job non termina.
+
+Ogni voce di `errors` indica il numero di riga e il motivo; l'indirizzo non è incluso. Il numero di riga conta le righe di dati dopo l'intestazione, in ordine, e le righe vuote vengono saltate. Vengono conservati solo i primi 20 errori, quindi per il totale usa `failedRows`. `errors` si popola al termine del job.
+
+Un indirizzo che è già tra i tuoi contatti, o che compare prima nello stesso file, viene rifiutato come `duplicate email`. Un record esistente non viene modificato.
+
 ## Aggiorna un Contatto
 
 Aggiorna i dettagli di un contatto (status, tag, campi personalizzati).
