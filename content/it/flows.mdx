@@ -71,6 +71,8 @@ La config del trigger è un oggetto piatto `{ chiave: valore }`, solo valori str
 
 Creare è in due step: l'API permette solo di dare un nome al flusso in creazione — trigger e step si impostano dopo con `PATCH`. Rispecchia il builder della dashboard, che crea una bozza vuota nel momento in cui clicchi "Nuovo flow" e ti lascia collegare tutto sul canvas.
 
+Su schermi più stretti di 768px il builder è in sola consultazione: mostra il trigger e gli step come elenco non modificabile, e puoi comunque attivare o disattivare il flusso. Per aggiungere o modificare step, rinominare il flusso e salvare serve uno schermo più largo, mentre l'elenco dei flussi resta leggibile anche da telefono.
+
 **1. Crea**
 ```bash
 curl -X POST https://api.tratto.email/v1/flows \
