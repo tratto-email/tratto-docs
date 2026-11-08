@@ -193,7 +193,17 @@ Notifies an external URL. The request body is fixed — `{ "tenantId", "enrollme
 { "id": "s4", "type": "webhook_call", "config": { "url": "https://yourapi.com/hooks/flow-completed", "secret": "whsec_..." } }
 ```
 
-10-second timeout; failures are logged but don't stop the flow.
+Each attempt has a 10-second timeout and carries an `X-Tratto-Idempotency-Key` header with the value `<enrollmentId>:<stepIndex>` (for example `enr_abc123:3`). The key is the same on every attempt of that step for that contact.
+
+**Retries.** A timeout, a network error, or a `5xx`, `408` or `429` response is retried. The step makes up to 5 attempts in total, about 1, 2, 4 and 8 minutes apart, so roughly 15 minutes from the first attempt to the last. Any `2xx` response counts as delivered and the flow moves on.
+
+**When the step fails for good.** After the fifth failed attempt, or right away on an error that a retry cannot fix (any other `4xx`, a `3xx` response, a missing `url`, or a URL whose host is a private or reserved IP address), the enrollment stops with status `failed`: the flow does not continue for that contact, and later steps do not run. Every flow response (`GET /v1/flows`, `GET /v1/flows/:id`) has a `failedEnrollments` count of the enrollments stopped because a step failed for good, whatever its type. A `webhook_call` whose retries ran out is one such case. It is `0` when none have failed. Watch it after activating a flow that calls your endpoint.
+
+**On your receiving endpoint:**
+
+- Delivery is at least once: the same call can arrive more than once, for example when your endpoint did the work but its response timed out. Store the `X-Tratto-Idempotency-Key` and skip a request whose key you have already handled. A `branch` that loops back to an earlier step reuses that step's key, so if your flow loops, handle that case on purpose.
+- Respond `2xx` fast, within the 10 seconds, and do slow work after responding. A slow response counts as a timeout and is sent again.
+- Return `4xx` only when retrying cannot help: it stops the enrollment at the first attempt.
 
 ## Activating, Deactivating, Editing
 
