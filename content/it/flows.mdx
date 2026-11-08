@@ -187,7 +187,7 @@ Notifica un URL esterno. Il corpo della richiesta è fisso — `{ "tenantId", "e
 
 | Chiave config | Obbligatoria | Note |
 |---|---|---|
-| `url` | Sì | Deve essere `http`/`https` e un indirizzo pubblico — IP privati/riservati (`127.0.0.1`, `10.x`, `192.168.x`, ecc.) sono rifiutati, così come un hostname che risolve a uno di essi (`blocked_url`) |
+| `url` | Sì | Deve essere `http`/`https` e un indirizzo pubblico. IP privati/riservati (`127.0.0.1`, `10.x`, `192.168.x`, ecc.) sono rifiutati, così come un hostname che risolve a uno di essi |
 | `method` | No, default `POST` | Qualsiasi metodo HTTP |
 | `secret` | No | Se impostato, firma la richiesta con `X-Tratto-Signature` (HMAC-SHA256) — stesso schema dei [webhook normali](/it/docs/webhook-verification) |
 
@@ -197,7 +197,7 @@ Notifica un URL esterno. Il corpo della richiesta è fisso — `{ "tenantId", "e
 
 Ogni tentativo ha un timeout di 10 secondi e porta un header `X-Tratto-Idempotency-Key` con valore `<enrollmentId>:<stepIndex>` (per esempio `enr_abc123:3`). La chiave è la stessa in ogni tentativo di quello step per quel contatto. Le richieste portano `User-Agent: Tratto-Webhooks/1`.
 
-I redirect non vengono seguiti: una risposta `3xx` ferma lo step come fallimento che non viene ritentato. L'host deve risolvere a un indirizzo pubblico. Un hostname che risolve a un indirizzo IP privato o riservato fallisce come un IP privato scritto per esteso (`blocked_url`), anche se l'URL in sé sembra pubblico.
+I redirect non vengono seguiti: una risposta `3xx` ferma lo step come fallimento che non viene ritentato. Un hostname che risolve a un indirizzo IP privato o riservato ferma lo step definitivamente, come un IP privato scritto per esteso, anche se l'URL in sé sembra pubblico. Un errore di risoluzione DNS viene ritentato come qualunque altro errore di rete. In entrambi i casi l'iscrizione si ferma come `failed` e rientra in `failedEnrollments`.
 
 **Nuovi tentativi.** Un timeout, un errore di rete o una risposta `5xx`, `408` o `429` vengono ritentati. Lo step fa al massimo 5 tentativi in tutto, a circa 1, 2, 4 e 8 minuti di distanza, quindi circa 15 minuti dal primo all'ultimo. Qualunque risposta `2xx` vale come consegnata e il flusso prosegue.
 
