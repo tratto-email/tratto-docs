@@ -272,6 +272,8 @@ curl -X DELETE https://api.tratto.email/v1/flows/flow_abc123 \
 
 Eliminare un flusso `active` è bloccato allo stesso modo in cui lo è modificarne gli step — disattiva prima.
 
+Ogni risposta di un flusso ha un conteggio `enrollments`: il numero di volte in cui un contatto è entrato nel flusso e ha iniziato a eseguirne gli step. Include le iscrizioni completate, in pausa o fallite e non scende mai, quindi è un totale progressivo, non il numero di contatti presenti nel flusso in questo momento. Un contatto può entrare nello stesso flusso più di una volta, una per ogni evento di trigger distinto: un flusso `contact_tag_added` senza `tagName` iscrive di nuovo il contatto per ogni tag diverso aggiunto. Togliere e rimettere lo stesso tag non lo iscrive di nuovo. `failedEnrollments` è la parte di quel totale che si è fermata definitivamente perché uno step è fallito o non è stato trovato. Nella dashboard l'elenco dei flussi mostra entrambi i conteggi, e quello delle iscrizioni fallite porta al flusso.
+
 ## Testare un Flusso
 
 Non esiste oggi una scorciatoia di iscrizione manuale via API (vedi [Tipi di Trigger](#tipi-di-trigger)). Per testare un flusso `contact_tag_added`/`contact_tag_removed` end to end:
