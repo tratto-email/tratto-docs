@@ -166,7 +166,7 @@ Valuta una condizione sui campi del contatto stesso (non `customFields` — camp
 `trueNextStep`/`falseNextStep` sono **indici nell'array `steps`** (come stringhe), non ID di step — pianifica l'ordine dell'array prima di collegare i branch.
 
 <Callout type="warn">
-Lo step branch del builder nella dashboard espone al momento una coppia campo/valore semplificata che non corrisponde alle chiavi di config qui sopra. Configura gli step `branch` via API finché il builder non viene aggiornato.
+Lo step branch del builder nella dashboard imposta `conditionField`, `conditionOperator` e `conditionValue`, ma non ha campi per `trueNextStep` e `falseNextStep`. Costruito lì, una condizione vera passa allo step successivo e una falsa termina l'iscrizione. Per saltare a un altro step, configura lo step `branch` via API.
 </Callout>
 
 ### `update_contact`
@@ -328,7 +328,7 @@ tratto.contacts.update(
 )
 ```
 
-Nell'editor dei flussi della dashboard questo step si chiama **Condizione**, ma offre solo un campo e un valore atteso, che non bastano per `not_equals`. Configura questo schema tramite l'API (vedi l'avviso sotto [`branch`](#branch)).
+Puoi costruire questo schema nell'editor dei flussi della dashboard: aggiungi uno step **Condizione** con campo `tags`, operatore `not_equals` e valore `buyer`. Non serve alcun indice di step, quindi l'assenza di destinazioni di salto nell'editor (vedi l'avviso sotto [`branch`](#branch)) qui non conta.
 
 <Callout type="info">
 **Il confronto sul tag intero richiede tratto-api 0.30.0 o successiva** (l'API ospitata lo ha dal 3 novembre 2026). Su `tags`, `equals`, `not_equals` e `contains` confrontano un tag intero, in modo esatto e sensibile alle maiuscole: `buyer` non corrisponde a `Buyer` né a `nonbuyer`. Prima di quel rilascio, `contains` su `tags` cercava sottostringhe (quindi `buyer` corrispondeva a `nonbuyer`) e `equals` non corrispondeva mai a un contatto con più di un tag, per cui i branch basati sui tag potevano saltare o trattenere i contatti sbagliati. Se hai scritto un branch così in passato, ricontrollalo.
