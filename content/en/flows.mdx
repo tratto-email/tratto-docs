@@ -166,7 +166,7 @@ Evaluates one condition against the contact's own fields (not `customFields` —
 `trueNextStep`/`falseNextStep` are step **indices into the `steps` array** (as strings), not step IDs — plan the array order before wiring branches.
 
 <Callout type="warn">
-The dashboard builder's branch step currently exposes a simpler field/value pair that doesn't map onto the config keys above. Configure `branch` steps via the API until the builder catches up.
+The dashboard builder's branch step sets `conditionField`, `conditionOperator` and `conditionValue`, but it has no inputs for `trueNextStep` and `falseNextStep`. Built there, a true condition moves on to the next step and a false one ends the enrollment. To jump to another step, configure the `branch` step via the API.
 </Callout>
 
 ### `update_contact`
@@ -329,7 +329,7 @@ tratto.contacts.update(
 )
 ```
 
-The dashboard flow editor labels this step **Condition**, but it only offers a field and an expected value, which is not enough for `not_equals`. Set up this pattern through the API (see the warning under [`branch`](#branch)).
+You can build this pattern in the dashboard flow editor: add a **Condition** step with field `tags`, operator `not_equals` and value `buyer`. It needs no step index, so the editor's lack of jump targets (see the warning under [`branch`](#branch)) does not matter here.
 
 <Callout type="info">
 **Whole-tag matching requires tratto-api 0.30.0 or later** (the hosted API has had it since 3 November 2026). On `tags`, `equals`, `not_equals` and `contains` match one whole tag, exactly and case-sensitively: `buyer` does not match `Buyer` or `nonbuyer`. Before that release, `contains` on `tags` matched substrings (so `buyer` matched `nonbuyer`) and `equals` never matched a contact with more than one tag, so branches built on tags could skip or keep the wrong contacts. If you wrote such a branch earlier, review it.
