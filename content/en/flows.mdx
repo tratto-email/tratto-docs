@@ -187,7 +187,7 @@ Notifies an external URL. The request body is fixed — `{ "tenantId", "enrollme
 
 | Config key | Required | Notes |
 |---|---|---|
-| `url` | Yes | Must be `http`/`https` and a public address — private/reserved IPs (`127.0.0.1`, `10.x`, `192.168.x`, etc.) are rejected |
+| `url` | Yes | Must be `http`/`https` and a public address. Private/reserved IPs (`127.0.0.1`, `10.x`, `192.168.x`, etc.) are rejected, and so is a hostname that resolves to one |
 | `method` | No, defaults to `POST` | Any HTTP method |
 | `secret` | No | If set, signs the request with `X-Tratto-Signature` (HMAC-SHA256) — same scheme as [regular webhooks](/en/docs/webhook-verification) |
 
@@ -195,11 +195,13 @@ Notifies an external URL. The request body is fixed — `{ "tenantId", "enrollme
 { "id": "s4", "type": "webhook_call", "config": { "url": "https://yourapi.com/hooks/flow-completed", "secret": "whsec_..." } }
 ```
 
-Each attempt has a 10-second timeout and carries an `X-Tratto-Idempotency-Key` header with the value `<enrollmentId>:<stepIndex>` (for example `enr_abc123:3`). The key is the same on every attempt of that step for that contact.
+Each attempt has a 10-second timeout and carries an `X-Tratto-Idempotency-Key` header with the value `<enrollmentId>:<stepIndex>` (for example `enr_abc123:3`). The key is the same on every attempt of that step for that contact. Requests carry `User-Agent: Tratto-Webhooks/1`.
+
+Redirects are not followed: a `3xx` response stops the step as a failure that is not retried. A hostname that resolves to a private or reserved IP address stops the step for good, the same as a private IP literal, even though the URL itself looks public. A DNS lookup failure is retried like any other network error. In both cases the enrollment stops as `failed` and counts in `failedEnrollments`.
 
 **Retries.** A timeout, a network error, or a `5xx`, `408` or `429` response is retried. The step makes up to 5 attempts in total, about 1, 2, 4 and 8 minutes apart, so roughly 15 minutes from the first attempt to the last. Any `2xx` response counts as delivered and the flow moves on.
 
-**When the step fails for good.** After the fifth failed attempt, or right away on an error that a retry cannot fix (any other `4xx`, a `3xx` response, a missing `url`, or a URL whose host is a private or reserved IP address), the enrollment stops with status `failed`: the flow does not continue for that contact, and later steps do not run. Every flow response (`GET /v1/flows`, `GET /v1/flows/:id`) has a `failedEnrollments` count of the enrollments stopped because a step failed for good, whatever its type. A `webhook_call` whose retries ran out is one such case. It is `0` when none have failed. Watch it after activating a flow that calls your endpoint.
+**When the step fails for good.** After the fifth failed attempt, or right away on an error that a retry cannot fix (any other `4xx`, a `3xx` response, a missing `url`, or a URL whose host is, or resolves to, a private or reserved IP address), the enrollment stops with status `failed`: the flow does not continue for that contact, and later steps do not run. Every flow response (`GET /v1/flows`, `GET /v1/flows/:id`) has a `failedEnrollments` count of the enrollments stopped because a step failed for good, whatever its type. A `webhook_call` whose retries ran out is one such case. It is `0` when none have failed. Watch it after activating a flow that calls your endpoint.
 
 **On your receiving endpoint:**
 
