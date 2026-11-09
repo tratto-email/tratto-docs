@@ -400,7 +400,7 @@ from "the campaign is already `sending`" without reading `message`.
 A campaign can also be paused *for* you, and `paused` alone does not say by
 whom. **`pausedReason` is the field that tells the cases apart**, the
 counterpart of [`scheduledReason`](#scheduled-reason) on a `scheduled`
-campaign, and it has four values plus `null`:
+campaign, and it has five values plus `null`:
 
 | `pausedReason` | What happened | What to do |
 |---|---|---|
@@ -409,6 +409,7 @@ campaign, and it has four values plus `null`:
 | `"quota_unavailable"` | The quota could not be counted because of an error on our side. The quota is not exhausted | Resume it |
 | `"schedule_missed"` | A campaign **you** scheduled was picked up more than an hour after its `scheduledAt` and was not sent that late | Resume by hand if the send is still wanted, or reschedule it |
 | `"bounce_rate"` | Too many permanent bounces among the emails already sent | **Clean the list before resuming.** See below |
+| `"template_unsafe"` | The campaign body comes from a template whose HTML failed the safety check at send time (scripts, forms, embedded objects) | Edit and save the template, then resume |
 
 **`schedule_missed` only applies to a date you set.** A campaign parked for
 its [probe wave](#probe-wave) also reads `scheduled`, but it is not paused this
