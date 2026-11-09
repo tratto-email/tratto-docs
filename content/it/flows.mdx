@@ -128,8 +128,8 @@ Il `config` di ogni step è `{ chiave: stringa }`, come i trigger — l'API non 
 
 | Chiave config | Obbligatoria | Note |
 |---|---|---|
-| `delay` | Sì | Un intero positivo, come stringa, es. `"2"` |
-| `unit` | No, default `minutes` | Uno tra `seconds`, `minutes`, `hours`, `days` |
+| `delay` | Sì | Un numero intero positivo, come stringa, es. `"2"`. `"0"`, un numero negativo o decimale, una stringa vuota o qualunque cosa non sia un numero vengono rifiutati all'attivazione |
+| `unit` | No, default `minutes` | Uno tra `seconds`, `minutes`, `hours`, `days`. Qualunque altro valore viene rifiutato all'attivazione |
 
 ```json
 { "id": "s1", "type": "wait", "config": { "delay": "14", "unit": "days" } }
@@ -203,6 +203,8 @@ I redirect non vengono seguiti: una risposta `3xx` ferma lo step come fallimento
 
 **Quando lo step fallisce definitivamente.** Dopo il quinto tentativo fallito, o subito per un errore che un nuovo tentativo non può correggere (qualunque altro `4xx`, una risposta `3xx`, un `url` mancante o un URL il cui host è, o risolve a, un indirizzo IP privato o riservato), l'iscrizione si ferma con stato `failed`: il flusso non prosegue per quel contatto e gli step successivi non vengono eseguiti. Ogni risposta sui flussi (`GET /v1/flows`, `GET /v1/flows/:id`) ha un conteggio `failedEnrollments` delle iscrizioni fermate perché uno step, di qualunque tipo, è fallito definitivamente. Un `webhook_call` che ha esaurito i tentativi è uno di questi casi. Vale `0` se non ce ne sono. Tienilo d'occhio dopo aver attivato un flusso che chiama il tuo endpoint.
 
+Altri due casi finiscono nello stesso conteggio. Uno step `send_email` che incontra un errore da parte nostra prima che l'email venga creata (lettura del contatto, riserva della quota di invio) viene ritentato allo stesso modo, per circa 15 minuti, e l'iscrizione fallisce definitivamente solo dopo l'ultimo tentativo: un conteggio diverso da zero non vuol dire sempre che il problema è il tuo endpoint. Uno step `wait` con `delay` o `unit` non validi in un flusso già attivo ferma l'iscrizione subito, senza nuovi tentativi.
+
 **Sul tuo endpoint che riceve la chiamata:**
 
 - La consegna è almeno una volta: la stessa chiamata può arrivare più di una volta, per esempio quando il tuo endpoint ha fatto il lavoro ma la risposta è andata in timeout. Salva la `X-Tratto-Idempotency-Key` e ignora una richiesta con una chiave già gestita. Un `branch` che torna a uno step precedente riusa la chiave di quello step: se il tuo flusso fa un ciclo, gestisci il caso in modo esplicito.
@@ -220,6 +222,10 @@ curl -X POST https://api.tratto.email/v1/flows/flow_abc123/activate \
 curl -X POST https://api.tratto.email/v1/flows/flow_abc123/deactivate \
   -H "Authorization: Bearer tratto_live_..."
 ```
+
+L'attivazione controlla ogni step `wait`: un `delay` che non è un numero intero
+positivo, o una `unit` che non è una delle quattro indicate sopra, fallisce con
+**422 `VALIDATION_ERROR`**. Correggi lo step e attiva di nuovo.
 
 L'attivazione controlla ogni step `send_email` prima che il flusso possa
 iscrivere qualcuno: il mittente deve stare su un dominio verificato e **il
