@@ -67,7 +67,7 @@ Every key carries a set of permissions, and they are enforced on each request: a
 | `members:write` | No route uses it: `PATCH /v1/workspace/members/:userId`, which changed a member's role, no longer exists and answers `404`. Inviting and removing members is dashboard-only: every API key gets `403` (see [Team](/en/docs/team#from-the-api)) |
 | `*` | Full access — every permission above, including future ones |
 
-`GET /v1/workspace` needs no permission: any valid key can read the workspace, because that is how an integration finds out which address it may send from. The response holds the workspace id, name, slug, timezone and locale, the plan and its limits, the default sender and the per-type senders, `customUnsubscribeUrl`, `keepTrattoBranding`, `canInviteMembers`, the brand, the creation date, and the owner's latest acceptance of the terms and privacy policy (versions, date and user id). A send-only key given to an external vendor can therefore read your plan and sender addresses.
+`GET /v1/workspace` needs no permission: any valid key can read the workspace, because that is how an integration finds out which address it may send from. The response holds the workspace id, name, slug, timezone and locale, the plan and its limits, the default sender and the per-type senders, `customUnsubscribeUrl`, `keepTrattoBranding`, `canInviteMembers`, the brand, and the creation date. `legal` is always `null` for API keys. A send-only key given to an external vendor can therefore read your plan and sender addresses.
 
 Grant the narrowest set that does the job. A key that only sends transactional email needs `emails:send` and nothing else; one that also mirrors signups into your contact list needs `contacts:write` too.
 
