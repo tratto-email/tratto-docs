@@ -187,7 +187,7 @@ Notifica un URL esterno. Il corpo della richiesta è fisso — `{ "tenantId", "e
 
 | Chiave config | Obbligatoria | Note |
 |---|---|---|
-| `url` | Sì | Deve essere `http`/`https` e un indirizzo pubblico. IP privati/riservati (`127.0.0.1`, `10.x`, `192.168.x`, ecc.) sono rifiutati, così come un hostname che risolve a uno di essi |
+| `url` | Sì, per attivare | Deve essere `http`/`https` e un indirizzo pubblico. IP privati/riservati (`127.0.0.1`, `10.x`, `192.168.x`, ecc.), `localhost`, hostname interni e indirizzi di metadata cloud sono rifiutati con 422 quando salvi gli step e quando attivi (vedi sotto). Un hostname che risolve a un IP privato supera questi controlli e ferma lo step quando viene eseguito |
 | `method` | No, default `POST` | Qualsiasi metodo HTTP |
 | `secret` | No | Se impostato, firma la richiesta con `X-Tratto-Signature` (HMAC-SHA256) — stesso schema dei [webhook normali](/it/docs/webhook-verification) |
 
@@ -230,6 +230,14 @@ un `templateId` inesistente fallisce con **404** e
 `Template 'tmpl_abc123' on step 's0' not found.` Pubblica prima il template
 (vedi [Template](/it/docs/templates#pubblica-prima-di-inviare)), poi riprova ad
 attivare.
+
+L'attivazione controlla anche ogni step `webhook_call`: un `url` mancante, o che
+non è un indirizzo `http` o `https` pubblico, fallisce con **422 `VALIDATION_ERROR`**.
+`PATCH /v1/flows/:id` rifiuta lo stesso URL non pubblico quando salvi gli step,
+ma accetta un URL mancante o vuoto, così una bozza si può salvare a metà. Entrambe
+le risposte indicano lo step in `details`, come
+`[{ "path": "/steps/<n>/config/url", "message": "..." }]`, dove `<n>` è la
+posizione dello step in `steps`, contando da 0. Il messaggio non ripete l'URL.
 
 Uno step senza un proprio `from` riceve il mittente del workspace
 all'attivazione, scritto sullo step: resta quello anche se poi cambi il mittente

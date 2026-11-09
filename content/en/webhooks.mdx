@@ -237,6 +237,12 @@ secret resets the failure counter and re-enables it; on the Free plan rotation
 is not available (see [Plan availability](#plan-availability)), so a disabled
 webhook stays disabled.
 
+Redirects are not followed. A `3xx` response is a failed delivery that is not
+retried, and it counts toward the auto-disable. The same holds for an endpoint
+whose hostname resolves to a private or reserved IP address: the delivery is
+`failed` with `httpStatus: null`, with no retry. A DNS lookup failure is retried
+like any network error. Every request carries `User-Agent: Tratto-Webhooks/1`.
+
 ## Rotate Webhook Secret
 
 ```bash
