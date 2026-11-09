@@ -128,7 +128,7 @@ Every step's `config` is `{ key: string }`, same as triggers — the API doesn't
 
 | Config key | Required | Notes |
 |---|---|---|
-| `delay` | Yes | A positive whole number, as a string, e.g. `"2"`. `"0"`, a negative or decimal number, an empty string or anything that is not a number is rejected at activation |
+| `delay` | No (default `"5"`, so 5 minutes) | A positive whole number without leading zeros, as a string, e.g. `"2"`. `"0"`, `"02"`, a negative or decimal number, an empty string or anything that is not a number is rejected at activation |
 | `unit` | No, defaults to `minutes` | One of `seconds`, `minutes`, `hours`, `days`. Any other value is rejected at activation |
 
 ```json
@@ -224,7 +224,7 @@ curl -X POST https://api.tratto.email/v1/flows/flow_abc123/deactivate \
 ```
 
 Activation checks every `wait` step: a `delay` that is not a positive whole
-number, or a `unit` that is not one of the four above, fails with
+number without leading zeros, or a `unit` that is not one of the four above, fails with
 **422 `VALIDATION_ERROR`**. Fix the step and activate again.
 
 Activation checks every `send_email` step before the flow can enroll anyone:

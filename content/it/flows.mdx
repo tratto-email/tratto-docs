@@ -128,7 +128,7 @@ Il `config` di ogni step è `{ chiave: stringa }`, come i trigger — l'API non 
 
 | Chiave config | Obbligatoria | Note |
 |---|---|---|
-| `delay` | Sì | Un numero intero positivo, come stringa, es. `"2"`. `"0"`, un numero negativo o decimale, una stringa vuota o qualunque cosa non sia un numero vengono rifiutati all'attivazione |
+| `delay` | No (predefinito `"5"`, cioè 5 minuti) | Un numero intero positivo senza zeri iniziali, come stringa, es. `"2"`. `"0"`, `"02"`, un numero negativo o decimale, una stringa vuota o qualunque cosa non sia un numero vengono rifiutati all'attivazione |
 | `unit` | No, default `minutes` | Uno tra `seconds`, `minutes`, `hours`, `days`. Qualunque altro valore viene rifiutato all'attivazione |
 
 ```json
@@ -224,7 +224,7 @@ curl -X POST https://api.tratto.email/v1/flows/flow_abc123/deactivate \
 ```
 
 L'attivazione controlla ogni step `wait`: un `delay` che non è un numero intero
-positivo, o una `unit` che non è una delle quattro indicate sopra, fallisce con
+positivo senza zeri iniziali, o una `unit` che non è una delle quattro indicate sopra, fallisce con
 **422 `VALIDATION_ERROR`**. Correggi lo step e attiva di nuovo.
 
 L'attivazione controlla ogni step `send_email` prima che il flusso possa
