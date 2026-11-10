@@ -350,6 +350,8 @@ Paginazione a cursore con `after` e `limit` (default 50, massimo 100).
 }
 ```
 
+Le consegne sono elencate dalla più recente, in base all'ora del primo tentativo. Un retry aggiorna `attemptedAt` e `retryCount` sulla stessa consegna e non la sposta nell'elenco.
+
 `status` vale `success`, `failed` o `scheduled`: `scheduled` significa che un
 retry è ancora in attesa. `responseBody` è troncato ai primi 1000 caratteri della
 tua risposta, ed è il modo più rapido per capire perché una consegna è stata
