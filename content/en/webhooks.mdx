@@ -349,6 +349,8 @@ Cursor-paginated with `after` and `limit` (default 50, max 100).
 }
 ```
 
+Deliveries are listed newest first by the time of their first attempt. A retry updates `attemptedAt` and `retryCount` on the same delivery and does not move it in the list.
+
 `status` is `success`, `failed` or `scheduled`: `scheduled` means a retry is
 still pending. `responseBody` is truncated to the first 1000 characters of your
 reply, which makes it the fastest way to debug a rejected delivery.
