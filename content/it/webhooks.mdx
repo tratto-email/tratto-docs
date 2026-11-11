@@ -238,6 +238,13 @@ il segreto azzera il contatore dei fallimenti e lo riattiva; sul piano Free la
 rotazione non è disponibile (vedi [Piani che includono i webhook](#piani-che-includono-i-webhook)),
 quindi un webhook disattivato resta disattivato.
 
+I redirect non vengono seguiti. Una risposta `3xx` è una consegna fallita che non
+viene ritentata, e conta per la disattivazione automatica. Lo stesso vale per un
+endpoint il cui hostname risolve a un indirizzo IP privato o riservato: la
+consegna è `failed` con `httpStatus: null`, senza nuovi tentativi. Un errore di
+risoluzione DNS viene ritentato come qualunque errore di rete. Ogni richiesta
+porta `User-Agent: Tratto-Webhooks/1`.
+
 ## Ruotare il Secret
 
 ```bash

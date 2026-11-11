@@ -187,7 +187,7 @@ Notifies an external URL. The request body is fixed — `{ "tenantId", "enrollme
 
 | Config key | Required | Notes |
 |---|---|---|
-| `url` | Yes | Must be `http`/`https` and a public address. Private/reserved IPs (`127.0.0.1`, `10.x`, `192.168.x`, etc.) are rejected, and so is a hostname that resolves to one |
+| `url` | Yes, to activate | Must be `http`/`https` and a public address. Private/reserved IPs (`127.0.0.1`, `10.x`, `192.168.x`, etc.), `localhost`, internal hostnames and cloud metadata addresses are rejected with 422 when you save the steps and when you activate (see [Activating, Deactivating, Editing](#activating-deactivating-editing)). A hostname that resolves to a private IP passes those checks and stops the step when it runs |
 | `method` | No, defaults to `POST` | Any HTTP method |
 | `secret` | No | If set, signs the request with `X-Tratto-Signature` (HMAC-SHA256) — same scheme as [regular webhooks](/en/docs/webhook-verification) |
 
@@ -229,6 +229,14 @@ a `templateId` that does not exist fails with **404** and
 `Template 'tmpl_abc123' on step 's0' not found.` Publish the template first
 (see [Templates](/en/docs/templates#publish-before-you-send)), then activate
 again.
+
+Activation also checks every `webhook_call` step: a missing `url`, or one that
+is not a public `http` or `https` address, fails with **422 `VALIDATION_ERROR`**.
+`PATCH /v1/flows/:id` rejects the same non-public URL when you save the steps,
+but accepts a missing or empty one, so a draft can be saved mid-edit. Both
+answers point at the step in `details`, as
+`[{ "path": "/steps/<n>/config/url", "message": "..." }]`, where `<n>` is the
+step's position in `steps`, counting from 0. The message does not repeat the URL.
 
 A step without its own `from` gets the workspace sender at activation, written
 on the step: it stays there even if you later change the automation sender or
