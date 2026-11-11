@@ -90,14 +90,14 @@ Una riga di link social, in un template markdown:
 
 Il blocco `::: social` di un template markdown costruisce questa riga per te,
 con icone servite da `https://assets.tratto.email/icons/v1/social/<network>.png`.
-I network con un'icona sono `x`, `linkedin`, `github` e `web`; `web` è l'icona di
+I network con un'icona sono `x`, `linkedin`, `github`, `instagram`, `facebook` e `web`; `web` è l'icona di
 qualsiasi link verso un altro sito, per esempio il tuo.
 
-Qualsiasi altro network (`instagram`, `facebook`, `youtube` e gli altri) viene
+Qualsiasi altro network (`youtube` e gli altri) viene
 rifiutato al salvataggio o all'anteprima del template, con `422 VALIDATION_ERROR`:
 
 ```
-Social network "instagram" has no Tratto icon; use a plain text link instead. Networks with an icon: x, linkedin, github, web (web is any other site).
+Social network "youtube" has no Tratto icon; use a plain text link instead. Networks with an icon: x, linkedin, github, instagram, facebook, web (web is any other site).
 ```
 
 Per usare un network di cui non abbiamo l'icona, punta il blocco ai tuoi file.

@@ -88,14 +88,14 @@ A row of social links, in a markdown template:
 
 The `::: social` block in a markdown template builds this row for you, with
 icons served from `https://assets.tratto.email/icons/v1/social/<network>.png`.
-The networks with an icon are `x`, `linkedin`, `github` and `web`; `web` is the
+The networks with an icon are `x`, `linkedin`, `github`, `instagram`, `facebook` and `web`; `web` is the
 icon any link to another site gets, such as your own.
 
-Any other network (`instagram`, `facebook`, `youtube` and the rest) is refused
+Any other network (`youtube` and the rest) is refused
 when you save or preview the template, with `422 VALIDATION_ERROR`:
 
 ```
-Social network "instagram" has no Tratto icon; use a plain text link instead. Networks with an icon: x, linkedin, github, web (web is any other site).
+Social network "youtube" has no Tratto icon; use a plain text link instead. Networks with an icon: x, linkedin, github, instagram, facebook, web (web is any other site).
 ```
 
 To use a network we have no icon for, point the block at your own files. They
