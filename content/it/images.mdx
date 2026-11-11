@@ -88,6 +88,29 @@ Una riga di link social, in un template markdown:
 [![LinkedIn](https://assets.tratto.email/icons/v1/linkedin-blue.png){width="24"}](https://www.linkedin.com/company/acme)
 ```
 
+Il blocco `::: social` di un template markdown costruisce questa riga per te,
+con icone servite da `https://assets.tratto.email/icons/v1/social/<network>.png`.
+I network con un'icona sono `x`, `linkedin`, `github` e `web`; `web` è l'icona di
+qualsiasi link verso un altro sito, per esempio il tuo.
+
+Qualsiasi altro network (`instagram`, `facebook`, `youtube` e gli altri) viene
+rifiutato al salvataggio o all'anteprima del template, con `422 VALIDATION_ERROR`:
+
+```
+Social network "instagram" has no Tratto icon; use a plain text link instead. Networks with an icon: x, linkedin, github, web (web is any other site).
+```
+
+Per usare un network di cui non abbiamo l'icona, punta il blocco ai tuoi file.
+Devono chiamarsi `<network>.png` ed essere serviti in https:
+
+```markdown
+::: social icon-base="https://your-cdn/icons/"
+```
+
+I template salvati prima di questo controllo continuano a partire. All'invio le
+loro icone vengono riscritte con le nostre, e un network senza icona perde
+l'immagine e conserva il link.
+
 ## L'alt non è facoltativo
 
 Outlook desktop blocca le immagini remote finché il destinatario non lo consente,

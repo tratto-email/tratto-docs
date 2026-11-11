@@ -86,6 +86,29 @@ A row of social links, in a markdown template:
 [![LinkedIn](https://assets.tratto.email/icons/v1/linkedin-blue.png){width="24"}](https://www.linkedin.com/company/acme)
 ```
 
+The `::: social` block in a markdown template builds this row for you, with
+icons served from `https://assets.tratto.email/icons/v1/social/<network>.png`.
+The networks with an icon are `x`, `linkedin`, `github` and `web`; `web` is the
+icon any link to another site gets, such as your own.
+
+Any other network (`instagram`, `facebook`, `youtube` and the rest) is refused
+when you save or preview the template, with `422 VALIDATION_ERROR`:
+
+```
+Social network "instagram" has no Tratto icon; use a plain text link instead. Networks with an icon: x, linkedin, github, web (web is any other site).
+```
+
+To use a network we have no icon for, point the block at your own files. They
+must be named `<network>.png` and served over https:
+
+```markdown
+::: social icon-base="https://your-cdn/icons/"
+```
+
+Templates saved before this check keep sending. At send time their icons are
+rewritten to ours, and a network without an icon loses its image and keeps its
+link.
+
 ## The alt text is not optional
 
 Desktop Outlook blocks remote images until the recipient allows them, and some
