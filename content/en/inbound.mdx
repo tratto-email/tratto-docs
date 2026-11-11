@@ -1,0 +1,121 @@
+---
+title: Inbound Email
+description: Provided addresses, received payload, verdicts, limits, test mode, and EU region for inbound email
+updatedAt: 2026-10-26
+---
+
+# Inbound Email
+
+Every workspace can provision inbound email addresses to receive messages at your domain. All handling happens on our infrastructure — no client-side parsing required.
+
+## Provisioning an Address
+
+Creating an inbound email address requires a paid plan. Reading and deleting existing addresses and emails, and downloading their attachments, remains available after a downgrade.
+
+Attachment download requires the `inbound:read` permission.
+
+Each address has:
+
+| Field | Description |
+|-------|-------------|
+| Address | The full email address (e.g. `inbox@yourdomain.com`) |
+| Domain | The verified sender domain this address belongs to |
+| Description | Optional human-readable label |
+| Active | Whether the address is currently receiving mail |
+
+## Received Payload
+
+When Tratto receives an email at your address, it generates a `received` event with the following payload:
+
+```json
+{
+  "event": "received",
+  "address": "inbox@yourdomain.com",
+  "messageId": "msg_1234567890",
+  "from": "sender@example.com",
+  "to": ["inbox@yourdomain.com"],
+  "cc": [],
+  "bcc": [],
+  "subject": "Hello",
+  "text": "Plain text body",
+  "html": "<p>Plain text body</p>",
+  "attachments": [
+    {
+      "filename": "document.pdf",
+      "contentType": "application/pdf",
+      "size": 102400,
+      "url": "https://api.tratto.email/v1/inbound/attachments/msg_1234567890/document.pdf"
+    }
+  ],
+  "receivedAt": "2026-10-26T14:30:00Z",
+  "verdict": "delivered"
+}
+```
+
+### Verdict Values
+
+| Verdict | Meaning |
+|---------|---------|
+| `delivered` | Email accepted and queued for processing |
+| `dropped` | Email was dropped — see `dropped*` counters |
+| `rejected` | Email rejected at SMTP level |
+| `quarantined` | Email flagged for review |
+
+## Verdict Counters
+
+Each address tracks `dropped*` counters showing how many messages were dropped and why:
+
+| Counter | Meaning |
+|---------|---------|
+| `dropped` | Total messages dropped |
+| `dropped_spam` | Dropped due to spam classification |
+| `dropped_size` | Dropped due to exceeding size limit |
+| `dropped_attachment` | Dropped due to blocked attachment type |
+| `dropped_rate_limit` | Dropped due to per-address rate limit |
+
+## Limits
+
+| Limit | Free | Paid |
+|-------|------|------|
+| Addresses per workspace | Not available | Unlimited* |
+| Message size | Not available | 25 MB |
+| Attachments per message | Not available | 10 |
+| Retention | Not available | 30 days |
+| Raw copy retention | Not available | 7 days |
+
+\* Paid plans have no address count limit, subject to fair-use review.
+
+## Signed URL Download
+
+Attachments are served via signed URLs that expire after 24 hours:
+
+```
+GET /v1/inbound/attachments/{messageId}/{filename}
+```
+
+The URL includes a time-limited signature. After expiration, regenerate the URL through the API.
+
+## Test Mode
+
+Inbound email works in both Test and Live modes:
+
+| | Test — `tratto_test_...` | Live — `tratto_live_...` |
+|---|---|---|
+| Delivery | Simulated — nothing sent externally | Real SMTP delivery |
+| Address creation | Available on paid plan | Available on paid plan |
+| Webhooks | `livemode: false` | `livemode: true` |
+| Attachment URLs | Test-signed | Live-signed |
+
+Test mode accepts any syntactically valid recipient address. The simulator domain `simulator.tratto.email` never receives mail — it exists only as a selector for testing outcomes.
+
+## EU Region
+
+Inbound email processing occurs exclusively in the EU region. This is a fact about our infrastructure, never described as sovereignty.
+
+No em-dashes are used in this documentation — use commas, semicolons, or periods instead.
+
+## Related
+
+- [Webhooks](/en/docs/webhooks) — event delivery for inbound events
+- [Error Codes](/en/docs/error-codes) — `PLAN_UPGRADE_REQUIRED`, address cap errors
+- [Test Mode](/en/docs/test-mode) — development without sending real email
