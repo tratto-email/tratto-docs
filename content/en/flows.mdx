@@ -128,8 +128,8 @@ Every step's `config` is `{ key: string }`, same as triggers — the API doesn't
 
 | Config key | Required | Notes |
 |---|---|---|
-| `delay` | Yes | A positive integer, as a string, e.g. `"2"` |
-| `unit` | No, defaults to `minutes` | One of `seconds`, `minutes`, `hours`, `days` |
+| `delay` | No (default `"5"`, so 5 minutes) | A positive whole number without leading zeros, as a string, e.g. `"2"`. `"0"`, `"02"`, a negative or decimal number, an empty string or anything that is not a number is rejected at activation |
+| `unit` | No, defaults to `minutes` | One of `seconds`, `minutes`, `hours`, `days`. Any other value is rejected at activation |
 
 ```json
 { "id": "s1", "type": "wait", "config": { "delay": "14", "unit": "days" } }
@@ -203,6 +203,8 @@ Redirects are not followed: a `3xx` response stops the step as a failure that is
 
 **When the step fails for good.** After the fifth failed attempt, or right away on an error that a retry cannot fix (any other `4xx`, a `3xx` response, a missing `url`, or a URL whose host is, or resolves to, a private or reserved IP address), the enrollment stops with status `failed`: the flow does not continue for that contact, and later steps do not run. Every flow response (`GET /v1/flows`, `GET /v1/flows/:id`) has a `failedEnrollments` count of the enrollments stopped because a step failed for good, whatever its type. A `webhook_call` whose retries ran out is one such case. It is `0` when none have failed. Watch it after activating a flow that calls your endpoint.
 
+Two other cases end up in the same count. A `send_email` step that hits an error on our side before the email is created (reading the contact, reserving the sending quota) is retried the same way, for about 15 minutes, and the enrollment fails for good only after the last attempt: a non-zero count does not always mean your endpoint is at fault. A `wait` step with an invalid `delay` or `unit` in a flow that is already active stops the enrollment at once, with no retry.
+
 **On your receiving endpoint:**
 
 - Delivery is at least once: the same call can arrive more than once, for example when your endpoint did the work but its response timed out. Store the `X-Tratto-Idempotency-Key` and skip a request whose key you have already handled. A `branch` that loops back to an earlier step reuses that step's key, so if your flow loops, handle that case on purpose.
@@ -220,6 +222,10 @@ curl -X POST https://api.tratto.email/v1/flows/flow_abc123/activate \
 curl -X POST https://api.tratto.email/v1/flows/flow_abc123/deactivate \
   -H "Authorization: Bearer tratto_live_..."
 ```
+
+Activation checks every `wait` step: a `delay` that is not a positive whole
+number without leading zeros, or a `unit` that is not one of the four above, fails with
+**422 `VALIDATION_ERROR`**. Fix the step and activate again.
 
 Activation checks every `send_email` step before the flow can enroll anyone:
 the sender must be on a verified domain, and **the step's template must be
