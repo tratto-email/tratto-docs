@@ -90,14 +90,14 @@ Una riga di link social, in un template markdown:
 
 Il blocco `::: social` di un template markdown costruisce questa riga per te,
 con icone servite da `https://assets.tratto.email/icons/v1/social/<network>.png`.
-I network con un'icona sono `x`, `linkedin`, `github` e `web`; `web` è l'icona di
+I network con un'icona sono `x`, `linkedin`, `github`, `instagram`, `facebook`, `youtube` e `web`; `web` è l'icona di
 qualsiasi link verso un altro sito, per esempio il tuo.
 
-Qualsiasi altro network (`instagram`, `facebook`, `youtube` e gli altri) viene
+Qualsiasi altro network (`pinterest`, `vimeo` e gli altri) viene
 rifiutato al salvataggio o all'anteprima del template, con `422 VALIDATION_ERROR`:
 
 ```
-Social network "instagram" has no Tratto icon; use a plain text link instead. Networks with an icon: x, linkedin, github, web (web is any other site).
+Social network "pinterest" has no Tratto icon; use a plain text link instead. Networks with an icon: x, linkedin, github, instagram, facebook, youtube, web (web is any other site).
 ```
 
 Per usare un network di cui non abbiamo l'icona, punta il blocco ai tuoi file.
@@ -171,7 +171,8 @@ con una policy di cache che hai scelto tu.
 
 ## I marchi restano dei rispettivi proprietari
 
-I glifi X e LinkedIn arrivano dai kit ufficiali delle piattaforme e sono stati
+I marchi X, LinkedIn, GitHub, Instagram, Facebook e YouTube arrivano dai kit
+ufficiali delle piattaforme e sono stati
 solo riscalati a 2x. Forma, proporzioni e colori non sono stati toccati, come
 richiedono quelle linee guida, e così vanno lasciati: un marchio non si ricolora,
 non si ruota, non si deforma, non si ritaglia e non gli si aggiungono effetti.
@@ -183,19 +184,10 @@ soggetto alle regole di ciascuna piattaforma:
 - X: [brand toolkit](https://about.x.com/en/who-we-are/brand-toolkit)
 - LinkedIn: [brand policies](https://brand.linkedin.com/policies) e
   [brand downloads](https://brand.linkedin.com/downloads)
-
-### Instagram, Facebook e YouTube non ci sono
-
-I loro kit ufficiali stanno dietro URL di download legati a una sessione di
-browser (Meta) o dietro il brand resource center di Google (YouTube), e non
-possiamo ridistribuirli. E non li abbiamo ridisegnati: sono marchi registrati, e
-un'approssimazione è sbagliata a vedersi e contraria a quelle stesse linee guida.
-
-Se ti servono, prendi il file ufficiale dalla fonte e ospitalo su un dominio che
-controlli tu:
-
-- Facebook e Instagram: [risorse brand Meta](https://www.meta.com/brand/resources/)
-- YouTube: [risorse brand](https://brand.youtube/)
+- GitHub: [linee guida del logo](https://brand.github.com/foundations/logo)
+- Instagram: [risorse brand](https://about.meta.com/brand/resources/instagram/)
+- Facebook: [risorse brand](https://about.meta.com/brand/resources/facebook/logo/)
+- YouTube: [risorse brand](https://www.youtube.com/howyoutubeworks/resources/brand-resources/)
 
 ## Prossimi passi
 

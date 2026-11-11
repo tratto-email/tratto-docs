@@ -88,14 +88,14 @@ A row of social links, in a markdown template:
 
 The `::: social` block in a markdown template builds this row for you, with
 icons served from `https://assets.tratto.email/icons/v1/social/<network>.png`.
-The networks with an icon are `x`, `linkedin`, `github` and `web`; `web` is the
+The networks with an icon are `x`, `linkedin`, `github`, `instagram`, `facebook`, `youtube` and `web`; `web` is the
 icon any link to another site gets, such as your own.
 
-Any other network (`instagram`, `facebook`, `youtube` and the rest) is refused
+Any other network (`pinterest`, `vimeo` and the rest) is refused
 when you save or preview the template, with `422 VALIDATION_ERROR`:
 
 ```
-Social network "instagram" has no Tratto icon; use a plain text link instead. Networks with an icon: x, linkedin, github, web (web is any other site).
+Social network "pinterest" has no Tratto icon; use a plain text link instead. Networks with an icon: x, linkedin, github, instagram, facebook, youtube, web (web is any other site).
 ```
 
 To use a network we have no icon for, point the block at your own files. They
@@ -166,7 +166,8 @@ images on a domain you own with a cache policy you chose.
 
 ## Brand marks belong to their owners
 
-The X and LinkedIn glyphs come from the platforms' own brand kits and were only
+The X, LinkedIn, GitHub, Instagram, Facebook and YouTube marks come from the
+platforms' own brand kits and were only
 rescaled to 2x. Shape, proportions and colours are untouched, as those
 guidelines require, and you should keep them that way: do not recolour, rotate,
 stretch, crop or add effects to a mark.
@@ -178,19 +179,10 @@ subject to each platform's own rules:
 - X: [brand toolkit](https://about.x.com/en/who-we-are/brand-toolkit)
 - LinkedIn: [brand policies](https://brand.linkedin.com/policies) and
   [brand downloads](https://brand.linkedin.com/downloads)
-
-### Instagram, Facebook and YouTube are not in the set
-
-Their official kits sit behind download URLs bound to a browser session (Meta)
-or behind Google's brand resource centre (YouTube), which we cannot
-redistribute. We did not redraw them either: they are registered trademarks, and
-an approximation is both visibly wrong and against those same guidelines.
-
-If you need them, take the official file from the source and host it on a domain
-you control:
-
-- Facebook and Instagram: [Meta brand resources](https://www.meta.com/brand/resources/)
-- YouTube: [brand resources](https://brand.youtube/)
+- GitHub: [logo guidelines](https://brand.github.com/foundations/logo)
+- Instagram: [brand resources](https://about.meta.com/brand/resources/instagram/)
+- Facebook: [brand resources](https://about.meta.com/brand/resources/facebook/logo/)
+- YouTube: [brand resources](https://www.youtube.com/howyoutubeworks/resources/brand-resources/)
 
 ## Next steps
 
