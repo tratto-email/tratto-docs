@@ -174,6 +174,17 @@ Gli **eventi** sono record discreti di tracciamento per quello che è successo a
 | `unsubscribed` | Destinatario ha cliccato il link di annullamento iscrizione |
 | `failed` | L'email non è stata inviata; `data.reason` e `data.error` dicono perché (richiede l'API 0.29.0 o successiva) |
 
+### Campi di un evento
+
+| Campo | Descrizione |
+|-------|-------------|
+| `type` | Il tipo di evento, dalla tabella qui sopra |
+| `occurredAt` | Quando è avvenuto l'evento (ISO 8601) |
+| `data` | I dettagli dell'evento, se ne ha: il link per `clicked`, il tipo di rimbalzo per `bounced`, il motivo per `failed` |
+| `recipient` | Solo su `bounced` e `complained`: l'indirizzo che è rimbalzato o che ha segnalato spam. Un'email inviata a più indirizzi (`to`, `cc`, `bcc`) può rimbalzare per uno ed essere consegnata agli altri, e questo campo dice quale. Assente su tutti gli altri tipi di evento |
+
+Gli stessi eventi, con gli stessi campi, si trovano anche nell'array `events` di `GET /v1/emails/{id}`.
+
 ### Ottieni Eventi Email
 
 Recupera tutti gli eventi per un'email specifica.
@@ -223,30 +234,27 @@ foreach ($events as $event) {
 {
   "data": [
     {
-      "id": "evt_001",
       "type": "sent",
-      "emailId": "email_abc123",
       "occurredAt": "2025-06-30T12:00:05Z"
     },
     {
-      "id": "evt_002",
       "type": "delivered",
-      "emailId": "email_abc123",
       "occurredAt": "2025-06-30T12:00:10Z"
     },
     {
-      "id": "evt_003",
-      "type": "opened",
-      "emailId": "email_abc123",
-      "occurredAt": "2025-06-30T12:05:00Z"
+      "type": "clicked",
+      "occurredAt": "2025-06-30T12:06:00Z",
+      "data": {
+        "url": "https://tuodominio.it/offerta?ref=email"
+      }
     },
     {
-      "id": "evt_004",
-      "type": "clicked",
-      "emailId": "email_abc123",
-      "occurredAt": "2025-06-30T12:06:00Z",
-      "metadata": {
-        "url": "https://tuodominio.it/offerta?ref=email"
+      "type": "bounced",
+      "occurredAt": "2025-06-30T12:07:00Z",
+      "recipient": "cc-person@example.com",
+      "data": {
+        "type": "Permanent",
+        "subType": "General"
       }
     }
   ]
