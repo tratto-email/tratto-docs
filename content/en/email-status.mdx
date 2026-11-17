@@ -180,7 +180,7 @@ echo "Created: {$email['createdAt']}\n";
 |-------|-------------|
 | `type` | The event type, from the table above |
 | `occurredAt` | When the event happened (ISO 8601) |
-| `data` | Details of the event, when it has any: the link for `clicked`, the bounce type for `bounced`, the reason for `failed` |
+| `data` | Details of the event, always present: the link for `clicked`, the bounce type for `bounced`, the reason for `failed`. An empty object `{}` when the event has no details, as on `sent` and `delivered` |
 | `recipient` | Only on `bounced` and `complained`: the address that bounced or complained. An email sent to several addresses (`to`, `cc`, `bcc`) can bounce for one and be delivered to the others, and this field tells you which one. Absent on every other event type |
 
 The same events, with the same fields, are also returned in the `events` array of `GET /v1/emails/{id}`.
@@ -235,11 +235,13 @@ foreach ($events as $event) {
   "data": [
     {
       "type": "sent",
-      "occurredAt": "2025-06-30T12:00:05Z"
+      "occurredAt": "2025-06-30T12:00:05Z",
+      "data": {}
     },
     {
       "type": "delivered",
-      "occurredAt": "2025-06-30T12:00:10Z"
+      "occurredAt": "2025-06-30T12:00:10Z",
+      "data": {}
     },
     {
       "type": "clicked",

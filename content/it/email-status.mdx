@@ -180,7 +180,7 @@ Gli **eventi** sono record discreti di tracciamento per quello che è successo a
 |-------|-------------|
 | `type` | Il tipo di evento, dalla tabella qui sopra |
 | `occurredAt` | Quando è avvenuto l'evento (ISO 8601) |
-| `data` | I dettagli dell'evento, se ne ha: il link per `clicked`, il tipo di rimbalzo per `bounced`, il motivo per `failed` |
+| `data` | I dettagli dell'evento, sempre presente: il link per `clicked`, il tipo di rimbalzo per `bounced`, il motivo per `failed`. Un oggetto vuoto `{}` quando l'evento non ha dettagli, come per `sent` e `delivered` |
 | `recipient` | Solo su `bounced` e `complained`: l'indirizzo che è rimbalzato o che ha segnalato spam. Un'email inviata a più indirizzi (`to`, `cc`, `bcc`) può rimbalzare per uno ed essere consegnata agli altri, e questo campo dice quale. Assente su tutti gli altri tipi di evento |
 
 Gli stessi eventi, con gli stessi campi, si trovano anche nell'array `events` di `GET /v1/emails/{id}`.
@@ -235,11 +235,13 @@ foreach ($events as $event) {
   "data": [
     {
       "type": "sent",
-      "occurredAt": "2025-06-30T12:00:05Z"
+      "occurredAt": "2025-06-30T12:00:05Z",
+      "data": {}
     },
     {
       "type": "delivered",
-      "occurredAt": "2025-06-30T12:00:10Z"
+      "occurredAt": "2025-06-30T12:00:10Z",
+      "data": {}
     },
     {
       "type": "clicked",
