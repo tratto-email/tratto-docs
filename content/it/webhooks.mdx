@@ -151,7 +151,7 @@ uno per ogni indirizzo rifiutato, ciascuno con la risposta del proprio server.
 |---|---|---|
 | `type` | Il tipo di rimbalzo, di solito `Permanent` (hard bounce, l'indirizzo non accetta posta) o `Transient` (soft bounce, ad esempio una casella piena) | Sì |
 | `subType` | Una categoria più precisa, ad esempio `General` | Sì |
-| `diagnosticCode` | La risposta del server del destinatario, così come l'ha inviata. I caratteri di controllo diventano spazi e il testo si ferma a 1000 caratteri | No |
+| `diagnosticCode` | La risposta del server del destinatario. Ogni sequenza di caratteri di controllo diventa un solo spazio, e il testo si ferma a 1000 caratteri | No |
 | `dsnStatus` | Il codice di stato esteso contenuto in quella risposta, ad esempio `5.1.1` (utente sconosciuto). C'è solo quando ha la forma `X.Y.Z` | No |
 
 `diagnosticCode` e `dsnStatus` ci sono solo se il server del destinatario li ha

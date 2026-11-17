@@ -151,7 +151,7 @@ refused address, each with the reply of its own server.
 |---|---|---|
 | `type` | The kind of bounce, usually `Permanent` (hard bounce, the address will not accept mail) or `Transient` (soft bounce, for example a full mailbox) | Yes |
 | `subType` | A finer category, for example `General` | Yes |
-| `diagnosticCode` | The reply of the receiving server, as it sent it. Control characters are replaced with spaces and the text is cut at 1000 characters | No |
+| `diagnosticCode` | The reply of the receiving server. Each run of control characters becomes a single space, and the text is cut at 1000 characters | No |
 | `dsnStatus` | The enhanced status code from that reply, for example `5.1.1` (unknown user). Present only when it has the `X.Y.Z` form | No |
 
 `diagnosticCode` and `dsnStatus` are there only when the receiving server
