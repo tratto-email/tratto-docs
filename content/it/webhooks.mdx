@@ -109,7 +109,7 @@ non esiste un carattere jolly.
 ```
 
 `data` contiene i dettagli specifici dell'evento ed è un oggetto vuoto quando non
-ce ne sono. Usa `id` per deduplicare: i retry consegnano lo stesso evento più di
+ce ne sono (vedi [Evento bounced](#evento-bounced) ed [Evento failed](#evento-failed)). Usa `id` per deduplicare: i retry consegnano lo stesso evento più di
 una volta.
 `livemode` è `false` per gli eventi generati dalle chiavi di test e
 dall'endpoint di consegna di prova manuale. Usalo per tenere il traffico di
@@ -123,6 +123,47 @@ ogni indirizzo coinvolto, ciascuno con il suo `id`. Una sola segnalazione di
 spam può riguardare più destinatari dello stesso dominio: ricevi un evento
 `complained` per ognuno e ogni contatto corrispondente viene messo in
 soppressione. `delivered` resta sempre un solo evento per email.
+
+## Evento bounced
+
+`bounced` dice che il server di posta del destinatario ha rifiutato il
+messaggio. Un'email inviata a più indirizzi può generare più eventi `bounced`,
+uno per ogni indirizzo rifiutato, ciascuno con la risposta del proprio server.
+
+```json
+{
+  "id": "evt_abc123",
+  "type": "bounced",
+  "emailId": "email_xyz789",
+  "recipient": "user@example.com",
+  "occurredAt": "2026-11-17T10:00:05Z",
+  "data": {
+    "type": "Permanent",
+    "subType": "General",
+    "diagnosticCode": "smtp; 550 5.1.1 As requested: user unknown <user@example.com>",
+    "dsnStatus": "5.1.1"
+  },
+  "livemode": true
+}
+```
+
+| Chiave | Cosa contiene | Sempre presente |
+|---|---|---|
+| `type` | Il tipo di rimbalzo, di solito `Permanent` (hard bounce, l'indirizzo non accetta posta) o `Transient` (soft bounce, ad esempio una casella piena) | Sì |
+| `subType` | Una categoria più precisa, ad esempio `General` | Sì |
+| `diagnosticCode` | La risposta del server del destinatario, così come l'ha inviata. I caratteri di controllo diventano spazi e il testo si ferma a 1000 caratteri | No |
+| `dsnStatus` | Il codice di stato esteso contenuto in quella risposta, ad esempio `5.1.1` (utente sconosciuto). C'è solo quando ha la forma `X.Y.Z` | No |
+
+`diagnosticCode` e `dsnStatus` ci sono solo se il server del destinatario li ha
+restituiti: il tuo codice deve funzionare anche senza. I rimbalzi simulati in
+[modalità test](/it/docs/test-mode) non li riportano mai.
+
+Per decidere cosa fare usa `type` e `dsnStatus`. `diagnosticCode` è testo
+scritto dal server di qualcun altro: registralo nei log o mostralo al tuo
+supporto, ma non analizzarlo e non mostrarlo così com'è ai tuoi utenti.
+
+Lo stesso `data` si trova negli `events` di `GET /v1/emails/{id}` e in
+`GET /v1/emails/{id}/events`.
 
 ## Evento failed
 

@@ -336,6 +336,10 @@ Vedi [Webhook](/it/docs/webhooks) per la configurazione.
 
 **Complaint**: Destinatario ha segnalato come spam (non ri-inviare)
 
+Ogni evento `bounced` indica il tipo di rimbalzo in `data.type` e, quando c'è,
+riporta la risposta del server del destinatario: vedi
+[Evento bounced](/it/docs/webhooks#evento-bounced).
+
 ### Auto-Unsubscribe
 
 Quando un'email rimbalza o è segnalata, Tratto automaticamente:

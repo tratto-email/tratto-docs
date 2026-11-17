@@ -336,6 +336,10 @@ See [Webhooks](/en/docs/webhooks) for setup.
 
 **Complaint**: Recipient marked as spam (don't re-send)
 
+Each `bounced` event says which kind it was in `data.type`, and carries the
+receiving server's reply when there is one: see
+[The bounced event](/en/docs/webhooks#the-bounced-event).
+
 ### Auto-Unsubscribe
 
 When an email bounces or is complained, Tratto automatically:
