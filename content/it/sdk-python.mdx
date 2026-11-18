@@ -11,6 +11,9 @@ Ogni esempio di questa pagina passa il controllo di mypy contro la **2.3.0**
 pubblicata. Dove una funzionalità richiede una versione precisa, la pagina
 dichiara la minima che ce l'ha.
 
+Il pacchetto include il marcatore `py.typed`, quindi mypy e gli altri type
+checker usano i tipi dell'SDK: richiede la **2.4.0 o successiva**.
+
 ## Installazione
 
 ```bash
@@ -195,6 +198,12 @@ email = client.emails.get('email_abc123')
 print(email['data']['status'])  # 'delivered'
 ```
 
+Gli eventi `bounced` e `complained`, in `email['data']['events']` e in
+`client.emails.get_events`, possono avere `recipient`: l'indirizzo che è
+rimbalzato o che ha segnalato spam. Manca su tutti gli altri tipi di evento,
+quindi leggilo con `event.get('recipient')`. Vedi
+[Campi di un evento](/it/docs/email-status#campi-di-un-evento).
+
 ## Lista Email
 
 ```python
@@ -325,6 +334,11 @@ corrisponde, e solleva `ValueError` solo con un secret vuoto o una tolleranza
 negativa. La tolleranza è di 5 minuti in entrambe le direzioni; la cambi con
 `tolerance_seconds=600`. Come è costruita la firma è spiegato in
 [Verifica della firma dei webhook](/it/docs/webhook-verification).
+
+`BouncedEventData` tipizza il `data` di un evento `bounced`: `type`,
+`subType`, `diagnosticCode` e `dsnStatus`, tutti facoltativi, quindi leggili
+con `.get()`. Richiede la **2.4.0 o successiva**. Cosa contiene ogni chiave è
+spiegato in [Evento bounced](/it/docs/webhooks#evento-bounced).
 
 ## Elenca i Flow
 

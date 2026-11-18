@@ -185,6 +185,8 @@ Gli **eventi** sono record discreti di tracciamento per quello che è successo a
 
 Gli stessi eventi, con gli stessi campi, si trovano anche nell'array `events` di `GET /v1/emails/{id}`.
 
+Nell'SDK Node.js `recipient` è tipizzato su `EmailEvent` (richiede `@tratto/email` 1.9.0 o successiva). Nell'SDK Python gli eventi sono dizionari semplici: leggilo con `event.get('recipient')`.
+
 ### Ottieni Eventi Email
 
 Recupera tutti gli eventi per un'email specifica.

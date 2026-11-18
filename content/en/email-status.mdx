@@ -185,6 +185,8 @@ echo "Created: {$email['createdAt']}\n";
 
 The same events, with the same fields, are also returned in the `events` array of `GET /v1/emails/{id}`.
 
+In the Node.js SDK, `recipient` is typed on `EmailEvent` (requires `@tratto/email` 1.9.0 or later). In the Python SDK events are plain dictionaries: read it with `event.get('recipient')`.
+
 ### Get Email Events
 
 Retrieve all events for a specific email.
