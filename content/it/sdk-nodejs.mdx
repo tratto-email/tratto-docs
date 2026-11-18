@@ -209,6 +209,11 @@ console.log(email.status); // 'delivered'
 console.log(email.events); // timeline completa
 ```
 
+Gli eventi `bounced` e `complained` possono avere `recipient`, l'indirizzo che
+è rimbalzato o che ha segnalato spam; manca su tutti gli altri tipi di evento.
+Il tipo `EmailEvent.recipient` richiede la **1.9.0 o successiva**. Vedi
+[Campi di un evento](/it/docs/email-status#campi-di-un-evento).
+
 ## Elenca le Email
 
 ```typescript

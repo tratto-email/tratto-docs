@@ -205,6 +205,11 @@ console.log(email.status); // 'delivered'
 console.log(email.events); // full timeline
 ```
 
+`bounced` and `complained` events may carry `recipient`, the address that
+bounced or complained; it is absent on every other event type. The
+`EmailEvent.recipient` type requires **1.9.0 or later**. See
+[Event Fields](/en/docs/email-status#event-fields).
+
 ## List Emails
 
 ```typescript

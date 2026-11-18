@@ -11,6 +11,9 @@ Every example on this page typechecks with mypy against the published
 **2.3.0**. Where a feature needs a particular version, the page names the
 minimum one that has it.
 
+The package ships a `py.typed` marker, so mypy and other type checkers use the
+SDK's own types: requires **2.4.0 or later**.
+
 ## Installation
 
 ```bash
@@ -190,6 +193,11 @@ email = client.emails.get('email_abc123')
 print(email['data']['status'])  # 'delivered'
 ```
 
+`bounced` and `complained` events, in `email['data']['events']` and from
+`client.emails.get_events`, may carry `recipient`: the address that bounced or
+complained. It is absent on every other event type, so read it with
+`event.get('recipient')`. See [Event Fields](/en/docs/email-status#event-fields).
+
 ## List Emails
 
 ```python
@@ -320,6 +328,11 @@ raises `ValueError` only on an empty secret or a negative tolerance. The
 tolerance is 5 minutes either way; change it with `tolerance_seconds=600`. How
 the signature is built is in
 [Webhook Signature Verification](/en/docs/webhook-verification).
+
+`BouncedEventData` types the `data` of a `bounced` event: `type`, `subType`,
+`diagnosticCode` and `dsnStatus`, all optional, so read them with `.get()`.
+Requires **2.4.0 or later**. What each key holds is in
+[The bounced event](/en/docs/webhooks#the-bounced-event).
 
 ## List Flows
 
